@@ -340,7 +340,7 @@ porNaiveRango = porNaive %>%  mutate(Hora = as.numeric(sub("Hora ", "", Hora)),
 ggplot(porNaiveRango) +
   geom_line(aes(x = Hora, y = KWH), color = "green", size = 1) +
   geom_ribbon(aes(x = Hora, ymin = Minimo, ymax = Maximo), fill = "lightgreen", alpha = 0.5) +
-  labs(title = "Predicción del último valor con Rango de Confianza",
+  labs(title = "Predicción Del último valor con Rango de Confianza",
        x = "Hora",
        y = "Valor Predicho") +
   theme_minimal() +
