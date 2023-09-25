@@ -6,10 +6,19 @@ library(lattice)
 library(forecast)
 library(purrr)
 
+path <- "DeustoTech GoiEner/RestultadosSemana1.zip" # path del zip
+tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 
-porMedia <- read.csv("resultadosMedia.csv") %>% as_tibble()
-porNaive <- read.csv("resultadosNaiveDia.csv") %>% as_tibble()
-porSNaive <- read.csv("resultadosSnaive.csv") %>% as_tibble()
+unzip(path, exdir = tempdir) # descomprime. Tarda un poco
+
+
+# Lista de archivos CSV en la carpeta extraída
+
+archivos <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names = TRUE)
+
+porMedia <- read.csv(archivos[1]) %>% as_tibble()
+porNaive <- read.csv(archivos[2]) %>% as_tibble()
+porSNaive <- read.csv(archivos[3]) %>% as_tibble()
 
 
 
