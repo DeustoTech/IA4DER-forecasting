@@ -4,6 +4,7 @@ library(caret)
 library(fpp3)
 library(lattice)
 library(forecast)
+library(Metrics)
 
 
 # codigo y pruebas
@@ -20,7 +21,7 @@ csv_files <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names
 
 # funciones y proporcion para las predicciones
 
-# reducir el tamaño del dataset a 200 csv
+# SOLO CAMBIAR PARA REDUCIR O AUMENTAR EL NÚMERO DE CSV-S QUE COGEMOS
 
 # Establecer una semilla para reproducibilidad
 set.seed(123)
@@ -42,7 +43,7 @@ for (file in files_to_copy) {
 
 
 
-propTrain <- 0.8 # usamos el 80% de las observaciones como set de entrenamiento
+propTrain <- 0.75 # usamos el 75% de las observaciones como set de entrenamiento
 
 calculateMAE <- function(actual, predicted) {
   return(mean(abs(predicted - actual)))
@@ -53,12 +54,38 @@ calculateRMSE <- function(actual, predicted) {
   return(sqrt(mean((predicted - actual)^2)))
 }
 
+calculateMAPE <- function(actual, predicted) {
+  if (any(actual <= 0) || any(predicted <= 0)) {
+    return(NA)  # Devuelve NA si algún valor es 0 o negativo
+  } else {
+    mape <- mean(abs((actual - predicted) / actual)) * 100
+    return(mape)
+  }
+}
+
+calculateMASE <- function(actual, forecast, seasonality) {
+  if (any(actual <= 0) || any(forecast <= 0)) {
+    return(NA)  # Devuelve NA si algún valor en actual o forecast es 0 o negativo
+  } else {
+    n <- length(actual)
+    abs_error <- abs(actual - forecast)
+    mean_abs_error <- sum(abs_error) / n
+    mean_abs_error_seasonal <- sum(abs_error) / (n - seasonality)
+    mase <- mean_abs_error / mean_abs_error_seasonal
+    return(mase)
+  }
+}
+
+
+
 
 resultadosMedia <- tibble( # tibble con los resultados de la media
   Hora = character(),
   rango = character(),
   MAE = numeric(),
   RMSE = numeric(),
+  MAPE = numeric(),
+  MASE = numeric(),
   media_entrenamiento = numeric()
 )
 
@@ -83,7 +110,7 @@ for (csv_file in csv_files) {
     # Dividir cada tsibble en un conjunto de entrenamiento y un conjunto de prueba
     tsibble_actual <- fileTShora[[i]]
     n <- nrow(tsibble_actual)
-    propTrain <- 0.8
+    propTrain <- 0.75
     indexTrain <- floor(n * propTrain)
     trainSet <- tsibble_actual[1:indexTrain, ]
     testSet <- tsibble_actual[(indexTrain + 1):n, ]
@@ -92,8 +119,11 @@ for (csv_file in csv_files) {
     media_entrenamiento <- round(mean(trainSet$kWh), 4)
     
     # Calcular MAE y RMSE en el conjunto de prueba
-    MAE_actual <- round(calculateMAE(testSet$kWh, media_entrenamiento), 4)
-    RMSE_actual <- round(calculateRMSE(testSet$kWh, media_entrenamiento), 4)
+    MAE_actual <- round(mae(testSet$kWh, media_entrenamiento), 4)
+    RMSE_actual <- round(rmse(testSet$kWh, media_entrenamiento), 4)
+    MAPE_actual <- round(mape(testSet$kWh, media_entrenamiento), 4)
+    MASE_actual <- round(mase(testSet$kWh, media_entrenamiento, 1), 4)
+    # 0 es que no hay estacionalidad
     
     # Calcular rango (máximo y mínimo) en el conjunto de prueba
     max_valor <- max(testSet$kWh)
@@ -107,17 +137,18 @@ for (csv_file in csv_files) {
         rango = paste("Máximo:", max_valor, "Mínimo:", min_valor),
         MAE = MAE_actual,
         RMSE = RMSE_actual,
+        MAPE = MAPE_actual,
+        MASE = MASE_actual,
         media_entrenamiento = media_entrenamiento
       )
   }
     
-    
-    
+resultadosMedia <- resultadosMedia %>% na.omit()
     
 }
   
 # Cambiar la ruta si es necesario
-write.csv(resultadosMedia, file = "resultadosMedia.csv")
+write.csv(resultadosMedia, file = "resultadosMedia2.csv")
 
 # usando naive
 
@@ -126,6 +157,7 @@ resultadosNaiveDia <- tibble(
   Rango = character(),
   MAE = numeric(),
   RMSE = numeric(),
+  MAPE = numeric(),
   entrenamiento = numeric()
 )
 
@@ -150,7 +182,7 @@ for (csv_file in csv_files) {
     
     tsibble_actual <- fileTShora[[i]]
     n <- nrow(tsibble_actual)
-    propTrain <- 0.8
+    propTrain <- 0.75
     indexTrain <- floor(n * propTrain)
     entrenamiento <- tsibble_actual[1:indexTrain, ]
     prueba <- tsibble_actual[(indexTrain + 1):n, ]
@@ -160,8 +192,9 @@ for (csv_file in csv_files) {
     naive_method = naive(entrenamiento1, h = 1)
     
     prueba$naive = naive_method$mean
-    MAE_actual = round(calculateMAE(prueba$kWh, prueba$naive),4)
-    RMSE_actual = round(calculateRMSE(prueba$kWh, prueba$naive),4)
+    MAE_actual = round(mae(prueba$kWh, prueba$naive),4)
+    RMSE_actual = round(rmse(prueba$kWh, prueba$naive),4)
+    MAPE_actual <- round(mape(prueba$kWh, prueba$naive), 4)
     
     max_valor = max(prueba$kWh)
     min_valor = min(prueba$kWh)
@@ -173,8 +206,9 @@ for (csv_file in csv_files) {
         Rango = paste("Máximo:", max_valor, "Mínimo:", min_valor),
         MAE = MAE_actual,
         RMSE = RMSE_actual,
+        MAPE = MAPE_actual,
         entrenamiento = prueba$naive
-      )
+      ) %>% na.omit()
   }
   
   
@@ -182,7 +216,7 @@ for (csv_file in csv_files) {
   
 }
 
-write.csv(resultadosNaiveDia, file = "resultadosNaiveDia.csv")
+write.csv(resultadosNaiveDia, file = "resultadosNaiveDia2.csv")
 
 
 # usando seasonal naive 
@@ -192,6 +226,8 @@ resultadosSNaive <- tibble(
   Prediccion = numeric(),
   MAE = numeric(),
   RMSE = numeric(),
+  MAPE = numeric(),
+  MASE = numeric(),
   Rango = character()
 )
 
@@ -214,7 +250,7 @@ for (csv_file in csv_files){
     tsHoraActual <- tsHoraActual %>% arrange(timestamp)
     
     n <- nrow(tsHoraActual)
-    propTrain <- 0.8
+    propTrain <- 0.75
     indexTrain <- floor(n * propTrain)
     trainSet <- tsHoraActual[1:indexTrain, ]
     testSet <- tsHoraActual[(indexTrain + 1):n, ]
@@ -237,8 +273,11 @@ for (csv_file in csv_files){
       predValor <- prediccion$mean[1]
       
       # Calcula el MAE y RMSE
-      MAE_actual <- round(calculateMAE(actual_dia$kWh, predValor), 4)
-      RMSE_actual <- round(calculateRMSE(actual_dia$kWh, predValor), 4)
+      MAE_actual <- round(mae(actual_dia$kWh, predValor), 4)
+      RMSE_actual <- round(rmse(actual_dia$kWh, predValor), 4)
+      MAPE_actual <- round(mape(actual_dia$kWh, predValor), 4)
+      MASE_actual <- round(mase(actual_dia$kWh, predValor, 7), 4)
+      # seasonality es 7 porque es semanal
       
       # Calcula el rango (mínimo y máximo) de los valores reales
       min_valor <- round(min(actual_dia$kWh), 4)
@@ -251,12 +290,51 @@ for (csv_file in csv_files){
       resultadosSNaive <- resultadosSNaive %>%
         add_row(DiaDeLaSemana = dia, Hora = actual_dia$Hora, 
                 Prediccion = predValor, MAE = MAE_actual, RMSE = RMSE_actual, 
-                Rango = rango_str) %>% unique()
+                MAPE = MAPE_actual, MASE = MASE_actual,
+                Rango = rango_str) %>% unique() %>% na.omit()
     }
   }
 }
 
-write.csv(resultadosSNaive, file = "DeustoTech GoiEner/resultadosSnaive.csv")
+write.csv(resultadosSNaive, file = "resultadosSnaive2.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Campo de pruebas usando solo el primer csv de la carpeta
