@@ -8,7 +8,7 @@ library(forecast)
 
 # codigo y pruebas
 
-path <- "imp_csv.zip" # path del zip
+path <- "dataset_red.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
@@ -19,6 +19,27 @@ unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 csv_files <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names = TRUE)
 
 # funciones y proporcion para las predicciones
+
+# reducir el tamaño del dataset a 200 csv
+
+# Establecer una semilla para reproducibilidad
+set.seed(123)
+
+
+# Seleccionar 200 archivos CSV aleatorios
+files_to_copy <- sample(csv_files, 200)
+
+# Crear la carpeta Dataset_red si no existe
+if (!file.exists("Dataset_red")) {
+  dir.create("Dataset_red")
+}
+
+# Copiar los archivos seleccionados a la carpeta Dataset_red
+for (file in files_to_copy) {
+  file.copy(file, file.path("Dataset_red", basename(file)))
+}
+
+
 
 
 propTrain <- 0.8 # usamos el 80% de las observaciones como set de entrenamiento

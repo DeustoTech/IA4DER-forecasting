@@ -6,7 +6,7 @@ library(lattice)
 library(forecast)
 library(purrr)
 
-path <- "DeustoTech GoiEner/RestultadosSemana1.zip" # path del zip
+path <- "dataset_red.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
