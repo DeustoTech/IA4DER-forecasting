@@ -6,7 +6,7 @@ library(lattice)
 library(forecast)
 library(purrr)
 
-path <- "dataset_red.zip" # path del zip
+path <- "ModelosSimples2.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
@@ -20,19 +20,125 @@ porMedia <- read.csv(archivos[1]) %>% as_tibble()
 porNaive <- read.csv(archivos[2]) %>% as_tibble()
 porSNaive <- read.csv(archivos[3]) %>% as_tibble()
 
+porMedia <- porMedia %>%
+  filter(
+    is.finite(MAE),
+    is.finite(RMSE),
+    is.finite(MAPE),
+    is.finite(MASE),
+    is.finite(media_entrenamiento)
+  )
+  
+
+porNaive <- porNaive %>%
+  filter(
+    is.finite(MAE),
+    is.finite(RMSE),
+    is.finite(MAPE),
+    is.finite(entrenamiento)
+  )
 
 
-# analisis de los resultados usando la media
+porSNaive <- porSNaive %>%
+  filter(
+    is.finite(MAE),
+    is.finite(RMSE),
+    is.finite(MAPE),
+    is.finite(MASE),
+    is.finite(Prediccion)
+  )
+
+# Errores del modelo usando la media
+
+rmseMed <- round(mean(porMedia$RMSE), 4)
+mapeMed <- round(mean(porMedia$MAPE), 4)
+maseMed <- round(mean(porMedia$MASE), 4)
+
+# Errores del modelo naive
+
+rmseNaive <- round(mean(porNaive$RMSE), 4)
+mapeNaive <- round(mean(porNaive$MAPE), 4)
+
+# Errores del modelo seasonal naive
+
+rmseSnav <- round(mean(porSNaive$RMSE), 4)
+mapeSnav <- round(mean(porSNaive$MAPE), 4)
+maseSnav <- round(mean(porSNaive$MASE), 4)
+
+# tibbles para comparar resultados
+
+valoresRMSE <- tibble(
+  Modelo = c("Media", "Naive", "Seasonal Naive"),
+  RMSE = c(rmseMed, rmseNaive, rmseSnav)
+)
+
+valoresMAPE <- tibble(
+  Modelo = c("Media", "Naive", "Seasonal Naive"),
+  MAPE = c(mapeMed, mapeNaive, mapeSnav)
+)
+
+valoresMASE <- tibble(
+  Modelo = c("Media", "Seasonal Naive"),
+  MASE = c(maseMed, maseSnav)
+)
+
+# graficos comparando errores medios entre modelos
+
+
+# Grafico rmse
+
+ggplot(data = valoresRMSE, aes(x = Modelo, y = RMSE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.4f", RMSE)), vjust = -0.5) + 
+  labs(
+    title = "Comparación de RMSE Medios",
+    x = "Modelo",
+    y = "RMSE Medio"
+  ) +
+  scale_fill_manual(values = c("Media" = "dodgerblue2", "Naive" = "orange", "Seasonal Naive" = "hotpink1"), 
+                    name = "") +
+  theme(legend.position = "top")
+
+
+# grafico mape
+
+ggplot(data = valoresMAPE, aes(x = Modelo, y = MAPE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.4f", MAPE)), vjust = -0.5) + 
+  labs(
+    title = "Comparación de MAPE Medios",
+    x = "Modelo",
+    y = "MAPE Medio"
+  ) +
+  scale_fill_manual(values = c("Media" = "dodgerblue2", "Naive" = "orange", "Seasonal Naive" = "hotpink1"), 
+                    name = "") + theme(legend.position = "top") 
+
+
+# grafico mase
+
+ggplot(data = valoresMASE, aes(x = Modelo, y = MASE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.4f", MASE)), vjust = -0.5) +
+  labs(
+    title = "Comparación de MASE Medios",
+    x = "Modelo",
+    y = "MASE Medio"
+  ) +
+  scale_fill_manual(values = c("Media" = "dodgerblue2", "Seasonal Naive" = "hotpink1"), name = "") +
+  theme(legend.position = "top")
+
 
 # distribución del error MAE usando la media
 
 maeMediaM <- round(mean(porMedia$MAE), 4) # error medio usando la media 
 
+
+
 minMaeM <- round(min(porMedia$MAE), 4)
 maxMaeM <- round(max(porMedia$MAE), 4)
 
 ggplot(data = porMedia, aes(x = MAE)) +
-  geom_histogram(binwidth = 0.1, fill = "blue", color = "black") +
+  geom_histogram(binwidth = 0.1, fill = "dodgerblue2", color = "orange") +
   labs(
     title = "Distribución del Error MAE",
     x = "Error MAE (kWh)"
@@ -46,6 +152,58 @@ ggplot(data = porMedia, aes(y = MAE)) +
     y = "Error MAE"
   )
 
+
+# boxplots
+
+# RMSE MEDIA
+
+ggplot(data = porMedia, aes(y = RMSE)) +
+  geom_boxplot(fill = "dodgerblue2", color = "dodgerblue2") +
+  labs(title = "Boxplot del RMSE de la Media", y = "RMSE")
+
+# MAPE MEDIA
+
+ggplot(data = porMedia, aes(y = MAPE)) +
+  geom_boxplot(fill = "dodgerblue2", color = "dodgerblue2") +
+  labs(title = "Boxplot del MAPE de la Media", y = "MAPE")
+
+# MASE MEDIA
+
+ggplot(data = porMedia, aes(y = MASE)) +
+  geom_boxplot(fill = "dodgerblue2", color = "dodgerblue2") +
+  labs(title = "Boxplot del MASE de la Media", y = "MASE")
+
+# RMSE NAIVE
+
+ggplot(data = porNaive, aes(y = RMSE)) +
+  geom_boxplot(fill = "orange", color = "orange") +
+  labs(title = "Boxplot del RMSE del Naive", y = "RMSE")
+
+# MAPE MEDIA
+
+ggplot(data = porNaive, aes(y = MAPE)) +
+  geom_boxplot(fill = "orange", color = "orange") +
+  labs(title = "Boxplot del MAPE del Naive", y = "MAPE")
+
+
+
+# RMSE SNAIVE
+
+ggplot(data = porSNaive, aes(y = RMSE)) +
+  geom_boxplot(fill = "hotpink1", color = "hotpink1") +
+  labs(title = "Boxplot del RMSE de la SNaive", y = "RMSE")
+
+# MAPE SNAIVE
+
+ggplot(data = porSNaive, aes(y = MAPE)) +
+  geom_boxplot(fill = "hotpink1", color = "hotpink1") +
+  labs(title = "Boxplot del MAPE de la SNaive", y = "MAPE")
+
+# MASE SNAIVE
+
+ggplot(data = porSNaive, aes(y = MASE)) +
+  geom_boxplot(fill = "hotpink1", color = "hotpink1") +
+  labs(title = "Boxplot del MASE de la Snaive", y = "MASE")
 
 
 # Agrupa los datos por la columna "hora" y calcula el error MAE y RMSE medio
