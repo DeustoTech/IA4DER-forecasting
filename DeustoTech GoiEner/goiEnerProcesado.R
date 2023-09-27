@@ -5,7 +5,9 @@ library(fpp3)
 library(lattice)
 library(forecast)
 library(Metrics)
-
+library(fable)
+library(data.table)
+library(xts)
 
 # codigo y pruebas
 
@@ -41,7 +43,7 @@ for (file in files_to_copy) {
 }
 
 
-
+csv_files
 
 propTrain <- 0.75 # usamos el 75% de las observaciones como set de entrenamiento
 
@@ -86,6 +88,7 @@ resultadosMedia <- tibble( # tibble con los resultados de la media
   RMSE = numeric(),
   MAPE = numeric(),
   MASE = numeric(),
+  ARIMA = numeric(),
   media_entrenamiento = numeric()
 )
 
@@ -340,11 +343,36 @@ write.csv(resultadosSNaive, file = "resultadosSnaive2.csv")
 # Campo de pruebas usando solo el primer csv de la carpeta
 
 
-csv1 <- read.csv(csv_files[1], sep = ",") 
-ts1 <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
-  filter(imputed == 0) %>% select(-imputed) %>% 
-  as_tsibble(key = kWh, index = timestamp) %>% mutate(hora = hour(timestamp)) %>% arrange(timestamp) 
-# tenemos la columna de las horas. 
+csv1 <- fread(csv_files[10])
+
+csv1_2 <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
+  filter(imputed == 0) %>% select(-imputed)
+
+ts1 <- xts(csv1_2$kWh, order.by = csv1_2$timestamp)
+
+n <- nrow(ts1)
+propTrain <- 0.75
+indexTrain <- floor(n * propTrain)
+trainSet <- ts1[1:indexTrain, ]
+testSet <- ts1[(indexTrain + 1):n, ]
+
+
+a1 <- auto.arima(trainSet)
+summary(a1)
+plot(a1)
+p <- forecast(a1, h = nrow(testSet))
+p
+autoplot(p)
+
+predicted <- as.numeric(p$mean)
+actual <- as.numeric(testSet)
+mse(actual = actual, predicted = predicted)
+
+
+
+
+
+
 
 
 ts_horas <- split(ts1, f = hour(ts1$timestamp)) # tenemos una tsibble para cada hora
@@ -364,9 +392,7 @@ calculateRMSE <- function(actual, predicted) {
 # Crear una tibble para almacenar los resultados
 resultados <- tibble(
   Hora = character(),
-  rango = character(),
-  MAE = numeric(),
-  RMSE = numeric(),
+  Arima_1 = integer(),
   media_entrenamiento = numeric()
 )
 
@@ -383,23 +409,17 @@ for (i in 1:length(ts_horas)) {
   
   # Calcular la media del consumo en el conjunto de entrenamiento
   media_entrenamiento <- round(mean(trainSet$kWh), 4)
+
   
-  # Calcular MAE y RMSE en el conjunto de prueba
-  MAE_actual <- round(calculateMAE(testSet$kWh, media_entrenamiento), 4)
-  RMSE_actual <- round(calculateRMSE(testSet$kWh, media_entrenamiento), 4)
-  
-  # Calcular rango (máximo y mínimo) en el conjunto de prueba
-  max_valor <- max(testSet$kWh)
-  min_valor <- min(testSet$kWh)
-  
-  
+  a1 <- arima(testSet$kWh)
+  pronostico <- forecast(a1, 12, level = 95)
+  autoplot(pronostico, main = "pronostico con airma", ylab = "KWH")
+
   # Agregar los resultados a la tibble resultados
   resultados <- resultados %>%
     add_row(
       Hora = paste("Hora", i - 1),  # Asumiendo que quieres etiquetar cada resultado con "Hora X"
-      rango = paste("Máximo:", max_valor, "Mínimo:", min_valor),
-      MAE = MAE_actual,
-      RMSE = RMSE_actual,
+      Arima_1 = a1$coef,
       media_entrenamiento = media_entrenamiento
     )
 }
