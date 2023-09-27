@@ -306,43 +306,7 @@ write.csv(resultadosSNaive, file = "resultadosSnaive2.csv")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Campo de pruebas usando solo el primer csv de la carpeta
+# NAIVE
 
 resultadosArima <- tibble(
   predicted = numeric(),
@@ -350,12 +314,12 @@ resultadosArima <- tibble(
 )
 
 plan(multisession)
-
+csv_file <- csv_files[10]
 arima_funcion <- function(csv_file) {
   
   csv_actual <- fread(csv_file)
   
-  csv_actual <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
+  csv_actual <- csv_actual %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
     filter(imputed == 0) %>% select(-imputed)
   
   ts1 <- xts(csv_actual$kWh, order.by = csv_actual$timestamp)
@@ -381,10 +345,27 @@ arima_funcion <- function(csv_file) {
   )
   
 }
+
 future.apply::future_lapply(csv_files, arima_funcion)
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#pruebas
 csv1 <- fread(csv_files[10])
 
 csv1_2 <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
