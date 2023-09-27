@@ -355,7 +355,7 @@ propTrain <- 0.75
 indexTrain <- floor(n * propTrain)
 trainSet <- ts1[1:indexTrain, ]
 testSet <- ts1[(indexTrain + 1):n, ]
-
+#prueba
 
 a1 <- auto.arima(trainSet)
 summary(a1)
