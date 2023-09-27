@@ -8,6 +8,8 @@ library(Metrics)
 library(fable)
 library(data.table)
 library(xts)
+library(future)
+#install.packages("future")
 
 # codigo y pruebas
 
@@ -342,6 +344,46 @@ write.csv(resultadosSNaive, file = "resultadosSnaive2.csv")
 
 # Campo de pruebas usando solo el primer csv de la carpeta
 
+resultadosArima <- tibble(
+  predicted = numeric(),
+  MAPE = numeric(),
+)
+
+plan(multisession)
+
+arima_funcion <- function(csv_file) {
+  
+  csv_actual <- fread(csv_file)
+  
+  csv_actual <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
+    filter(imputed == 0) %>% select(-imputed)
+  
+  ts1 <- xts(csv_actual$kWh, order.by = csv_actual$timestamp)
+  
+  n <- nrow(ts1)
+  propTrain <- 0.75
+  indexTrain <- floor(n * propTrain)
+  trainSet <- ts1[1:indexTrain, ]
+  testSet <- ts1[(indexTrain + 1):n, ]
+  
+  arima_function <- auto.arima(trainSet)
+  p <- forecast(arima_function, h = nrow(testSet))
+  
+  predicted <- as.numeric(p$mean)
+  actual <- as.numeric(testSet)
+  
+  aux <- actual!=0
+  mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
+  
+  resultadosArima <- resultadosArima %>% add_row(
+    predicted = predicted,
+    MAPE = mape
+  )
+  
+}
+future.apply::future_lapply(csv_files, arima_funcion)
+
+
 
 csv1 <- fread(csv_files[10])
 
@@ -359,16 +401,18 @@ testSet <- ts1[(indexTrain + 1):n, ]
 
 a1 <- auto.arima(trainSet)
 summary(a1)
-plot(a1)
+
 p <- forecast(a1, h = nrow(testSet))
 p
 autoplot(p)
 
 predicted <- as.numeric(p$mean)
 actual <- as.numeric(testSet)
-mse(actual = actual, predicted = predicted)
 
+aux <- actual!=0
+mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
 
+mape
 
 
 
