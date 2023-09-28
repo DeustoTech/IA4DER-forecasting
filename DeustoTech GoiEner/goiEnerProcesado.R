@@ -330,7 +330,6 @@ resultadosTotales <- tibble(
 )
 
 # Función para calcular las métricas de pronóstico por hora con ETS y ARIMA
-# si lo dejas mucho tiempo crashea, no sé por qué
 procesarCsvHoras <- function(csv_file) {
   csv_actual <- fread(csv_file)
   
@@ -340,7 +339,7 @@ procesarCsvHoras <- function(csv_file) {
     select(-imputed)
   
   # Dividir los datos por horas
-  horas <- c(1:23)
+  horas <- c(0:23)
   
   foreach(hora = horas, .packages = librerias) %dopar% {
     # Filtrar los datos para la hora actual
@@ -365,7 +364,7 @@ procesarCsvHoras <- function(csv_file) {
     rmse <- rmse(actual, predicted)
     
     resultadosTotales <<- resultadosTotales %>% add_row(
-      Hora = hora - 1,
+      Hora = hora,
       Predicted = round(predicted, 4),
       sMAPE = round(smape, 4),
       RMSE = round(rmse, 4),
@@ -382,12 +381,12 @@ procesarCsvHoras <- function(csv_file) {
     rmse_arima <- rmse(actual, predicted_arima)
     
     resultadosTotales <<- resultadosTotales %>% add_row(
-      Hora = hora - 1,
+      Hora = hora,
       Predicted = round(predicted_arima, 4),
       sMAPE = round(smape_arima, 4),
       RMSE = round(rmse_arima, 4),
       Modelo = "ARIMA"
-    ) 
+    ) %>% unique() # para eliminar duplicados
   }
 }
 
@@ -397,6 +396,7 @@ foreach(csv_file = csv_files,
 
 # Detén el backend después de usarlo. Solo si se usa paralelo
 stopImplicitCluster()
+
 
 write.csv(resultadosTotales, file = "resultadosArimaETS.csv")
 
