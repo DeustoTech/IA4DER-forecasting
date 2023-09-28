@@ -1,15 +1,15 @@
-library(ggplot2)
-library(lattice)
-library(caret)
-library(fpp3)
-library(lattice)
-library(forecast)
-library(Metrics)
-library(fable)
-library(data.table)
-library(xts)
-library(future)
-library(fable)
+library(foreach)
+library(doParallel)
+
+# añadir las librerias nuevas en este vector
+
+librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
+               "lattice", "forecast", "Metrics", "fable", 
+               "data.table", "xts", "future", "fable", "foreach", "doParallel") 
+foreach(lib = librerias) %do% {
+  library(lib, character.only = TRUE)
+}
+
 
 #install.packages("future")
 
@@ -315,58 +315,68 @@ tempdir <- tempdir()
 unzip(path, exdir = tempdir)
 csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
 
-resultadosArima <- tibble(
+# La siguiente linea es solo para muchos datos. Ajustar en funcion del numero de nucleos
+# registerDoParallel(cores = 4)  # Puedes ajustar el número de núcleos según tu CPU
+
+resultadosArimaHora <- tibble(
+  Hora = numeric(),
   Predicted = numeric(),
+  sMAPE = numeric(),
   MAPE = numeric()
 )
 
-
-plan(multisession)
-
-
-arima_funcion <- function(csv_file) {
-  
+arima_funcionHoras <- function(csv_file) {
   csv_actual <- fread(csv_file)
   
-  csv_actual <- csv_actual %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
-    filter(imputed == 0) %>% select(-imputed)
+  csv_actual <- csv_actual %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+    filter(imputed == 0) %>%
+    select(-imputed)
   
-  ts1 <- xts(csv_actual$kWh, order.by = csv_actual$timestamp)
-  
-  n <- nrow(ts1)
-  propTrain <- 0.75
-  indexTrain <- floor(n * propTrain)
-  trainSet <- ts1[1:indexTrain, ]
-  testSet <- ts1[(indexTrain + 1):n, ]
-  
-  arim <- auto.arima(trainSet)
-  p <- forecast(arim, h = nrow(testSet))
-  
-  predicted <- as.numeric(p$mean)
-  # actual <- as.numeric(testSet) 
-  actual <- drop(coredata(testSet))
-  
-  # no sabemos por qué, pero estas dos lineas hacen que no funcione
-  # aux <- actual!=0
-  # mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
-  
-  
-  
-  mape <- mape(actual, predicted) # %>% unique()
+  # Dividir los datos por horas
 
-  predicted <- predicted # %>% unique()
-  # ? hay muchas observaciones repetidas, las tenemos que quitar?
-  resultadosArima <<- resultadosArima %>% add_row(
-    Predicted = round(predicted, 4),
-    MAPE = round(mape,4)
-  ) 
+  
+  resultadosArimaHora <<- foreach(hora = c(1:23), .packages = librerias,
+                                 .combine = rbind) %dopar% {
+    # Filtrar los datos para la hora actual
+    datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ]
+    
+    ts1 <- xts(datos_hora$kWh, order.by = datos_hora$timestamp)
+    
+    n <- nrow(ts1)
+    propTrain <- 0.75
+    indexTrain <- floor(n * propTrain)
+    trainSet <- ts1[1:indexTrain, ]
+    testSet <- ts1[(indexTrain + 1):n, ]
+    
+    arim <- auto.arima(trainSet)
+    p <- forecast(arim, h = nrow(testSet))
+    
+    predicted <- as.numeric(p$mean)
+    actual <- drop(coredata(testSet))
+    
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    
+    tibble(
+      Hora = hora - 1,
+      Predicted = round(predicted, 4),
+      sMAPE = round(smape, 4),
+      RMSE = round(rmse, 4)
+    )
+                                 }
+  
+  return(resultadosHora)
   
   
 }
 
-foreach(csv_file = csv_files) %dopar% arima_funcion(csv_file)
+# Luego puedes llamar a la función para procesar múltiples archivos CSV en paralelo
+resultadosTotales <- foreach(csv_file = csv_files, .combine = rbind, 
+                             .packages = librerias) %dopar% arima_funcionHoras(csv_file)
 
-# future.apply::future_lapply(csv_files, arima_funcion) no funciona con esto
+# Detén el backend después de usarlo
+stopImplicitCluster()
 
 
 
@@ -523,7 +533,12 @@ mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
 mape
 
 
+# prueba exponential smoothing
 
+
+ex <- ets(trainSet)
+result <- forecast(ex, h = nrow(testSet))
+autoplot(result)
 
 
 
