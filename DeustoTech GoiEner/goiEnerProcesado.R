@@ -9,6 +9,8 @@ library(fable)
 library(data.table)
 library(xts)
 library(future)
+library(fable)
+
 #install.packages("future")
 
 # codigo y pruebas
@@ -21,10 +23,10 @@ unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 
 # Lista de archivos CSV en la carpeta extraída
 
-csv_files <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names = TRUE)
+csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
 
 # funciones y proporcion para las predicciones
-
+csv_files
 # SOLO CAMBIAR PARA REDUCIR O AUMENTAR EL NÚMERO DE CSV-S QUE COGEMOS
 
 # Establecer una semilla para reproducibilidad
@@ -306,15 +308,21 @@ write.csv(resultadosSNaive, file = "resultadosSnaive2.csv")
 
 
 
-# NAIVE
+# ARIMA
+
+path <- "dataset_red.zip"
+tempdir <- tempdir()
+unzip(path, exdir = tempdir)
+csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
 
 resultadosArima <- tibble(
   predicted = numeric(),
   MAPE = numeric(),
 )
 
+
 plan(multisession)
-csv_file <- csv_files[10]
+
 arima_funcion <- function(csv_file) {
   
   csv_actual <- fread(csv_file)
@@ -339,7 +347,7 @@ arima_funcion <- function(csv_file) {
   aux <- actual!=0
   mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
   
-  resultadosArima <- resultadosArima %>% add_row(
+  resultadosArima <<- resultadosArima %>% add_row(
     predicted = predicted,
     MAPE = mape
   )
@@ -351,14 +359,121 @@ future.apply::future_lapply(csv_files, arima_funcion)
 
 
 
+#MEJORAR EL CODIGO DEL PRINCIPIO
+
+
+# Definir el archivo ZIP que contiene los CSV
+path <- "dataset_red.zip"
+
+# Crear una función para cargar y dividir los CSV en series temporales
+process_csv <- function(csv_file) {
+
+  data <- fread(csv_file)
+  
+  if (!inherits(data$timestamp, "POSIXct")) {
+    data$fecha <- as.POSIXct(data$timestamp, format = "%Y-%m-%d %H:%M:%S")
+  }
+  
+  data <- data[order(data$timestamp), ]
+  
+
+  n <- nrow(data)
+  propTrain <- 0.75
+  indexTrain <- floor(n * propTrain)
+  
+  trainSet <- data[1:indexTrain, ]
+  testSet <- data[(indexTrain + 1):n, ]
+  
+  trainTimeSeries <- xts(trainSet$kWh, order.by = trainSet$timestamp)
+  testTimeSeries <- xts(testSet$kWh, order.by = testSet$timestamp)
+  
+  return(list(trainSet = trainTimeSeries, testSet = testTimeSeries))
+}
+
+# Obtener la lista de archivos CSV en el ZIP
+csv_files <- unzip(path, list = TRUE)$Name
+
+# Crear listas para almacenar las series temporales de entrenamiento y prueba
+train_series_list <- list()
+test_series_list <- list()
+
+# Procesar los archivos CSV en paralelo
+plan(multisession)
+for (csv_file in csv_files) {
+  time_series_data <- process_csv(csv_file)
+  train_series_list[[csv_file]] <- time_series_data$trainSet
+  test_series_list[[csv_file]] <- time_series_data$testSet
+}
+
+#Verificar las dimensiones de las listas de series temporales
+print(length(train_series_list))
+print(length(test_series_list))
+
+head(train_series_list)
 
 
 
 
+#PREDICCION POR MEDIA
 
+resultadosMedia <- tibble( # tibble con los resultados de la media
+  Hora = character(),
+  rango = character(),
+  MAE = numeric(),
+  RMSE = numeric(),
+  MAPE = numeric(),
+  MASE = numeric(),
+  media_entrenamiento = numeric()
+)
 
+PredecirPorMedia <- function(datosTrain, datosTest) {
+  
+  
+  trainHora <- split(datosTrain, f = hour(datosTrain$timestamp))
+  testHora <- split(datosTest, f = hour(datosTest$timestamp))
 
+for (i in 1:length(trainHora)) {
+  
+  trainActual <- trainHora[[i]]
+  testActual <- testHora[[i]]
+  
+  # Calcular la media del consumo en el conjunto de entrenamiento
+  media_entrenamiento <- round(MEAN(trainActual), 4)
+  
+  # Calcular ERRORES
+  MAE_actual <- round(mae(testActual$kWh, media_entrenamiento), 4)
+  RMSE_actual <- round(rmse(testActual$kWh, media_entrenamiento), 4)
+  MAPE_actual <- round(mape(testActual$kWh, media_entrenamiento), 4)
+  MASE_actual <- round(mase(testActual$kWh, media_entrenamiento, 1), 4)
+  
+  # Calcular rango (máximo y mínimo) en el conjunto de prueba
+  max_valor <- max(testActual$kWh)
+  min_valor <- min(testActual$kWh)
+  
+  
+  # Agregar los resultados a la tibble resultados por la media
+  resultadosMedia <- resultadosMedia %>%
+    add_row(
+      Hora = paste("Hora", i - 1),  # Asumiendo que quieres etiquetar cada resultado con "Hora X"
+      rango = paste("Máximo:", max_valor, "Mínimo:", min_valor),
+      MAE = MAE_actual,
+      RMSE = RMSE_actual,
+      MAPE = MAPE_actual,
+      MASE = MASE_actual,
+      media_entrenamiento = media_entrenamiento
+    )
+}
 
+resultadosMedia <- resultadosMedia %>% na.omit()
+}
+
+data_pairs <- list(train_series_list, test_series_list)
+
+apply_function <- function(data_pair) {
+  PredecirPorMedia(data_pair$datosTrain, data_pair$datosTest)
+}
+
+#future.apply::future_lapply(c(train_series_list, test_series_list), PredecirPorMedia)
 
 
 
