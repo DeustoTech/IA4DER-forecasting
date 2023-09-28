@@ -316,12 +316,13 @@ unzip(path, exdir = tempdir)
 csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
 
 resultadosArima <- tibble(
-  predicted = numeric(),
-  MAPE = numeric(),
+  Predicted = numeric(),
+  MAPE = numeric()
 )
 
 
 plan(multisession)
+
 
 arima_funcion <- function(csv_file) {
   
@@ -338,19 +339,22 @@ arima_funcion <- function(csv_file) {
   trainSet <- ts1[1:indexTrain, ]
   testSet <- ts1[(indexTrain + 1):n, ]
   
-  arima_function <- auto.arima(trainSet)
-  p <- forecast(arima_function, h = nrow(testSet))
+  arim <- auto.arima(trainSet)
+  p <- forecast(arim, h = nrow(testSet))
   
   predicted <- as.numeric(p$mean)
-  actual <- as.numeric(testSet)
+  # actual <- as.numeric(testSet)
+  actual <- drop(coredata(testSet))
   
   aux <- actual!=0
   mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
+
   
   resultadosArima <<- resultadosArima %>% add_row(
-    predicted = predicted,
+    Predicted = predicted,
     MAPE = mape
   )
+  
   
 }
 
