@@ -343,22 +343,30 @@ arima_funcion <- function(csv_file) {
   p <- forecast(arim, h = nrow(testSet))
   
   predicted <- as.numeric(p$mean)
-  # actual <- as.numeric(testSet)
+  # actual <- as.numeric(testSet) 
   actual <- drop(coredata(testSet))
   
-  aux <- actual!=0
-  mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
-
+  # no sabemos por qué, pero estas dos lineas hacen que no funcione
+  # aux <- actual!=0
+  # mape <- abs(actual[aux]-predicted[aux])/abs(actual[aux])
   
+  
+  
+  mape <- mape(actual, predicted) # %>% unique()
+
+  predicted <- predicted # %>% unique()
+  # ? hay muchas observaciones repetidas, las tenemos que quitar?
   resultadosArima <<- resultadosArima %>% add_row(
-    Predicted = predicted,
-    MAPE = mape
-  )
+    Predicted = round(predicted, 4),
+    MAPE = round(mape,4)
+  ) 
   
   
 }
 
-future.apply::future_lapply(csv_files, arima_funcion)
+foreach(csv_file = csv_files) %dopar% arima_funcion(csv_file)
+
+# future.apply::future_lapply(csv_files, arima_funcion) no funciona con esto
 
 
 
