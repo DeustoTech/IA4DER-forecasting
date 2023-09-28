@@ -308,7 +308,7 @@ write.csv(resultadosSNaive, file = "resultadosSnaive2.csv")
 
 
 
-# ARIMA
+# ARIMA Y EXP SMOOTHING
 
 path <- "dataset_red.zip"
 tempdir <- tempdir()
@@ -318,14 +318,20 @@ csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = 
 # La siguiente linea es solo para muchos datos. Ajustar en funcion del numero de nucleos
 # registerDoParallel(cores = 4)  # Puedes ajustar el número de núcleos según tu CPU
 
-resultadosArimaHora <- tibble(
+
+# Inicializar el tibble para los resultados
+
+resultadosTotales <- tibble(
   Hora = numeric(),
   Predicted = numeric(),
   sMAPE = numeric(),
-  MAPE = numeric()
+  RMSE = numeric(),
+  Modelo = character()
 )
 
-arima_funcionHoras <- function(csv_file) {
+# Función para calcular las métricas de pronóstico por hora con ETS y ARIMA
+# si lo dejas mucho tiempo crashea, no sé por qué
+procesarCsvHoras <- function(csv_file) {
   csv_actual <- fread(csv_file)
   
   csv_actual <- csv_actual %>%
@@ -334,10 +340,9 @@ arima_funcionHoras <- function(csv_file) {
     select(-imputed)
   
   # Dividir los datos por horas
-
+  horas <- c(1:23)
   
-  resultadosArimaHora <<- foreach(hora = c(1:23), .packages = librerias,
-                                 .combine = rbind) %dopar% {
+  foreach(hora = horas, .packages = librerias) %dopar% {
     # Filtrar los datos para la hora actual
     datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ]
     
@@ -349,37 +354,51 @@ arima_funcionHoras <- function(csv_file) {
     trainSet <- ts1[1:indexTrain, ]
     testSet <- ts1[(indexTrain + 1):n, ]
     
-    arim <- auto.arima(trainSet)
-    p <- forecast(arim, h = nrow(testSet))
+    # Ajustar el modelo ETS
+    ex <- ets(trainSet)
+    result <- forecast(ex, h = nrow(testSet))
     
-    predicted <- as.numeric(p$mean)
+    predicted <- as.numeric(result$mean)
     actual <- drop(coredata(testSet))
     
     smape <- smape(actual, predicted)
     rmse <- rmse(actual, predicted)
     
-    tibble(
+    resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora - 1,
       Predicted = round(predicted, 4),
       sMAPE = round(smape, 4),
-      RMSE = round(rmse, 4)
+      RMSE = round(rmse, 4),
+      Modelo = "ETS"
     )
-                                 }
-  
-  return(resultadosHora)
-  
-  
+    
+    # Ajustar el modelo ARIMA
+    arim <- auto.arima(trainSet)
+    p <- forecast(arim, h = nrow(testSet))
+    
+    predicted_arima <- as.numeric(p$mean)
+    
+    smape_arima <- smape(actual, predicted_arima)
+    rmse_arima <- rmse(actual, predicted_arima)
+    
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora - 1,
+      Predicted = round(predicted_arima, 4),
+      sMAPE = round(smape_arima, 4),
+      RMSE = round(rmse_arima, 4),
+      Modelo = "ARIMA"
+    ) 
+  }
 }
 
 # Luego puedes llamar a la función para procesar múltiples archivos CSV en paralelo
-resultadosTotales <- foreach(csv_file = csv_files, .combine = rbind, 
-                             .packages = librerias) %dopar% arima_funcionHoras(csv_file)
+foreach(csv_file = csv_files,
+        .packages = librerias) %dopar% procesarCsvHoras(csv_file)
 
-# Detén el backend después de usarlo
+# Detén el backend después de usarlo. Solo si se usa paralelo
 stopImplicitCluster()
 
-
-
+write.csv(resultadosTotales, file = "resultadosArimaETS.csv")
 
 #MEJORAR EL CODIGO DEL PRINCIPIO
 
