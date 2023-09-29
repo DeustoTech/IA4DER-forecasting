@@ -362,7 +362,7 @@ procesarCsvHoras <- function(csv_file) {
     smape <- smape(actual, predicted)
     rmse <- rmse(actual, predicted)
     
-    options(digits = 4)
+    options(digits = 4) #en vez de round
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
       Predicted = predicted,
@@ -380,7 +380,7 @@ procesarCsvHoras <- function(csv_file) {
     smape_arima <- smape(actual, predicted_arima)
     rmse_arima <- rmse(actual, predicted_arima)
     
-    options(digits = 4)
+    options(digits = 4) #en vez de round
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
       Predicted = predicted_arima,
