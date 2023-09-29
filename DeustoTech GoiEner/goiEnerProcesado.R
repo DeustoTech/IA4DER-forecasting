@@ -458,6 +458,7 @@ procesarCsvHoras <- function(csv_file) {
       arrange(timestamp) 
     
     # el ultimo valor siempre es NA. quitarlo
+
     errors <- tsCV(ts1$kWh, forecastARIMA, h = 1, window = 1) %>% na.omit()
     actual <- ts1$kWh[1: length(errors)]
     
@@ -476,7 +477,14 @@ procesarCsvHoras <- function(csv_file) {
       MASE = mase,
       sMAPE = smape,
       RMSE = rmse,
-      Modelo = "ARIMA"
+    
+    # Almacenar los resultados en el tibble
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "ETS"
     )
     
     # AHORA LO MISMO PERO CON ARIMA
@@ -492,11 +500,10 @@ procesarCsvHoras <- function(csv_file) {
     rmse <- rmse(actual, predicted)
     mase <- mase(actual, predicted)
     
-    # Almacenar los resultados en el tibble para ARIMA
+    # Almacenar los resultados en el tibble
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
       Predicted = predicted,
-      MASE = mase,
       sMAPE = smape,
       RMSE = rmse,
       Modelo = "ARIMA"
