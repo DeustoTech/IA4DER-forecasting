@@ -391,6 +391,7 @@ procesarCsvHoras <- function(csv_file) {
   }
 }
 
+
 # Luego puedes llamar a la función para procesar múltiples archivos CSV en paralelo
 foreach(csv_file = csv_files,
         .packages = librerias) %dopar% procesarCsvHoras(csv_file)
@@ -400,6 +401,135 @@ stopImplicitCluster()
 
 
 write.csv(resultadosTotales, file = "resultadosArimaETS.csv")
+
+
+# ARIMA Y EXPONENTIAL SMOOTHING CON CROSS-VALIDATION
+
+path <- "dataset_red.zip"
+tempdir <- tempdir()
+unzip(path, exdir = tempdir)
+csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
+
+# La siguiente linea es solo para muchos datos. Ajustar en funcion del numero de nucleos
+# registerDoParallel(cores = 4)  # Puedes ajustar el número de núcleos según tu CPU
+
+
+# Inicializar el tibble para los resultados
+
+resultadosTotales <- tibble(
+  Hora = numeric(),
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric(),
+  Modelo = character()
+)
+
+
+horas <- 1:23
+
+# Funcion para CV con Exponential smoothing
+forecastETS <- function(x, h) {
+  prediccion <- forecast(ets(x), h = h)
+  return(prediccion)
+}
+
+# Funcion para CV con Arima
+forecastARIMA <- function(x, h) {
+  prediccion <- forecast(auto.arima(x), h = h)
+  return(prediccion)
+}
+
+procesarCsvHoras <- function(csv_file) {
+  csv_actual <- fread(csv_file)
+  
+  csv_actual <- csv_actual %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+    select(-imputed)
+# Bucle para procesar cada hora
+  foreach(hora = horas, .packages = librerias) %dopar% {
+    # Filtrar los datos para la hora actual
+    datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ] 
+    
+    # Crear un tsibble para la hora actual
+    ts1 <- datos_hora %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp) 
+    
+    # el ultimo valor siempre es NA. quitarlo
+    errors <- tsCV(ts1$kWh, forecastETS, h = 1, window = 1) %>% na.omit()
+    actual <- ts1$kWh[1: length(errors)]
+    
+    # Calculamos la prediccion haciendo real + error
+    predicted <- actual + errors
+    
+    # Calcular métricas
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    
+    # Almacenar los resultados en el tibble
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "ETS"
+    )
+    
+    # AHORA LO MISMO PERO CON ARIMA
+    
+    errors <- tsCV(ts1$kWh, forecastARIMA, h = 1, window = 1) %>% na.omit()
+    actual <- ts1$kWh[1: length(errors)]
+    
+    # Calculamos la prediccion haciendo real + error
+    predicted <- actual + errors
+    
+    # Calcular métricas
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    
+    # Almacenar los resultados en el tibble
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "ARIMA"
+    )
+    
+    
+  }
+}
+
+
+foreach(csv_file = csv_files,
+        .packages = librerias) %dopar% procesarCsvHoras(csv_file)
+
+# Detén el backend después de usarlo. Solo si se usa paralelo
+stopImplicitCluster()
+
+
+write.csv(resultadosTotales, file = "resultadosArimaETS.csv")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #MEJORAR EL CODIGO DEL PRINCIPIO
 
@@ -525,8 +655,7 @@ apply_function <- function(data_pair) {
 #pruebas
 csv1 <- fread(csv_files[10])
 
-csv1_2 <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
-  filter(imputed == 0) %>% select(-imputed)
+csv1_2 <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% select(-imputed)
 
 ts1 <- xts(csv1_2$kWh, order.by = csv1_2$timestamp)
 
@@ -559,6 +688,150 @@ mape
 ex <- ets(trainSet)
 result <- forecast(ex, h = nrow(testSet))
 autoplot(result)
+
+
+# prueba con cross-validation
+
+resultadoPrueba <- tibble(
+  Hora = numeric(),
+  Predicted = numeric(),
+  sMape = numeric(),
+  RMSE = numeric()
+)
+
+horas <- c(0:23)
+options(digits = 4)
+
+csvPrueba <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+  select(-imputed) %>% as_tsibble(timestamp = , key = kWh, index = timestamp) %>% arrange(timestamp)
+
+hora9 <- csvPrueba %>% filter(hour(timestamp) == 9) %>% mutate(timestamp = as.Date(timestamp)) %>%
+  arrange(timestamp)
+
+#  Esta es la forma en la que el libro hace cross time validation, 
+# pero por alguna razón mística no funciona con nuestro dataset aunque tengan la 
+# misma estructura que los del libro
+# tr9 <- prueba9 |>
+#   stretch_tsibble(.init = 3, .step = 1) 
+
+
+predicciones <- list()
+
+forectasFunc <- function(x, h){ 
+  prediccion <- forecast(ets(x), h = h)
+  print(prediccion)
+  predicciones <<- as.numeric(prediccion$mean)
+  return(prediccion)
+  }
+
+e <- tsCV(hora9$kWh, forectasFunc, h = 1, window = 1)  # RETURNEA UN VECTOR CON LOS ERRORES MSE
+rmseCV <- e^2 %>% mean(na.rm=TRUE) %>% sqrt()
+
+
+
+foreach(hora = horas, .packages = librerias) %dopar% {
+  # Filtrar los datos para la hora actual
+  datos_hora <- csvPrueba[hour(csvPrueba$timestamp) == hora, ]
+  
+  # ts1 <- xts(datos_hora$kWh, order.by = datos_hora$timestamp)
+  ts1 <- datos_hora %>% mutate(timestamp = as.Date(timestamp)) %>% 
+    as_tsibble(key = kWh, index = timestamp) %>% arrange(timestamp)
+  
+  
+  
+ 
+  
+  predicted <- tsCV(ts1$kWh, forectasFunc, h = 1, window = 1)
+  actual <- drop(coredata(testSet))
+  
+  smape <- smape(actual, predicted)
+  rmse <- rmse(actual, predicted)
+  
+  options(digits = 4) #en vez de round
+  resultadoPrueba <<- resultadoPrueba %>% add_row(
+    Hora = hora,
+    Predicted = predicted,
+    sMAPE = smape,
+    RMSE = rmse,
+  )
+  
+  # Ajustar el modelo ARIMA
+  # arim <- auto.arima(trainSet)
+  # p <- forecast(arim, h = nrow(testSet))
+  # 
+  # predicted_arima <- as.numeric(p$mean)
+  # 
+  # smape_arima <- smape(actual, predicted_arima)
+  # rmse_arima <- rmse(actual, predicted_arima)
+  # 
+  # options(digits = 4) #en vez de round
+  # resultadosTotales <<- resultadosTotales %>% add_row(
+  #   Hora = hora,
+  #   Predicted = predicted_arima,
+  #   sMAPE = smape_arima,
+  #   RMSE = rmse_arima,
+  #   Modelo = "ARIMA"
+  # ) %>% unique() # para eliminar duplicados
+}
+
+# Crear un tibble para almacenar los resultados
+resultadosPrueba <- tibble(
+  Hora = numeric(),
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric()
+)
+
+# Dividir los datos por horas
+horas <- 1:23
+
+# Funcion para CV con Exponential smoothing
+etsCV <- function(x, h) {
+  prediccion <- forecast(ets(x), h = h)
+  return(prediccion)
+}
+
+# Funcion para CV con Arima
+etsCV <- function(x, h) {
+  prediccion <- forecast(auto.arima(x), h = h)
+  return(prediccion)
+}
+
+
+# Bucle para procesar cada hora
+foreach(hora = horas, .packages = librerias) %dopar% {
+  # Filtrar los datos para la hora actual
+  datos_hora <- csvPrueba[hour(csvPrueba$timestamp) == hora, ]
+  
+  # Crear un tsibble para la hora actual
+  ts1 <- datos_hora %>%
+    mutate(timestamp = as.Date(timestamp)) %>%
+    as_tsibble(key = kWh, index = timestamp) %>%
+    arrange(timestamp)
+  
+  # Realizar el pronóstico
+  errors <- tsCV(ts1$kWh, forectasFunc, h = 1, window = 1) %>% na.omit()# el ultimo valor siempre es NA. quitarlo
+  actual <- ts1$kWh[1: length(errors)]
+  predicted <- actual + errors
+  
+  # Calcular métricas
+  smape <- smape(actual, predicted)
+  rmse <- rmse(actual, predicted)
+  
+  # Almacenar los resultados en el tibble
+  resultadosPrueba <<- resultadosPrueba %>% add_row(
+    Hora = hora,
+    Predicted = predicted,
+    sMAPE = smape,
+    RMSE = rmse
+  )
+}
+
+# Ver los resultados
+print(resultadosPrueba)
+
+
+
 
 
 
