@@ -335,7 +335,6 @@ procesarCsvHoras <- function(csv_file) {
   
   csv_actual <- csv_actual %>%
     mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
-    filter(imputed == 0) %>%
     select(-imputed)
   
   # Dividir los datos por horas
@@ -363,11 +362,12 @@ procesarCsvHoras <- function(csv_file) {
     smape <- smape(actual, predicted)
     rmse <- rmse(actual, predicted)
     
+    options(digits = 4)
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
-      Predicted = round(predicted, 4),
-      sMAPE = round(smape, 4),
-      RMSE = round(rmse, 4),
+      Predicted = predicted,
+      sMAPE = smape,
+      RMSE = rmse,
       Modelo = "ETS"
     )
     
@@ -380,11 +380,12 @@ procesarCsvHoras <- function(csv_file) {
     smape_arima <- smape(actual, predicted_arima)
     rmse_arima <- rmse(actual, predicted_arima)
     
+    options(digits = 4)
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
-      Predicted = round(predicted_arima, 4),
-      sMAPE = round(smape_arima, 4),
-      RMSE = round(rmse_arima, 4),
+      Predicted = predicted_arima,
+      sMAPE = smape_arima,
+      RMSE = rmse_arima,
       Modelo = "ARIMA"
     ) %>% unique() # para eliminar duplicados
   }
