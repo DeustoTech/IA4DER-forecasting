@@ -471,17 +471,11 @@ procesarCsvHoras <- function(csv_file) {
     mase <- mase(actual, predicted)    
 
     # Almacenar los resultados en el tibble para ETS
+    
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
       Predicted = predicted,
       MASE = mase,
-      sMAPE = smape,
-      RMSE = rmse,
-    
-    # Almacenar los resultados en el tibble
-    resultadosTotales <<- resultadosTotales %>% add_row(
-      Hora = hora,
-      Predicted = predicted,
       sMAPE = smape,
       RMSE = rmse,
       Modelo = "ETS"
@@ -504,6 +498,7 @@ procesarCsvHoras <- function(csv_file) {
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
       Predicted = predicted,
+      MASE = mase,
       sMAPE = smape,
       RMSE = rmse,
       Modelo = "ARIMA"
@@ -841,9 +836,6 @@ foreach(hora = horas, .packages = librerias) %dopar% {
 
 # Ver los resultados
 print(resultadosPrueba)
-
-
-
 
 
 
