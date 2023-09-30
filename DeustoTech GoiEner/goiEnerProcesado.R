@@ -1,6 +1,11 @@
 library(foreach)
 library(doParallel)
 
+#install.packages("RSNNS")
+library(RSNNS)
+library(TTR)
+library(quantmod)
+
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
@@ -520,18 +525,122 @@ write.csv(resultadosTotales, file = "resultadosArimaETS.csv")
 
 
 
+### PRUEBAS REDES NEURONALES ###
+
+csv1 <- fread(csv_files[10])
+
+csv1 <- csv1 %>%  mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+  select(-imputed) %>% arrange(timestamp)
+
+csv1_ts <- xts(csv1$kWh, order.by = csv1$timestamp)
 
 
+propTrain <- 0.75
+indexTrain <- floor(n * propTrain)
+trainSet <- csv1_ts[1:indexTrain, ]
+testSet <- csv1_ts[(indexTrain + 1):n, ]
+
+modelo <- nnetar(trainSet)
+
+predicciones <- forecast(modelo, h = length(testSet))
+
+predicciones
 
 
+horas <- 1:23
+
+for (i in horas) {
+  
+  datos_hora <- csv1[hour(csv1$timestamp) == rep(i, nrow(csv1)), ]
+  datos_hora1 <- datos_hora %>%
+    mutate(timestamp = as.Date(timestamp)) %>%
+    select(-imputed) %>% arrange(timestamp)
+  
+  datos_hora_ts <- xts(datos_hora1$kWh, order.by = datos_hora1$timestamp)
+  
+  n <- nrow(datos_hora_ts)
+  propTrain <- 0.75
+  indexTrain <- floor(n * propTrain)
+  trainSet <- datos_hora_ts[1:indexTrain, ]
+  testSet <- datos_hora_ts[(indexTrain + 1):n, ]
+
+  modelo <- nnetar(trainSet)
+  predicciones <- forecast(modelo, h = length(testSet))
+
+}
 
 
+datosPrueba <- tsibbles_por_hora[[1]] 
+datosPrueba <- xts(datosPrueba$kWh, order.by = datosPrueba$timestamp)
+datosPrueba
+
+modelo = nnetar(datosPrueba)
+modelo$x
+predicted = forecast(modelo, h = 24)
+predicted
+
+autoplot(predicted)
 
 
+###REDES NEURONALES###
+
+#manera 1
+csv1 = fread(csv_files[10])
+
+fileTs <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
+  select(-imputed) %>% 
+  as_tsibble(key = kWh, index = timestamp) %>% 
+  arrange(timestamp) 
+
+fileTShora <- split(fileTs, f = hour(fileTs$timestamp))
+
+for (i in 1:length(fileTShora)) {
+  # Dividir cada tsibble en un conjunto de entrenamiento y un conjunto de prueba
+  tsibble_actual <- fileTShora[[i]]
+  
+  datosPrueba <- xts(tsibble_actual$kWh, order.by = tsibble_actual$timestamp)
+  
+  modelo = nnetar(datosPrueba)
+  predicted = forecast(modelo, h = 24)
+  return(predicted)
+  
+
+}
+
+#manera 2
+tsibbles_por_hora <- lapply(0:23, function(hora) {
+  # Filtrar los datos para la hora actual
+  datos_hora <- csv1 %>% mutate(h = as.numeric(format(timestamp, format = "%H"))) %>% filter(hour(h) == hora)
+  
+  # Crear un tsibble para la hora actual
+  tsibble_hora <- datos_hora %>%
+    mutate(timestamp = as.Date(timestamp)) %>%
+    as_tsibble(key = kWh, index = timestamp) %>%
+    select(-imputed) %>%
+    arrange(timestamp)
+  
+  return(tsibble_hora)
+})
 
 
+# Definir la función que deseas aplicar a cada tsibble
+mi_funcion <- function(tsibble) {
+  
+  datosPrueba <- xts(tsibble$kWh, order.by = tsibble$timestamp)
+  
+  modelo = nnetar(datosPrueba)
+  predicted = forecast(modelo, h = 24)
+  return(predicted)
+}
 
+# Crear una lista para almacenar los resultados
+resultados <- list()
 
+# Aplicar la función a cada tsibble en tsibbles_por_hora
+for (i in 1:length(tsibbles_por_hora)) {
+  resultado <- mi_funcion(tsibbles_por_hora[[i]])
+  resultados[[i]] <- resultado
+}
 
 
 
