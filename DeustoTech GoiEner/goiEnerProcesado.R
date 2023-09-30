@@ -1,16 +1,12 @@
 library(foreach)
 library(doParallel)
 
-#install.packages("RSNNS")
-library(RSNNS)
-library(TTR)
-library(quantmod)
 
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
-               "data.table", "xts", "future", "fable", "foreach", "doParallel") 
+               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 'quantmod') 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
@@ -431,7 +427,7 @@ resultadosTotales <- tibble(
 )
 
 
-horas <- 1:23
+horas <- 0:23
 
 # Funcion para CV con Exponential smoothing
 forecastETS <- function(x, h) {
@@ -442,6 +438,12 @@ forecastETS <- function(x, h) {
 # Funcion para CV con Arima
 forecastARIMA <- function(x, h) {
   prediccion <- forecast(auto.arima(x), h = h)
+  return(prediccion)
+}
+
+# Funcion para Redes Neuronales
+forecastNN <- function(x, h){
+  prediccion <- forecast(nnetar(x), h = h)
   return(prediccion)
 }
 
@@ -466,17 +468,17 @@ procesarCsvHoras <- function(csv_file) {
 
     errors <- tsCV(ts1$kWh, forecastARIMA, h = 1, window = 1) %>% na.omit()
     actual <- ts1$kWh[1: length(errors)]
-    
+
     # Calculamos la prediccion haciendo real + error
     predicted <- actual + errors
-    
+
     # Calcular métricas
     smape <- smape(actual, predicted)
     rmse <- rmse(actual, predicted)
-    mase <- mase(actual, predicted)    
+    mase <- mase(actual, predicted)
 
     # Almacenar los resultados en el tibble para ETS
-    
+
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
       Predicted = predicted,
@@ -485,20 +487,20 @@ procesarCsvHoras <- function(csv_file) {
       RMSE = rmse,
       Modelo = "ETS"
     )
-    
+
     # AHORA LO MISMO PERO CON ARIMA
-    
+
     errors <- tsCV(ts1$kWh, forecastARIMA, h = 1, window = 1) %>% na.omit()
     actual <- ts1$kWh[1: length(errors)]
-    
+
     # Calculamos la prediccion haciendo real + error
     predicted <- actual + errors
-    
+
     # Calcular métricas
     smape <- smape(actual, predicted)
     rmse <- rmse(actual, predicted)
     mase <- mase(actual, predicted)
-    
+
     # Almacenar los resultados en el tibble
     resultadosTotales <<- resultadosTotales %>% add_row(
       Hora = hora,
@@ -507,6 +509,37 @@ procesarCsvHoras <- function(csv_file) {
       sMAPE = smape,
       RMSE = rmse,
       Modelo = "ARIMA"
+    )
+
+    
+    # Mismo para Red Neuronal
+    
+    errors <- tsCV(ts1$kWh, forecastNN, h = 1, window = 3) 
+    omitir <- which(is.na(errors)) 
+    errors <- errors[-omitir]
+    actual <- ts1$kWh[-omitir]
+
+    # quitamos los valores NA de errores y de los valores reales.
+    
+    # Calculamos la prediccion haciendo real + error
+    
+    predicted <- actual + errors 
+
+    
+    # Calcular métricas
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    mase <- mase(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    
+    # Almacenar los resultados en el tibble
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      MASE = mase,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "Red Neuronal"
     )
     
     
@@ -521,7 +554,7 @@ foreach(csv_file = csv_files,
 stopImplicitCluster()
 
 
-write.csv(resultadosTotales, file = "resultadosArimaETS.csv")
+write.csv(resultadosTotales, file = "resultadosArimaEtsNN.csv")
 
 
 
@@ -532,13 +565,17 @@ csv1 <- fread(csv_files[10])
 csv1 <- csv1 %>%  mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
   select(-imputed) %>% arrange(timestamp)
 
+hora0 <- csv1 %>% filter(hour(timestamp) == 0)
+hora0ts <- xts(hora0$kWh, order.by = hora0$timestamp)
+
 csv1_ts <- xts(csv1$kWh, order.by = csv1$timestamp)
 
 
 propTrain <- 0.75
+n <- nrow(hora0ts)
 indexTrain <- floor(n * propTrain)
-trainSet <- csv1_ts[1:indexTrain, ]
-testSet <- csv1_ts[(indexTrain + 1):n, ]
+trainSet <- hora0ts[1:indexTrain, ]
+testSet <- hora0ts[(indexTrain + 1):n, ]
 
 modelo <- nnetar(trainSet)
 
@@ -547,9 +584,9 @@ predicciones <- forecast(modelo, h = length(testSet))
 predicciones
 
 
-horas <- 1:23
+horas <- 0:23
 
-for (i in horas) {
+for (hora in horas) {
   
   datos_hora <- csv1[hour(csv1$timestamp) == rep(i, nrow(csv1)), ]
   datos_hora1 <- datos_hora %>%
@@ -576,13 +613,29 @@ datosPrueba
 
 modelo = nnetar(datosPrueba)
 modelo$x
-predicted = forecast(modelo, h = 24)
+predicted = forecast(modelo, h = 1)
 predicted
 
 autoplot(predicted)
 
 
-###REDES NEURONALES###
+###REDES NEURONALES con CV###
+
+forecastNN <- function(x, h){
+  prediccion <- forecast(nnetar(x), h = h)
+  return(prediccion)
+}
+
+errores <- tsCV(hora0ts, forecastNN, h = 1, window = 3) 
+omitir <- which(is.na(errores)) 
+errores <- errores[-omitir]
+actual <- drop(coredata(hora0ts))[-omitir]
+
+predichos <- actual + errores
+
+# algunos errores son NA, hay que saber cuales para no tenerlos en cuenta 
+# para luego calcular los valores y las predicciones
+
 
 #manera 1
 csv1 = fread(csv_files[10])
@@ -594,15 +647,42 @@ fileTs <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %
 
 fileTShora <- split(fileTs, f = hour(fileTs$timestamp))
 
+pruebaNN <- tibble(
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  MASE = numeric(),
+  RMSE = numeric(),
+)
+
+result <- forecast(ex, h = nrow(testSet))
+
+predicted <- as.numeric(result$mean)
+actual <- drop(coredata(testSet))
+
+
+
 for (i in 1:length(fileTShora)) {
   # Dividir cada tsibble en un conjunto de entrenamiento y un conjunto de prueba
-  tsibble_actual <- fileTShora[[i]]
+  tsibble_actual <- fileTShora[[i]] %>% mutate(timestamp = ymd(timestamp))
   
   datosPrueba <- xts(tsibble_actual$kWh, order.by = tsibble_actual$timestamp)
   
   modelo = nnetar(datosPrueba)
-  predicted = forecast(modelo, h = 24)
-  return(predicted)
+  predicted = forecast(modelo, h = 1)
+  
+  prediccion <- as.numeric(predicted$mean)
+  actual <- 
+  
+  smape <- smape(as.numeric(datosPrueba), predicted)
+  # mase <- mase(as.numeric(datosPrueba), predicted$mean)
+  # rmse <- rmse(as.numeric(datosPrueba), predicted$mean)
+  
+  pruebaNN <- pruebaNN %>% add_row(
+    Predicted = prediccion,
+    sMAPE = mape,
+    # MASE = mase,
+    # RMSE = rmse
+  )
   
 
 }
@@ -629,7 +709,7 @@ mi_funcion <- function(tsibble) {
   datosPrueba <- xts(tsibble$kWh, order.by = tsibble$timestamp)
   
   modelo = nnetar(datosPrueba)
-  predicted = forecast(modelo, h = 24)
+  predicted = forecast(modelo, h = 1)
   return(predicted)
 }
 
