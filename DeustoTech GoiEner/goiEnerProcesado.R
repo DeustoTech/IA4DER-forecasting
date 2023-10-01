@@ -453,6 +453,7 @@ forecastNN <- function(x, h){
 forecastSVM <- function(x, y) {
   modelo <- svm(x$kWh ~ x$timestamp, type = "eps-regression", kernel = "radial", cost = 1)
   prediccion <- predict(modelo, newdata = y)
+  return(prediccion)
 }
 
 procesarCsvHoras <- function(csv_file) {
@@ -784,10 +785,97 @@ nrow(testSet) #2227
 svm_model <- svm(trainSet$kWh ~ trainSet$timestamp, type = "eps-regression", kernel = "radial", cost = 1)
 
 predictions <- predict(svm_model, newdata = testSet)
-
-predictions[1:2227]
+largo <- nrow(testSet)
+p <- predictions[1: largo]
+mase(testSet$kWh, as.numeric(p))
+rmse(testSet$kWh, as.numeric(p))
+smape(testSet$kWh, as.numeric(p))
 head(testSet)
 length(predictions) #6678
+
+# Bucle con validacion normal
+
+resultadosSVM <- tibble(
+  Hora = numeric(),
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric(),
+  MASE = numeric(),
+  Modelo = character()
+)
+
+
+horas <- 0:23
+
+
+procesarSVM <- function(csv_file) {
+  csv_actual <- fread(csv_file)
+  
+  csv_actual <- csv_actual %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+    select(-imputed)
+  # Bucle para procesar cada hora
+  foreach(hora = horas, .packages = librerias) %dopar% {
+    # Filtrar los datos para la hora actual
+    datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ] 
+    
+    # Crear un tsibble para la hora actual
+    ts1 <- datos_hora %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp) 
+    
+
+    n <- nrow(ts1)
+    propTrain <- 0.75
+    indexTrain <- floor(n * propTrain)
+    trainSet <- ts1[1:indexTrain, ]
+    testSet <- ts1[(indexTrain + 1):n, ]
+  
+    
+    #mismo pero para svm
+    modelo <- svm(trainSet$kWh ~ trainSet$timestamp, type = "eps-regression", kernel = "radial", cost = 1)
+    prediccion <- predict(modelo, newdata = testSet)
+    largoTest <- nrow(testSet)
+    
+    # quitamos los valores NA de errores y de los valores reales.
+    
+    # Calculamos la prediccion haciendo real + error
+   
+    predictions <- as.numeric(prediccion)
+    
+    predictions2 <- predictions[1:largoTest]
+    
+    # Calcular métricas
+    smape <- smape(testSet$kWh, predictions2)
+    rmse <- rmse(testSet$kWh, predictions2)
+    mase <- mase(testSet$kWh, predictions2)
+    
+    
+    # Almacenar los resultados en el tibble
+    resultadosSVM <<- resultadosSVM %>% add_row(
+      Hora = hora,
+      Predicted = predictions2,
+      MASE = mase,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "SVM"
+    )
+  }
+}
+
+
+foreach(csv_file = csv_files,
+        .packages = librerias) %dopar% procesarSVM(csv_file)
+
+
+
+
+write.csv(resultadosSVM, file = "resultadosSVM.csv")
+
+
+
+
 
 
 
