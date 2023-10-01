@@ -97,12 +97,12 @@ ggplot(data = errMedios, aes(x = Modelo, y = MASE, fill = Modelo)) +
   ) +
   scale_fill_manual(values = colores_modelos, 
                     name = "") +
-  theme(legend.position = "top")
+  theme(legend.position = "top") 
 
 
 # Grafico RMSE
 
-ggplot(data = resultados, aes(x = Modelo, y = RMSE, fill = Modelo)) +
+ggplot(data = errMedios, aes(x = Modelo, y = RMSE, fill = Modelo)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.4f", RMSE)), vjust = -0.5) + 
   labs(
@@ -110,8 +110,7 @@ ggplot(data = resultados, aes(x = Modelo, y = RMSE, fill = Modelo)) +
     x = "Modelo",
     y = "RMSE Medio"
   ) +
-  scale_fill_manual(values = c("ARIMA" = "#76EEC6", "ExpSmooth" = "#EE3B3B",
-                               "Red Neuronal" = "#EEA2AD", "SVM" = "#FFFACD"), 
+  scale_fill_manual(values = colores_modelos, 
                     name = "") +
   theme(legend.position = "top")
 
@@ -158,35 +157,42 @@ ggplot(data = resultados, aes(x = Modelo, y = sMAPE)) +
 # sMAPE
 
 ggplot(data = resultados, aes(x = Hora, y = sMAPE, color = Modelo)) +
-  geom_line() +
+  geom_line(size = 1) +
   labs(
     title = "Error sMAPE en el Tiempo por Modelo",
     x = "Hora",
     y = "sMAPE"
   ) +
-  scale_color_manual(values = colores_modelos) + theme_minimal()
+  scale_fill_manual(values = colores_modelos, 
+                    name = "") +
+  theme(legend.position = "top")
+
+
+
 
 # RMSE
 
 ggplot(data = resultados, aes(x = Hora, y = RMSE, color = Modelo)) +
-  geom_line() +
+  geom_line(size = 1) +
   labs(
     title = "Error RMSE en el Tiempo por Modelo",
     x = "Hora",
     y = "RMSE"
   ) +
-  scale_color_manual(values = colores_modelos)
+  scale_color_manual(values = colores_modelos)+
+  theme(legend.position = "top")
 
 # MASE
 
 ggplot(data = resultados, aes(x = Hora, y = MASE, color = Modelo)) +
-  geom_line() +
+  geom_line(size = 1) +
   labs(
     title = "Error MASE en el Tiempo por Modelo",
     x = "Hora",
     y = "MASE"
   ) +
-  scale_color_manual(values = colores_modelos)
+  scale_color_manual(values = colores_modelos)+
+  theme(legend.position = "top")
 
 # PREDICCION
 
