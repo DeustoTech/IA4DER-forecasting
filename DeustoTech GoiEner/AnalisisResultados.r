@@ -5,8 +5,9 @@ library(fpp3)
 library(lattice)
 library(forecast)
 library(purrr)
+library(data.table)
 
-path <- "ModelosSimples2.zip" # path del zip
+path <- "ResultadosModelos.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
@@ -15,6 +16,167 @@ unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 # Lista de archivos CSV en la carpeta extraída
 
 archivos <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names = TRUE)
+
+# Resultados Semana 2
+
+csvResultados <- grep("resultadosTotales.csv", archivos, value = TRUE)
+
+
+
+resultados <- fread(csvResultados)
+
+resultados <- resultados %>% na.omit() %>% filter(
+  is.finite(sMAPE),
+  is.finite(RMSE),
+  is.finite(MASE),
+)
+options(digits = 4)
+
+# TIBBLE AGRUPADA POR MODELOS Y HORAS. 24 FILAS (UNA HORA) POR CADA MODELO
+
+resultados <- resultados %>%
+  group_by(Modelo, Hora) %>%
+  summarise(
+    Prediccion = mean(Predicted, na.rm = T),
+    sMAPE= mean(sMAPE, na.rm = TRUE),
+    RMSE = mean(RMSE, na.rm = TRUE),
+    MASE = mean(MASE, na.rm = TRUE)
+  ) %>%
+  ungroup() 
+
+# Grafico sMAPE
+
+ggplot(data = resultados, aes(x = Modelo, y = sMAPE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.4f", sMAPE)), vjust = -0.5) + 
+  labs(
+    title = "Comparación de sMAPE Medios",
+    x = "Modelo",
+    y = "RMSE Medio"
+  ) +
+  scale_fill_manual(values = c("ARIMA" = "#76EEC6", "ExpSmooth" = "#EE3B3B",
+                               "Red Neuronal" = "#EEA2AD", "SVM" = "#FFFACD"), 
+                    name = "") +
+  theme(legend.position = "top")
+
+# Grafico MASE
+
+ggplot(data = resultados, aes(x = Modelo, y = MASE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.4f", MASE)), vjust = -0.5) + 
+  labs(
+    title = "Comparación de MASE Medios",
+    x = "Modelo",
+    y = "RMSE Medio"
+  ) +
+  scale_fill_manual(values = c("ARIMA" = "#76EEC6", "ExpSmooth" = "#EE3B3B",
+                               "Red Neuronal" = "#EEA2AD", "SVM" = "#FFFACD"), 
+                    name = "") +
+  theme(legend.position = "top")
+
+# Grafico RMSE
+
+ggplot(data = resultados, aes(x = Modelo, y = RMSE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.4f", RMSE)), vjust = -0.5) + 
+  labs(
+    title = "Comparación de RMSE Medios",
+    x = "Modelo",
+    y = "RMSE Medio"
+  ) +
+  scale_fill_manual(values = c("ARIMA" = "#76EEC6", "ExpSmooth" = "#EE3B3B",
+                               "Red Neuronal" = "#EEA2AD", "SVM" = "#FFFACD"), 
+                    name = "") +
+  theme(legend.position = "top")
+
+# Distribución de los errores
+
+# sMAPE
+colores_modelos <- c("#76EEC6", "#EE3B3B", "#EEA2AD", "#FFFACD")  # Puedes agregar más colores si es necesario
+
+
+ggplot(data = resultados, aes(x = Modelo, y = sMAPE)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribución del Error sMAPE",
+    y = "Error sMAPE"
+  ) +
+  facet_wrap(~Modelo, scales = "free_y", ncol = 2) +
+  scale_fill_manual(values = colores_modelos)
+
+# RMSE 
+ggplot(data = resultados, aes(x = Modelo, y = RMSE)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribución del Error RMSE",
+    y = "Error RMSE"
+  ) +
+  facet_wrap(~Modelo, scales = "free_y", ncol = 2) +
+  scale_fill_manual(values = colores_modelos)
+
+# MASE
+
+ggplot(data = resultados, aes(x = Modelo, y = sMAPE)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribución del Error MASE",
+    y = "Error MASE"
+  ) +
+  facet_wrap(~Modelo, scales = "free_y", ncol = 2) +
+  scale_fill_manual(values = colores_modelos)
+
+
+# TIMEPLOTS
+
+# COMPARACIÓN DE ERRORES EN UN DÍA
+
+# sMAPE
+
+ggplot(data = resultados, aes(x = Hora, y = sMAPE, color = Modelo)) +
+  geom_line() +
+  labs(
+    title = "Error sMAPE en el Tiempo por Modelo",
+    x = "Hora",
+    y = "sMAPE"
+  ) +
+  scale_color_manual(values = colores_modelos)
+
+# RMSE
+
+ggplot(data = resultados, aes(x = Hora, y = RMSE, color = Modelo)) +
+  geom_line() +
+  labs(
+    title = "Error RMSE en el Tiempo por Modelo",
+    x = "Hora",
+    y = "RMSE"
+  ) +
+  scale_color_manual(values = colores_modelos)
+
+# MASE
+
+ggplot(data = resultados, aes(x = Hora, y = MASE, color = Modelo)) +
+  geom_line() +
+  labs(
+    title = "Error MASE en el Tiempo por Modelo",
+    x = "Hora",
+    y = "MASE"
+  ) +
+  scale_color_manual(values = colores_modelos)
+
+# PREDICCION
+
+ggplot(data = resultados, aes(x = Hora, y = Prediccion, color = Modelo)) +
+  geom_line() +
+  labs(
+    title = "Predicción del consumo en el tiempo en función del modelo",
+    x = "Hora",
+    y = "Consumo (kWh)"
+  ) +
+  scale_color_manual(values = colores_modelos)
+
+
+
+
 
 porMedia <- read.csv(archivos[1]) %>% as_tibble()
 porNaive <- read.csv(archivos[2]) %>% as_tibble()
