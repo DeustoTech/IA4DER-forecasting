@@ -20,12 +20,20 @@ archivos <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names 
 # Resultados Semana 2
 
 csvResultados <- grep("resultadosTotales.csv", archivos, value = TRUE)
+csvSVM <- grep("resultadosSVM.csv", archivos, value = TRUE)
 
 
 
 resultados <- fread(csvResultados)
+svm <- fread(csvSVM)
+
 
 resultados <- resultados %>% na.omit() %>% filter(
+  is.finite(sMAPE),
+  is.finite(RMSE),
+  is.finite(MASE),
+)
+svm <- svm %>% na.omit() %>% filter(
   is.finite(sMAPE),
   is.finite(RMSE),
   is.finite(MASE),
@@ -33,6 +41,9 @@ resultados <- resultados %>% na.omit() %>% filter(
 options(digits = 4)
 
 # TIBBLE AGRUPADA POR MODELOS Y HORAS. 24 FILAS (UNA HORA) POR CADA MODELO
+
+resultados <- bind_rows(resultados, svm)
+
 
 resultados <- resultados %>%
   group_by(Modelo, Hora) %>%
@@ -44,24 +55,47 @@ resultados <- resultados %>%
   ) %>%
   ungroup() 
 
+rmse
+
+
+
 # Grafico sMAPE
+
+valoresRMSE <- tibble(
+  Modelo = c("ARIMA", "ETS", "Red Neuronal", "SVM"),
+  RMSE = c(rmseMed, rmseNaive, rmseSnav)
+)
+
+valoresMAPE <- tibble(
+  Modelo = c("Media", "Naive", "Seasonal Naive"),
+  MAPE = c(mapeMed, mapeNaive, mapeSnav)
+)
+
+valoresMASE <- tibble(
+  Modelo = c("Media", "Seasonal Naive"),
+  MASE = c(maseMed, maseSnav)
+)
+
+
+
+
 
 ggplot(data = resultados, aes(x = Modelo, y = sMAPE, fill = Modelo)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = sprintf("%.4f", sMAPE)), vjust = -0.5) + 
+  geom_text(aes(x =Modelo, y = sMAPE, label = sprintf("%.4f", sMAPE)), vjust = 0) + 
   labs(
     title = "Comparación de sMAPE Medios",
     x = "Modelo",
     y = "RMSE Medio"
   ) +
-  scale_fill_manual(values = c("ARIMA" = "#76EEC6", "ExpSmooth" = "#EE3B3B",
-                               "Red Neuronal" = "#EEA2AD", "SVM" = "#FFFACD"), 
+  scale_fill_manual(values = c("ARIMA" = "blue", "ETS" = "red",
+                               "Red Neuronal" = "orange", "SVM" = "green"), 
                     name = "") +
   theme(legend.position = "top")
 
 # Grafico MASE
 
-ggplot(data = resultados, aes(x = Modelo, y = MASE, fill = Modelo)) +
+ggplot(data = resultados, aes(x = Modelo, y = round(MASE, 4), fill = Modelo)) +
   geom_bar(stat = "identity") +
   geom_text(aes(label = sprintf("%.4f", MASE)), vjust = -0.5) + 
   labs(
@@ -92,7 +126,7 @@ ggplot(data = resultados, aes(x = Modelo, y = RMSE, fill = Modelo)) +
 # Distribución de los errores
 
 # sMAPE
-colores_modelos <- c("#76EEC6", "#EE3B3B", "#EEA2AD", "#FFFACD")  # Puedes agregar más colores si es necesario
+colores_modelos <- c("cadetblue3", "#EE3B3B", "#00CD00", "#CD1076")  # Puedes agregar más colores si es necesario
 
 
 ggplot(data = resultados, aes(x = Modelo, y = sMAPE)) +
@@ -139,7 +173,7 @@ ggplot(data = resultados, aes(x = Hora, y = sMAPE, color = Modelo)) +
     x = "Hora",
     y = "sMAPE"
   ) +
-  scale_color_manual(values = colores_modelos)
+  scale_color_manual(values = colores_modelos) + theme_minimal()
 
 # RMSE
 
