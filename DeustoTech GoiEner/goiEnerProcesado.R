@@ -1,12 +1,14 @@
 library(foreach)
 library(doParallel)
 
+#install.packages("e1071")
 
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
-               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 'quantmod') 
+               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
+               'quantmod', 'caret', 'e1071') 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
@@ -429,6 +431,7 @@ resultadosTotales <- tibble(
 
 horas <- 0:23
 
+
 # Funcion para CV con Exponential smoothing
 forecastETS <- function(x, h) {
   prediccion <- forecast(ets(x), h = h)
@@ -445,6 +448,11 @@ forecastARIMA <- function(x, h) {
 forecastNN <- function(x, h){
   prediccion <- forecast(nnetar(x), h = h)
   return(prediccion)
+}
+
+forecastSVM <- function(x, y) {
+  modelo <- svm(x$kWh ~ x$timestamp, type = "eps-regression", kernel = "radial", cost = 1)
+  prediccion <- predict(modelo, newdata = y)
 }
 
 procesarCsvHoras <- function(csv_file) {
@@ -542,7 +550,35 @@ procesarCsvHoras <- function(csv_file) {
       Modelo = "Red Neuronal"
     )
     
+    #mismo pero para svm
+    errors <- tsCV(ts1$kWh, forecastSVM, h = 1, window = 3) 
+    omitir <- which(is.na(errors)) 
+    errors <- errors[-omitir]
+    actual <- ts1$kWh[-omitir]
     
+    # quitamos los valores NA de errores y de los valores reales.
+    
+    # Calculamos la prediccion haciendo real + error
+    
+    predicted <- actual + errors 
+    
+    
+    # Calcular métricas
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    mase <- mase(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    
+    
+    # Almacenar los resultados en el tibble
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      MASE = mase,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "SVM"
+    )
   }
 }
 
@@ -554,7 +590,8 @@ foreach(csv_file = csv_files,
 stopImplicitCluster()
 
 
-write.csv(resultadosTotales, file = "resultadosArimaEtsNN.csv")
+write.csv(resultadosTotales, file = "resultadosTotales.csv")
+
 
 
 
@@ -724,6 +761,33 @@ for (i in 1:length(tsibbles_por_hora)) {
 
 
 
+
+
+### SUPER VECTOR MACHINE
+csv1 = fread(csv_files[10])
+head(csv1)
+
+fileTs <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
+  select(-imputed) %>% 
+  as_tsibble(key = kWh, index = timestamp) %>% 
+  arrange(timestamp)
+
+n <- nrow(fileTs)
+propTrain <- 0.75
+indexTrain <- floor(n * propTrain)
+trainSet <- fileTs[1:indexTrain, ]
+testSet <- fileTs[(indexTrain + 1):n, ]
+
+nrow(trainSet) #6678
+nrow(testSet) #2227
+
+svm_model <- svm(trainSet$kWh ~ trainSet$timestamp, type = "eps-regression", kernel = "radial", cost = 1)
+
+predictions <- predict(svm_model, newdata = testSet)
+
+predictions[1:2227]
+head(testSet)
+length(predictions) #6678
 
 
 
