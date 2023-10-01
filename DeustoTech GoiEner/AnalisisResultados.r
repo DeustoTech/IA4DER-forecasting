@@ -27,7 +27,7 @@ csvSVM <- grep("resultadosSVM.csv", archivos, value = TRUE)
 
 resultados <- fread(csvResultados)
 svm <- fread(csvSVM)
-
+resultados
 
 resultados <- resultados %>% na.omit() %>% filter(
   is.finite(sMAPE),
@@ -206,6 +206,146 @@ ggplot(data = resultados, aes(x = Hora, y = Prediccion, color = Modelo)) +
   scale_color_manual(values = colores_modelos)
 
 
+
+
+#DISTRIBUCIÓN DE LOS ERRORES DE CADA MODELO (ESTADISTICOS Y AI)
+
+csvResultados <- grep("resultadosTotales.csv", archivos, value = TRUE)
+csvSVM <- grep("resultadosSVM.csv", archivos, value = TRUE)
+
+resultados <- fread(csvResultados)
+svm <- fread(csvSVM)
+resultados
+
+resultados <- resultados %>% na.omit() %>% filter(
+  is.finite(sMAPE),
+  is.finite(RMSE),
+  is.finite(MASE),
+)
+svm <- svm %>% na.omit() %>% filter(
+  is.finite(sMAPE),
+  is.finite(RMSE),
+  is.finite(MASE),
+)
+options(digits = 4)
+
+resultadosArima <- resultados %>% filter(Modelo == "ARIMA") %>% distinct()
+resultadosETS <- resultados %>% filter(Modelo == "ETS") %>% distinct()
+resultadosRN <- resultados %>% filter(Modelo == "Red Neuronal") %>% distinct()
+resultadosSVM <- svm %>% distinct()
+
+#ARIMA
+boxplot(list(sMAPE = resultadosArima$sMAPE, RMSE = resultadosArima$RMSE, MASE = resultadosArima$MASE),
+        main = "Boxplot errores de la ARIMA", 
+        xlab = "modelos", ylab = "error", 
+        col = c("#EA5A5A", "#35C852", "#4D62BA" ), fill = "gray")
+
+#solo del MASE pq no se ve bien
+boxplot(resultadosArima$MASE, main = "Boxplot del MASE de la ARIMA", 
+        xlab = "modelos", ylab = "error", 
+        col = "#4D62BA", fill = "gray")
+
+#ETS
+boxplot(list(sMAPE = resultadosETS$sMAPE, RMSE = resultadosETS$RMSE, MASE = resultadosETS$MASE),
+        main = "Boxplot errores de ETS", 
+        xlab = "modelos", ylab = "error", 
+        col = c("#EA5A5A", "#35C852", "#4D62BA" ), fill = "gray")
+
+#solo del MASE pq no se ve bien
+boxplot(resultadosETS$MASE, main = "Boxplot del MASE de la ETS", 
+        xlab = "modelos", ylab = "error", 
+        col = "#4D62BA", fill = "gray")
+
+#REDES NEURONALES
+boxplot(list(sMAPE = resultadosRN$sMAPE, RMSE = resultadosRN$RMSE, MASE = resultadosRN$MASE),
+        main = "Boxplot errores de Redes Neuronales", 
+        xlab = "modelos", ylab = "error", 
+        col = c("#EA5A5A", "#35C852", "#4D62BA" ), fill = "gray")
+
+boxplot(resultadosRN$sMAPE, main = "Boxplot del sMAPE de Redes neuronales", 
+        xlab = "modelos", ylab = "error", 
+        col = "#EA5A5A", fill = "gray")
+
+#SVM
+boxplot(list(sMAPE = resultadosSVM$sMAPE, RMSE = resultadosSVM$RMSE, MASE = resultadosSVM$MASE),
+        main = "Boxplot errores de SVM", 
+        xlab = "modelos", ylab = "error", 
+        col = c("#EA5A5A", "#35C852", "#4D62BA" ), fill = "gray")
+
+boxplot(resultadosSVM$sMAPE, main = "Boxplot del sMAPE de SVM", 
+        xlab = "sMAPE", ylab = "error", 
+        col = "#EA5A5A", fill = "gray")
+boxplot(resultadosSVM$RMSE, main = "Boxplot del RMSE de SVM", 
+        xlab = "RMSE", ylab = "error", 
+        col = "#35C852", fill = "gray")
+boxplot(resultadosSVM$MASE, main = "Boxplot del MASE de SVM", 
+        xlab = "MASE", ylab = "error", 
+        col = "#4D62BA", fill = "gray")
+
+
+#PREDICCIONES DE LOS MODELOS (ESTADISTICOS Y AI)
+options(digits = 4)
+resultadosArima_H <- resultadosArima %>% group_by(Hora) %>% summarise(
+  Prediccion = mean(Predicted, na.rm = T),
+  sMAPE= mean(sMAPE, na.rm = TRUE),
+  RMSE = mean(RMSE, na.rm = TRUE),
+  MASE = mean(MASE, na.rm = TRUE) 
+)
+
+resultadosETS_H <- resultadosETS %>% group_by(Hora) %>% summarise(
+  Prediccion = mean(Predicted, na.rm = T),
+  sMAPE= mean(sMAPE, na.rm = TRUE),
+  RMSE = mean(RMSE, na.rm = TRUE),
+  MASE = mean(MASE, na.rm = TRUE) 
+)
+
+resultadosRN_H <- resultadosRN %>% group_by(Hora) %>% summarise(
+  Prediccion = mean(Predicted, na.rm = T),
+  sMAPE= mean(sMAPE, na.rm = TRUE),
+  RMSE = mean(RMSE, na.rm = TRUE),
+  MASE = mean(MASE, na.rm = TRUE) 
+)
+
+resultadosSVM_H <- resultadosSVM %>% group_by(Hora) %>% summarise(
+  Prediccion = mean(Predicted, na.rm = T),
+  sMAPE= mean(sMAPE, na.rm = TRUE),
+  RMSE = mean(RMSE, na.rm = TRUE),
+  MASE = mean(MASE, na.rm = TRUE) 
+)
+
+ggplot(resultadosArima_H, aes(x = Hora, y = Prediccion)) +
+  geom_line(color = "#474A85") +
+  labs(title = "Predicción de consumo ARIMA", x = "Hora", y = "Predicción") +
+  scale_x_continuous(breaks = resultadosArima_H$Hora) +
+  theme_minimal()
+
+ggplot(resultadosETS_H, aes(x = Hora, y = Prediccion)) +
+  geom_line(color = "#47854D") +
+  labs(title = "Predicción de consumo ETS", x = "Hora", y = "Predicción") +
+  scale_x_continuous(breaks = resultadosETS_H$Hora) +
+  theme_minimal()
+
+ggplot(resultadosRN_H, aes(x = Hora, y = Prediccion)) +
+  geom_line(color = "#854B47") +
+  labs(title = "Predicción de consumo Redes Neuronales", x = "Hora", y = "Predicción") +
+  scale_x_continuous(breaks = resultadosRN_H$Hora) +
+  theme_minimal()
+
+ggplot(resultadosSVM_H, aes(x = Hora, y = Prediccion)) +
+  geom_line(color = "#AB066D") +
+  labs(title = "Predicción de consumo SVM", x = "Hora", y = "Predicción") +
+  scale_x_continuous(breaks = resultadosSVM_H$Hora) +
+  theme_minimal()
+
+ggplot() +
+  geom_line(data = resultadosArima_H, aes(x = Hora, y = Prediccion, color = "ARIMA")) +
+  geom_line(data = resultadosETS_H, aes(x = Hora, y = Prediccion, color = "ETS")) +
+  geom_line(data = resultadosRN_H, aes(x = Hora, y = Prediccion, color = "RN")) +
+  geom_line(data = resultadosSVM_H, aes(x = Hora, y = Prediccion, color = "SVM")) 
+  labs(title = "Consumo Predicho por Hora", x = "Hora", y = "Predicción") +
+  scale_color_manual(values = c(ARIMA = "#474A85", ETS = "#47854D", RN = "#854B47", SVM = "#AB066D")) +
+  theme_minimal() +
+  scale_x_continuous(breaks = resultadosSVM_H$Hora)
 
 
 
