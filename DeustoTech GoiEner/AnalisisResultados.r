@@ -6,6 +6,7 @@ library(lattice)
 library(forecast)
 library(purrr)
 library(data.table)
+library(tidyverse)
 
 path <- "ResultadosModelos.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
@@ -46,67 +47,58 @@ resultados <- bind_rows(resultados, svm)
 
 
 resultados <- resultados %>%
-  group_by(Modelo, Hora) %>%
+  group_by(Modelo) %>%
   summarise(
     Prediccion = mean(Predicted, na.rm = T),
     sMAPE= mean(sMAPE, na.rm = TRUE),
     RMSE = mean(RMSE, na.rm = TRUE),
     MASE = mean(MASE, na.rm = TRUE)
   ) %>%
-  ungroup() 
+  ungroup
 
-rmse
 
+
+
+# Agrupar por Modelo y tipo de error (sMAPE, RMSE, MASE) y calcular la media
+errMedios <- resultados %>%
+  group_by(Modelo) %>%
+  summarize(RMSE = mean(RMSE, na.rm = TRUE),
+            sMAPE = mean(sMAPE, na.rm = T),
+            MASE = mean(MASE, na.rm = T)) %>%
+  ungroup()
 
 
 # Grafico sMAPE
 
-valoresRMSE <- tibble(
-  Modelo = c("ARIMA", "ETS", "Red Neuronal", "SVM"),
-  RMSE = c(rmseMed, rmseNaive, rmseSnav)
-)
-
-valoresMAPE <- tibble(
-  Modelo = c("Media", "Naive", "Seasonal Naive"),
-  MAPE = c(mapeMed, mapeNaive, mapeSnav)
-)
-
-valoresMASE <- tibble(
-  Modelo = c("Media", "Seasonal Naive"),
-  MASE = c(maseMed, maseSnav)
-)
+colores_modelos <- c("cadetblue3", "#EE3B3B", "#00CD00", "#CD1076")  # Puedes agregar más colores si es necesario
 
 
-
-
-
-ggplot(data = resultados, aes(x = Modelo, y = sMAPE, fill = Modelo)) +
+ggplot(data = errMedios, aes(x = Modelo, y = sMAPE, fill = Modelo)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(x =Modelo, y = sMAPE, label = sprintf("%.4f", sMAPE)), vjust = 0) + 
+  geom_text(aes(x =Modelo, y = sMAPE, label = sprintf("%.4f", sMAPE)), vjust = -0.25) + 
   labs(
     title = "Comparación de sMAPE Medios",
     x = "Modelo",
-    y = "RMSE Medio"
+    y = "sMAPE Medio"
   ) +
-  scale_fill_manual(values = c("ARIMA" = "blue", "ETS" = "red",
-                               "Red Neuronal" = "orange", "SVM" = "green"), 
+  scale_fill_manual(values = colores_modelos, 
                     name = "") +
   theme(legend.position = "top")
 
 # Grafico MASE
 
-ggplot(data = resultados, aes(x = Modelo, y = round(MASE, 4), fill = Modelo)) +
+ggplot(data = errMedios, aes(x = Modelo, y = MASE, fill = Modelo)) +
   geom_bar(stat = "identity") +
-  geom_text(aes(label = sprintf("%.4f", MASE)), vjust = -0.5) + 
+  geom_text(aes(x =Modelo, y = MASE, label = sprintf("%.4f", MASE)), vjust = -0.25) + 
   labs(
     title = "Comparación de MASE Medios",
     x = "Modelo",
-    y = "RMSE Medio"
+    y = "sMAPE Medio"
   ) +
-  scale_fill_manual(values = c("ARIMA" = "#76EEC6", "ExpSmooth" = "#EE3B3B",
-                               "Red Neuronal" = "#EEA2AD", "SVM" = "#FFFACD"), 
+  scale_fill_manual(values = colores_modelos, 
                     name = "") +
   theme(legend.position = "top")
+
 
 # Grafico RMSE
 
@@ -126,7 +118,6 @@ ggplot(data = resultados, aes(x = Modelo, y = RMSE, fill = Modelo)) +
 # Distribución de los errores
 
 # sMAPE
-colores_modelos <- c("cadetblue3", "#EE3B3B", "#00CD00", "#CD1076")  # Puedes agregar más colores si es necesario
 
 
 ggplot(data = resultados, aes(x = Modelo, y = sMAPE)) +
