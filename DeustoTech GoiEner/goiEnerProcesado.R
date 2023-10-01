@@ -475,7 +475,7 @@ procesarCsvHoras <- function(csv_file) {
     
     # el ultimo valor siempre es NA. quitarlo
 
-    errors <- tsCV(ts1$kWh, forecastARIMA, h = 1, window = 1) %>% na.omit()
+    errors <- tsCV(ts1$kWh, forecastETS, h = 1, window = 1) %>% na.omit()
     actual <- ts1$kWh[1: length(errors)]
 
     # Calculamos la prediccion haciendo real + error
@@ -549,36 +549,6 @@ procesarCsvHoras <- function(csv_file) {
       sMAPE = smape,
       RMSE = rmse,
       Modelo = "Red Neuronal"
-    )
-    
-    #mismo pero para svm
-    errors <- tsCV(ts1$kWh, forecastSVM, h = 1, window = 3) 
-    omitir <- which(is.na(errors)) 
-    errors <- errors[-omitir]
-    actual <- ts1$kWh[-omitir]
-    
-    # quitamos los valores NA de errores y de los valores reales.
-    
-    # Calculamos la prediccion haciendo real + error
-    
-    predicted <- actual + errors 
-    
-    
-    # Calcular métricas
-    smape <- smape(actual, predicted)
-    rmse <- rmse(actual, predicted)
-    mase <- mase(actual, predicted)
-    rmse <- rmse(actual, predicted)
-    
-    
-    # Almacenar los resultados en el tibble
-    resultadosTotales <<- resultadosTotales %>% add_row(
-      Hora = hora,
-      Predicted = predicted,
-      MASE = mase,
-      sMAPE = smape,
-      RMSE = rmse,
-      Modelo = "SVM"
     )
   }
 }
