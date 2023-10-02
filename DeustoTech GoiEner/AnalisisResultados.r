@@ -22,11 +22,46 @@ archivos <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names 
 
 csvResultados <- grep("resultadosTotales.csv", archivos, value = TRUE)
 csvSVM <- grep("resultadosSVM.csv", archivos, value = TRUE)
+csvMed <- grep("resultadosMedia2.csv", archivos, value = TRUE)
+csvNav <- grep("resultadosNaiveDia2.csv", archivos, value = TRUE)
+csvSnav <- grep("resultadosSnaive2.csv", archivos, value = TRUE)
 
 
 
 resultados <- fread(csvResultados)
 svm <- fread(csvSVM)
+media <- fread(csvMed)
+naive <- fread(csvNav)
+snaive <- fread(csvSnav)
+
+media <- media %>% na.omit() %>% filter(
+  is.finite(MAE),
+  is.finite(RMSE),
+  is.finite(MASE),
+  is.finite(MAPE)
+) %>% mutate(Modelo = "Media") %>% mutate(Predicted = media_entrenamiento, Hora = as.numeric(sub("Hora ", "", Hora))) %>%
+  select(-rango, -media_entrenamiento)
+
+
+naive <- naive %>% na.omit() %>% filter(
+  is.finite(MAE),
+  is.finite(RMSE),
+  is.finite(MAPE)
+) %>% mutate(Modelo = "Naive") %>% mutate(Predicted = entrenamiento, 
+Hora = as.numeric(sub("Hora ", "", Hora))) %>% select(-Rango, -entrenamiento)
+
+
+snaive <- snaive %>% na.omit() %>% filter(
+  is.finite(MAE),
+  is.finite(RMSE),
+  is.finite(MASE),
+  is.finite(MAPE)
+) %>% mutate(Modelo = "SNaive", Hora = as.numeric(sub("Hora ", "", Hora)), 
+                                                  Predicted = Prediccion) %>%
+  select(-Rango, -Prediccion, -DiaDeLaSemana)
+
+
+
 resultados
 
 resultados <- resultados %>% na.omit() %>% filter(
@@ -43,9 +78,10 @@ options(digits = 4)
 
 # TIBBLE AGRUPADA POR MODELOS Y HORAS. 24 FILAS (UNA HORA) POR CADA MODELO
 
-resultados <- bind_rows(resultados, svm)
+resultados <- bind_rows(resultados, svm, media, naive, snaive)
 
 
+# SOLO SI QUEREMOS AGRUPAR POR MODELO 
 resultados <- resultados %>%
   group_by(Modelo) %>%
   summarise(
@@ -55,6 +91,122 @@ resultados <- resultados %>%
     MASE = mean(MASE, na.rm = TRUE)
   ) %>%
   ungroup
+
+
+# BOXPLOT RMSE ENTRE MODELOS
+
+
+
+# Filtra las filas con el tipo de error deseado y elimina NA
+filtradoRMSE <- resultados %>%
+  filter(!is.na({{ RMSE }})) %>% filter(RMSE < 0.48)
+
+
+# Dividir los datos en una lista de data frames por Modelo
+divididoRMSE <- split(filtradoRMSE$RMSE, filtradoRMSE$Modelo)
+
+# Crear un vector de colores para los boxplots
+colores <- rainbow(length(divididoRMSE))
+
+# Crear un boxplot para cada modelo
+boxplot(divididoRMSE, 
+        main = "RMSE por Modelo", 
+        ylab = "RMSE",
+        col = colores,
+        names = names(divididoRMSE),
+        names.arg = resultados$Modelo,
+        las = 2)  # Etiquetas de los modelos en el eje X
+
+
+# BOXPLOT MASE ENTRE MODELOS
+
+
+filtradoMASE <- resultados %>%
+  filter(!is.na({{ MASE }})) %>% filter(MASE < 2)
+
+
+# Dividir los datos en una lista de data frames por Modelo
+divididoMASE <- split(filtradoMASE$MASE, filtradoMASE$Modelo)
+
+# Crear un vector de colores para los boxplots
+colores <- rainbow(length(divididoMASE))
+
+# Crear un boxplot para cada modelo
+boxplot(divididoMASE, 
+        main = "MASE por Modelo", 
+        ylab = "MASE",
+        col = colores,
+        names = names(divididoMASE),
+        names.arg = resultados$Modelo,
+        las = 2)  # Etiquetas de los modelos en el eje X
+
+# BOXPLOT MASE SOLO ETS Y ARIMA
+
+
+filtradoMASE2 <- resultados %>%
+  filter(!is.na({{ MASE }})) %>% filter((Modelo == "ETS" | Modelo == "ARIMA") & 
+                                          MASE < 1)
+
+
+# Dividir los datos en una lista de data frames por Modelo
+divididoMASE2 <- split(filtradoMASE2$MASE, filtradoMASE2$Modelo)
+
+# Crear un vector de colores para los boxplots
+colores <- rainbow(length(divididoMASE2))
+
+# Crear un boxplot para cada modelo
+boxplot(divididoMASE2, 
+        main = "MASE por Modelo", 
+        ylab = "MASE",
+        col = colores,
+        names = names(divididoMASE2),
+        names.arg = resultados$Modelo,
+        las = 2)  # Etiquetas de los modelos en el eje X
+
+
+# BOXPLOT MAPE POR MODELOS
+
+filtradoMAPE <- resultados %>%
+  filter(!is.na({{ MAPE }})) %>% filter(MAPE < 1.5455)
+
+
+# Dividir los datos en una lista de data frames por Modelo
+divididoMAPE <- split(filtradoMAPE$MAPE, filtradoMAPE$Modelo)
+
+# Crear un vector de colores para los boxplots
+colores <- rainbow(length(divididoMAPE))
+
+# Crear un boxplot para cada modelo
+boxplot(divididoMAPE, 
+        main = "MAPE por Modelo", 
+        ylab = "MAPE",
+        col = colores,
+        names = names(divididoMAPE),
+        names.arg = resultados$Modelo,
+        las = 2)  # Etiquetas de los modelos en el eje X
+
+
+# BOXPLOT SMAPE POR MODELOS
+
+
+filtradoSMAPE <- resultados %>% filter(sMAPE < 0.845 & !is.na(sMAPE)) 
+
+
+# Dividir los datos en una lista de data frames por Modelo
+divididoSMAPE <- split(filtradoSMAPE$sMAPE, filtradoSMAPE$Modelo)
+
+# Crear un vector de colores para los boxplots
+colores <- rainbow(length(divididoSMAPE))
+
+# Crear un boxplot para cada modelo
+boxplot(divididoSMAPE, 
+        main = "sMAPE por Modelo", 
+        ylab = "sMAPE",
+        col = colores,
+        names = names(divididoSMAPE),
+        names.arg = resultados$Modelo,
+        las = 2)  # Etiquetas de los modelos en el eje X
+
 
 
 
@@ -489,6 +641,9 @@ ggplot(data = porMedia, aes(y = MAE)) +
 # boxplots
 
 # RMSE MEDIA
+
+
+
 
 ggplot(data = porMedia, aes(y = RMSE)) +
   geom_boxplot(fill = "dodgerblue2", color = "dodgerblue2") +
