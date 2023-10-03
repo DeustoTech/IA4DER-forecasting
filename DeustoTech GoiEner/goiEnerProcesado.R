@@ -208,7 +208,7 @@ for (csv_file in csv_files){
   file <- read.csv(csv_file, sep = ",")
   
   tsCurrentFile <- file %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>% 
-    filter(imputed == 0) %>% select(-imputed) %>% 
+     select(-imputed) %>% 
     as_tsibble(key = kWh, index = timestamp) %>% arrange(timestamp) %>%
     mutate(Dia = weekdays(timestamp), Hora = hour(timestamp))
   
