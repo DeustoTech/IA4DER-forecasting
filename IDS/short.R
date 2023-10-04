@@ -22,7 +22,6 @@ TRAIN_LIMIT <- 0.75  ### length of the training period
 COMPLETE    <- 0.75  ### amount of 0 allowed in the dataset
 SAMPLE      <- 2     ### number of cups to assess
 MODELS      <- c("mean","rw","snaive","simple","lr","ann","svm","arima","ses","ens")
-
 LO          <- 2*length(MODELS)
 
 cat("cups","model","kpi","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
