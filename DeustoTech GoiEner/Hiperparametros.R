@@ -34,6 +34,7 @@ ts1 <- csv1 %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%
       TipoDia = ifelse(Dia %in% c("lunes", "martes", "miércoles", "jueves", "viernes"), "Laborable", "Finde")
 )
 
+
 # Ya tenemos clasificado el tipo de día. Pruebas con una hora concreta
 
 hora0 <- ts1 %>% filter(hour(timestamp) == 16)
@@ -47,19 +48,31 @@ ultimosLab <- hora0 %>% filter(TipoDia == "Laborable") %>% tail(n = 6)
 trainSet <- xts(ultimosLab$kWh[-nrow(ultimosLab)], order.by = ultimosLab$timestamp[-nrow(ultimosLab)])
 testSet <- xts(ultimosLab$kWh[nrow(ultimosLab)], order.by = ultimosLab$timestamp[nrow(ultimosLab)])
 
+#train <- ultimosLab[1:5, ] %>% select(-Dia, -Hora, -TipoDia)
+#test <- ultimosLab[6, ] %>% select(-Dia, -Hora, -TipoDia)
 
 modelo <- nnetar(trainSet, size = 3)
 pred <- forecast(modelo, h = 1)
 smape(testSet, as.numeric(pred$mean))
-mase(testSet, as.numeric(pred$mean))
-mase(as.numeric(testSet), as.numeric(pred$mean))
+mase(testSet,pred$mean)
+
+#modelo1 <- nnetar(as.xts(train), size = 3)
+#pred1 <- forecast(modelo1, h = 1)
+#smape(test$kWh ,pred1$mean)
+#mase(test$kWh,pred1$mean, 1)
 
 neuronas <- c(1, seq(5, 100, by = 5)) # numero de neuronas a probar
 
 # Ahora con CV 
+forecastNN1 <- function(x){
+  prediccion <- forecast(nnetar(x))
+  return(prediccion)
+}
+
+forecastNN1(lab$kWh)
 
 lab <- hora0 %>% filter(TipoDia == "Laborable")
-errors <- tsCV(lab$kWh, forecastNN, h = 1, window = 7, n = 4) %>% na.omit()
+errors <- tsCV(lab$kWh, forecastNN1, h = 1, window = 7, n =1) %>% na.omit() #esto a ane: ERRORRR
 actual <- lab$kWh[1: length(errors)]
 
 
