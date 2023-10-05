@@ -39,7 +39,8 @@ resultadosDia <- tibble(
 
 
 horas <- 0:23
-neuronas <- c(1:4, seq(5, 20, by = 5)) 
+neuronas <- c(1:4, seq(5, 20, by = 5))
+# neuronas <- c(1:10)
 
 
 cl <- makeCluster(4) 
@@ -55,6 +56,7 @@ RedNeuronalDia <- function(csv_file) {
     mutate(TipoDia = ifelse(Dia %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
                             "Laborable", "Finde")) %>%
     select(-imputed)
+  if (any(is.na(csv_actual$timestamp))) { next }
   
   
   datosLab <- csv_actual %>% filter(TipoDia == "Laborable")
@@ -63,7 +65,10 @@ RedNeuronalDia <- function(csv_file) {
   # Bucle para procesar cada hora
   foreach(hora = horas, .packages = librerias, .combine = 'c') %dopar% {
     # Filtrar los datos para la hora actual
+    if (any(is.na(csv_actual[hour(csv_actual$timestamp) == hora, ]))){ next }
+    
     datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ] 
+    
     
     datosHoraLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% distinct()
     datosHoraFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% distinct()
@@ -82,6 +87,9 @@ RedNeuronalDia <- function(csv_file) {
       arrange(timestamp) 
     
     foreach(numNeurona = neuronas, .packages = librerias) %dopar% {
+      if (any(is.na(csv_actual[hour(csv_actual$timestamp) == hora, ]))){ next }
+      
+      
       # Entrenar el modelo neuronal para días laborables
       errorsLab <- tsCV(ts1Lab$kWh, forecastNN, h = 1, window = 5, n = numNeurona) %>% na.omit()
       actualLab <- ts1Lab$kWh[1: length(errorsLab)]
@@ -127,7 +135,7 @@ RedNeuronalDia <- function(csv_file) {
 
 
 
-resultados <- foreach(csv_file = csv_files, .combine='c', 
+foreach(csv_file = csv_files, .combine='c', 
         .packages = librerias) %dopar% RedNeuronalDia(csv_file)
 
 stopCluster(cl)
@@ -157,6 +165,27 @@ boxplot(divididoRMSE,
         las = 2)  # Etiquetas de los modelos en el eje X
 
 
+filtradoSMAPE <- resultadosDia %>%
+  filter(!is.na({{ sMAPE }}))
+
+
+smape1 <- resultadosDia %>% select(sMAPE, nNeuronas)
+
+
+# Dividir los datos en una lista de data frames por Modelo
+divididoSMAPE <- split(smape1$sMAPE, smape1$nNeuronas)
+
+# Crear un vector de colores para los boxplots
+colores <- rainbow(length(divididoSMAPE))
+
+# Crear un boxplot para cada modelo
+boxplot(divididoSMAPE, 
+        main = "sMAPE por Numero de neuronas", 
+        ylab = "sMAPE",
+        col = colores,
+        names = names(divididoSMAPE),
+        names.arg = divididoSMAPE$nNeuronas,
+        las = 2)  # Etiquetas de los modelos en el eje X
 
 
 
