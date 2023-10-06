@@ -8,38 +8,34 @@ library(PMCMRplus)
 library(rcompanion)
 library(multcompView)
 #library(progressr)
-
-
-library(PMCMRplus)
-library(rcompanion)
-library(multcompView)
-
-
 plan(multisession)
 #handlers(global = TRUE)
 
 TRAIN_LIMIT <- 0.75  ### length of the training period
-COMPLETE    <- 0.75  ### amount of 0 allowed in the dataset
-SAMPLE      <- 2     ### number of cups to assess
+COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
+SAMPLE      <- 20    ### number of cups to assess
+
+FILES       <- list.files(path="post_cooked/",pattern="*.csv")
 MODELS      <- c("mean","rw","snaive","simple","lr","ann","svm","arima","ses","ens")
 LO          <- 2*length(MODELS)
 
-cat("cups","model","kpi","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
-
-R <- foreach(NAME = sample(list.files(path="post_cooked/",pattern="*.csv",recursive=T),SAMPLE),
-        .combine = 'rbind') %dofuture% {
+R <- foreach(NAME = sample(FILES,SAMPLE),.combine = 'rbind') %dofuture% {
 
   a <- fread(paste("post_cooked/",NAME,sep=""))
   r <- zoo(a$kWh, order.by = a$time)
+  
+  LENGTH  <- length(a$kWh)
+  ZEROS   <- sum(a$kWh==0)/length(LENGTH)
+  IMPUTED <- sum(a$issue)/length(LENGTH)
 
   ZZ   <- floor(0.75*(length(r)/24))    #### training days
   RMSE <- MAPE <- data.frame(matrix(ncol = length(MODELS), nrow = (floor(length(r)/24)-ZZ-1)))
   p    <- data.frame(matrix(ncol = length(MODELS), nrow = 24))
   colnames(p) <- colnames(RMSE) <- colnames(MAPE) <- MODELS
   
-  if( (sum(r!=0)/length(r)) > COMPLETE ) {   ### If we have enough non zero values in the dataset, 
-                                             ### we continue with the assessment
-    ARMA <- arimaorder(auto.arima(r))        ### ÑAPA: get hyperparameters of arima model takin the full serie
+  if( IMPUTED > COMPLETE ) {     ### If we have enough non imputed values in the dataset,
+                                 ### we continue with the assessment
+    ARMA <- arimaorder(auto.arima(r))        ### ÑAPA: get hyperparameters of arima model taking the full serie
 
     for (i in ZZ:(floor(length(r)/24)-1))    ### time series cross validation
     {
@@ -84,25 +80,22 @@ R <- foreach(NAME = sample(list.files(path="post_cooked/",pattern="*.csv",recurs
   
   k<-1
   OUT <- data.frame(cups=character(LO),model=character(LO),kpi=character(LO),
+                    length=numeric(LO),zeros=numeric(LO),imputed=numeric(LO),
                     mean=numeric(LO),sd=numeric(LO),min=numeric(LO),
                     q1=numeric(LO),q2=numeric(LO),q3=numeric(LO),max=numeric(LO))
   for(j in MODELS)
   {
-    cat(NAME,j,"mape",mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T),quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
-    cat(NAME,j,"rmse",mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T),quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
-
-    OUT[k,]   <- c(NAME,j,"mape",mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T),quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T))
-    OUT[k+1,] <- c(NAME,j,"rmse",mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T),quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T))
+    OUT[k,]   <- c(NAME,j,"mape",LENGTH,ZEROS,IMPUTED, mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T), quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T))
+    OUT[k+1,] <- c(NAME,j,"rmse",LENGTH,ZEROS,IMPUTED, mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T), quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T))
     k<-k+2
   }
   return(OUT)
 }
 
-#R <- fread("kpi.csv")
-R$model   <- factor(R$model)
-R$kpi     <- factor(R$kpi)
-R[, 4:10] <- sapply(R[, 4:10], as.numeric)
+fwrite(R,file="kpi-cups.csv")
 setDT(R)
+R[,2:3]  <- R[,lapply(.SD,as.factor),.SDcols=names(R)[2:3]]
+R[,4:length(R)] <- R[,lapply(.SD,as.numeric),.SDcols=names(R)[4:length(R)]]
 R[,as.list(summary(q2)), by = "model"]
 boxplot(q2~model,data=R[R$kpi=="mape",],outline=F,ylab="MAPE (%)")
 boxplot(q2~model,data=R[R$kpi=="rmse",],outline=F,ylab="RMSE (kWh)")
@@ -112,6 +105,10 @@ multiple <- kwAllPairsNemenyiTest(q2~model,data=R[R$kpi=="mape",])
 multcompLetters(fullPTable(multiple$p.value))
 plot(multiple)
 
+#R <- fread("kpi.csv")
+# cat("cups","model","kpi","length","zeros","imputed","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
+#     cat(NAME,j,"mape",LENGTH,ZEROS,IMPUTED,mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T),quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
+#     cat(NAME,j,"rmse",LENGTH,ZEROS,IMPUTED,mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T),quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
 
 
 #
