@@ -13,7 +13,7 @@ plan(multisession)
 
 TRAIN_LIMIT <- 0.75  ### length of the training period
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
-SAMPLE      <- 20    ### number of cups to assess
+SAMPLE      <- 2000  ### number of cups to assess
 
 FILES       <- list.files(path="post_cooked/",pattern="*.csv")
 MODELS      <- c("mean","rw","snaive","simple","lr","ann","svm","arima","ses","ens")
@@ -51,10 +51,10 @@ R <- foreach(NAME = sample(FILES,SAMPLE),.combine = 'rbind') %dofuture% {
                     b=(as.numeric(window(r,start=index(r)[i*24-24*13-23],end=index(r)[i*24-24*13]))),
                     c=(as.numeric(window(r,start=index(r)[i*24-24*20-23],end=index(r)[i*24-24*20])))),na.rm=T)
 
-      tr <- merge(rt,lag(rt,-24))
-      names(tr) <- c("r","x")
-      
-      LM    <- lm(r~x,data=tr)
+      TRAINSET        <- merge(rt,lag(rt,-24))
+      names(TRAINSET) <- c("real","past")
+    
+      LM    <- lm(real~past,data=TRAINSET)
       ARIMA <- Arima(rt,order=ARMA)
       ES    <- ses(rt,h=24)  
     ##  NN    <- nnetar(rt)
