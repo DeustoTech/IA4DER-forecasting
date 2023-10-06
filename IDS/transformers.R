@@ -12,8 +12,7 @@ plan(multisession)
 #handlers(global = TRUE)
 
 TRAIN_LIMIT <- 0.75  ### length of the training period
-SAMPLE      <- 20000 ### number of cups to assess
-TRANSFORMERS<- 100   ### number of transformers to create
+TRANSFORMERS<- 1000  ### number of transformers to create
 CUPS_PER    <- 1000  ### number of supply points per transformer
 
 FILES       <- list.files(path="post_cooked/",pattern="*.csv")
@@ -31,8 +30,8 @@ CT <- foreach(i = 1:TRANSFORMERS) %dofuture% {
   return(zoo(z, order.by = a$time))
 }
 
-R <- foreach(r = CT,.combine = 'rbind') %dofuture% {
-
+R <- foreach(NAME = 1:length(CT),.combine = 'rbind') %dofuture% {
+  r    <- CT[[NAME]]
   ZZ   <- floor(0.75*(length(r)/24))    #### training days
   RMSE <- MAPE <- data.frame(matrix(ncol = length(MODELS), nrow = (floor(length(r)/24)-ZZ-1)))
   p    <- data.frame(matrix(ncol = length(MODELS), nrow = 24))
@@ -54,12 +53,12 @@ R <- foreach(r = CT,.combine = 'rbind') %dofuture% {
                   b=(as.numeric(window(r,start=index(r)[i*24-24*13-23],end=index(r)[i*24-24*13]))),
                   c=(as.numeric(window(r,start=index(r)[i*24-24*20-23],end=index(r)[i*24-24*20])))),na.rm=T)
 
-    tr <- merge(rt,lag(rt,-24))
-    names(tr) <- c("r","x")
+    TRAINSET        <- merge(rt,lag(rt,-24))
+    names(TRAINSET) <- c("real","past")
     
-    LM    <- lm(r~x,data=tr)
+    LM    <- lm(real~past,data=TRAINSET)
     ARIMA <- Arima(rt,order=ARMA)
-    ES    <- ses(rt,h=24)  
+    ES    <- ses(rt,h=24)
   ##  NN    <- nnetar(rt)
   ##  SVM   <- ARSVM(rt,h=24)
 
