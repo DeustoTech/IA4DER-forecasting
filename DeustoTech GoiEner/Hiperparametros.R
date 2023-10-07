@@ -141,7 +141,7 @@ foreach(csv_file = csv_files, .combine='c',
 stopCluster(cl)
 
 
-
+resultadosDia <- fread("numNeuronas.csv")
 
 # Boxplot
 
@@ -453,25 +453,141 @@ h <- hyperparameters[sample(nrow(hyperparameters), 20),] %>% arrange(cost)
 
 
 forecastSVM <- function(x, hp, h){
-  prediccion <- predict(svm(x$kWh ~ x$timestamp, kernel = hp$kernel, cost = hp$cost, gamma = hp$gamma), h = h)
+  prediccion <- predict(svm(kWh ~ timestamp, data = x, kernel = hp$kernel, cost = hp$cost, gamma = hp$gamma), h = h)
   return(prediccion)
 }
 
-resultadosDia <- tibble(
-  Hora = numeric(),
-  Predicted = numeric(),
+resultadosSVM <- tibble(
+  # Hora = numeric(),
+  # Predicted = numeric(),
   sMAPE = numeric(),
   RMSE = numeric(),
-  #MASE = numeric(),
+  MASE = numeric(),
   kernel = character(),
   cost = numeric(),
   gamma = numeric(),
   TipoDia = character()
 )
 
-foreach(hp = h, .packages = librerias) %dopar% {
+# foreach(hp = h, .packages = librerias) %dopar% {
+slices <- createTimeSlices(ts1Lab20$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
+
+
+
+for (i in 1:length(slices)) {
+  train_index <- slices[[i]]$train
+  test_index <- slices[[i]]$test
+  
+  trainSet <- ts1Lab20[train_index, ] %>% na.omit()
+  testSet <- ts1Lab20[test_index, ] %>% na.omit()
+  
+  
+  # Create a custom train control with time series cross-validation
+  custom_control <- trainControl(
+    method = "timeslice", 
+    initialWindow = i, 
+    horizon = 1, 
+    fixedWindow = F,
+    summaryFunction = defaultSummary,
+    returnResamp = "all"
+  )
+  
+  # Train the SVM model with hyperparameter tuning using train function
+  
+  # Como train no puede funcionar con fechas, hacemos una diferencia entre 
+  # la fecha de la observacion y una fecha base que definimos
+
+  
+  
+  
+  svm_model <- caret::train(
+    kWh ~ timestamp,
+    data = trainSet,
+    method = "svm", 
+    tuneGrid = h,
+    trControl = custom_control)
+  
+  test_predictions <- predict(svm_model, newdata = testSet)
+  
+  # Calcular las métricas de evaluación con el conjunto de prueba
+  test_metrics <- caret::postResample(test_predictions, obs = test$y)
+  
+  resultados_tibble <- resultados_tibble %>% 
+    add_row(
+      MASE = test_metrics["MASE"],
+      sMAPE = test_metrics["sMAPE"],
+      RMSE = test_metrics["RMSE"],
+      kernel = h[, 1],  # Ajusta el índice de la columna según corresponda
+      cost = h[, 2],  # Ajusta el índice de la columna según corresponda
+      gamma = h[, 3],   # Ajusta el índice de la columna según corresponda
+      TipoDia = "Laborable"
+     )
+  
+  
+}
+
+  
+model <- svm(kWh ~ timestamp, data = trainSet20, kernel = hp1$kernel, cost = hp1$cost, gamma = hp1$gamma)
+fit <- predict(model, h = 1)
+
+
+crtl <- caret::trainControl(method = "cv", savePredictions = T)
+model <- caret::train(kWh ~ timestamp, data = trainSet20, method = "svmLinear", trControl = crtl)
+
+
+caret::train
+
+
+
+train_indices <- slices$train
+test_indices <- slices$test
+train_data <- ts1Lab20 %>% filter(row_number() %in% train_indices)
+
+train_data <- ts1Lab20[train_indices, ]
+test_data <- ts1Lab20[test_indices, ]
+
+# Entrena el modelo SVM en la ventana de tiempo actual
+svm_model <- svm(kWh ~ timestamp, data = train_data, kernel = kernel_type, cost = cost, gamma = gamma)
+
+# Realiza predicciones en el conjunto de prueba
+predictions <- predict(svm_model, newdata = test_data)
+
+
+
+
+
+
+
+results <- lapply(slices, function(slice) {
+  # Divide los datos en conjunto de entrenamiento y prueba
+  train_indices <- slice$train
+  test_indices <- slice$test
+  train_data <- trainSet20[train_indices, ]
+  test_data <- trainSet20[test_indices, ]
+  
+  # Entrena el modelo SVM en la ventana de tiempo actual
+  svm_model <- svm(kWh ~ timestamp, data = train_data, kernel = kernel_type, cost = cost, gamma = gamma)
+  
+  # Realiza predicciones en el conjunto de prueba
+  predictions <- predict(svm_model, newdata = test_data)
+  
+  # Calcula las métricas de rendimiento (por ejemplo, RMSE, sMAPE) según tus necesidades
+  
+  # Devuelve las métricas de rendimiento
+  return(metrics)
+})
+
+
+
+
+
+trainSet20b <- trainSet20 %>% select(timestamp, kWh)
+hp1 <- h[1, ]
+
+ts20 <- xts(trainSet20$kWh, order.by = trainSet20$timestamp)
+
     # Entrenar el modelo neuronal para días laborables
-  errorsLab <- tsCV(trainSet20$kWh, forecastSVM, h = 1, window = 5, hp = hp) %>% na.omit()
+  errorsLab <- tsCV(ts20, forecastSVM, h = 1, window = 1, hp = h[1, ])# %>% na.omit()
   actualLab <- trainSet20$kWh[1: length(errorsLab)]
   predictedLab <- actualLab + errorsLab
     
@@ -492,7 +608,7 @@ foreach(hp = h, .packages = librerias) %dopar% {
     TipoDia = "Laborable"
   )
   
-}
+# }
 
 
 

@@ -20,7 +20,7 @@ archivos <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names 
 
 # Resultados Semana 2
 
-csvResultados <- grep("resultadosTotales.csv", archivos, value = TRUE)
+csvResultados <- grep("resultadosTotales2.csv", archivos, value = TRUE)
 csvSVM <- grep("resultadosSVM.csv", archivos, value = TRUE)
 csvMed <- grep("resultadosMedia2.csv", archivos, value = TRUE)
 csvNav <- grep("resultadosNaiveDia2.csv", archivos, value = TRUE)
@@ -62,7 +62,6 @@ snaive <- snaive %>% na.omit() %>% filter(
 
 
 
-resultados
 
 resultados <- resultados %>% na.omit() %>% filter(
   is.finite(sMAPE),
@@ -140,12 +139,12 @@ boxplot(divididoMASE,
         names.arg = resultados$Modelo,
         las = 2)  # Etiquetas de los modelos en el eje X
 
-# BOXPLOT MASE SOLO ETS Y ARIMA
+# BOXPLOT MASE SOLO ETS  ARIMA y NN
 
 
 filtradoMASE2 <- resultados %>%
-  filter(!is.na({{ MASE }})) %>% filter((Modelo == "ETS" | Modelo == "ARIMA") & 
-                                          MASE < 1)
+  filter(!is.na({{ MASE }})) %>% filter((Modelo == "ETS" | Modelo == "ARIMA" | Modelo == "Red Neuronal") & 
+                                          MASE < 1.6884 )
 
 
 # Dividir los datos en una lista de data frames por Modelo
