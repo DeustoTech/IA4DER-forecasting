@@ -11,7 +11,6 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
-
 path <- "dataset_red.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 
