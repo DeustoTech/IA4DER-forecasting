@@ -710,15 +710,17 @@ SvmDia <- function(csv_file) {
       as_tsibble(key = kWh, index = timestamp) %>%
       arrange(timestamp) 
     
+    
     # Crear un tsibble para el siguiente día - Finde
     ts1Finde <- datosHoraFinde %>%
       mutate(timestamp = as.Date(timestamp)) %>%
       as_tsibble(key = kWh, index = timestamp) %>%
       arrange(timestamp) 
+   
     
     foreach(hyperparameters = h, .packages = librerias) %dopar% {
       # Entrenar el modelo neuronal para días laborables
-      errorsLab <- tsCV(ts1Lab$kWh, forecastSVM, h = 1, window = 5, hyperparameters) %>% na.omit()
+      errorsLab <- tsCV(ts1Lab, forecastSVM, h = 1, window = 5, hyperparameters) %>% na.omit()
       actualLab <- ts1Lab$kWh[1: length(errorsLab)]
       predictedLab <- actualLab + errorsLab
       
@@ -738,7 +740,7 @@ SvmDia <- function(csv_file) {
       )
       
       # Entrenar el modelo neuronal para días de fin de semana
-      errorsFinde <- tsCV(ts1Finde$kWh, forecastNN, h = 1, window = 3, n = numNeurona) %>% na.omit()
+      errorsFinde <- tsCV(ts1Finde, forecastNN, h = 1, window = 3, n = numNeurona) %>% na.omit()
       actualFinde <- ts1Finde$kWh[1: length(errorsFinde)]
       predictedFinde <- actualFinde + errorsFinde
       
@@ -770,6 +772,8 @@ resultados <- foreach(csv_file = csv_files,
 stopCluster(cl)
 
 csv_file <- fread(csv_files[10])
+csv_filets <- ts(csv_file)
+csv_filets[1:3, "kWh"]
 
 # Define una cuadrícula de hiperparámetros para buscar
 param_grid <- expand.grid(
