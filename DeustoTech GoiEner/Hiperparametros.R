@@ -435,6 +435,7 @@ indexTrain <- floor(n * propTrain)
 trainSet20 <- ts1Lab20[1:indexTrain, ]
 testSet20 <- ts1Lab20[(indexTrain + 1):n, ]
 
+
 # Definir rangos de valores para los hiperparámetros
 kernel_values <- c("linear", "radial")
 cost_values <- seq(0.01, 100, length.out = 10) 
@@ -450,6 +451,7 @@ hyperparameters <- expand.grid(
 set.seed(123)
 h <- hyperparameters[sample(nrow(hyperparameters), 20),] %>% arrange(cost)
 
+
 forecastSVM <- function(x, hp, h){
   prediccion <- predict(svm(x$kWh ~ x$timestamp, kernel = hp$kernel, cost = hp$cost, gamma = hp$gamma), h = h)
   return(prediccion)
@@ -460,8 +462,10 @@ resultadosDia <- tibble(
   Predicted = numeric(),
   sMAPE = numeric(),
   RMSE = numeric(),
-  MASE = numeric(),
-  nNeuronas = numeric(),
+  #MASE = numeric(),
+  kernel = character(),
+  cost = numeric(),
+  gamma = numeric(),
   TipoDia = character()
 )
 
@@ -650,4 +654,24 @@ resultados <- foreach(csv_file = csv_files,
 
 stopCluster(cl)
 
+csv_file <- fread(csv_files[10])
+
+# Define una cuadrícula de hiperparámetros para buscar
+param_grid <- expand.grid(
+  kernel = c("linear", "radial", "polynomial"),
+  cost = c(0.1, 1, 10),
+  gamma = c(0.01, 0.1, 1)
+)
+
+# Función para realizar la validación cruzada y ajustar el modelo SVM
+fit_svm <- function(kernel, cost, gamma) {
+  svm_model <- svm(target_variable ~ ., data = train_data, kernel = kernel, cost = cost, gamma = gamma)
+  return(svm_model)
+}
+
+# Realiza la búsqueda de hiperparámetros utilizando validación cruzada
+tune_results <- tune(svm, target_variable ~ ., data = train_data, kernel = kernel, ranges = param_grid)
+
+# Muestra los resultados
+print(tune_results)
 
