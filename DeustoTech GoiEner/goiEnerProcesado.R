@@ -284,7 +284,8 @@ resultadosTotales <- tibble(
   sMAPE = numeric(),
   RMSE = numeric(),
   MASE = numeric(),
-  Modelo = character()
+  Modelo = character(),
+  TipoDia = character()
 )
 
 horas <- 0:23
@@ -302,32 +303,50 @@ forecastARIMA <- function(x, h) {
 }
 
 # Funcion para Redes Neuronales
-forecastNN <- function(x, h){
-  prediccion <- forecast(nnetar(x), h = h)
+forecastNN <- function(x, h, n){
+  prediccion <- forecast(nnetar(x, size = n), h = h)
   return(prediccion)
 }
+
+
+fileIteracion <- "resultadosIteracion.csv"
+fwrite(resultadosTotales, file = fileIteracion, col.names = T)
+
 
 procesarCsvHoras <- function(csv_file) {
   csv_actual <- fread(csv_file)
   
   csv_actual <- csv_actual %>%
     mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
-    select(-imputed)
+    mutate(TipoDia = ifelse(weekdays(timestamp) %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
+                            "Laborable", "Finde")) %>% select(-imputed)
 # Bucle para procesar cada hora
   foreach(hora = horas, .packages = librerias) %dopar% {
-    # Filtrar los datos para la hora actual
+    
+    if (any(is.na(csv_actual[hour(csv_actual$timestamp) == hora, ]))){ next }
+    
     datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ] 
     
+    datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
+    datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
+    
+ 
     # Crear un tsibble para la hora actual
-    ts1 <- datos_hora %>%
+    tsLab <- datosLab %>%
       mutate(timestamp = as.Date(timestamp)) %>%
       as_tsibble(key = kWh, index = timestamp) %>%
       arrange(timestamp) 
     
-    # el ultimo valor siempre es NA. quitarlo
+    tsFinde <- datosFinde %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp) 
+    
 
-    errors <- tsCV(ts1$kWh, forecastETS, h = 1, window = 1) %>% na.omit()
-    actual <- ts1$kWh[1: length(errors)]
+    # ETS LABORABLE
+
+    errors <- tsCV(tsLab$kWh, forecastETS, h = 1, window = 5) %>% na.omit()
+    actual <- tsLab$kWh[1: length(errors)]
 
     # Calculamos la prediccion haciendo real + error
     predicted <- actual + errors
@@ -345,13 +364,38 @@ procesarCsvHoras <- function(csv_file) {
       MASE = mase,
       sMAPE = smape,
       RMSE = rmse,
-      Modelo = "ETS"
+      Modelo = "ETS",
+      TipoDia = "Laborable"
+    )
+    
+    # ETS FINDE
+    errors <- tsCV(tsFinde$kWh, forecastETS, h = 1, window = 3) %>% na.omit()
+    actual <- tsFinde$kWh[1: length(errors)]
+
+    # Calculamos la prediccion haciendo real + error
+    predicted <- actual + errors
+
+    # Calcular métricas
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    mase <- mase(actual, predicted)
+
+    # Almacenar los resultados en el tibble para ETS
+
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      MASE = mase,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "ETS",
+      TipoDia = "Finde"
     )
 
     # AHORA LO MISMO PERO CON ARIMA
 
-    errors <- tsCV(ts1$kWh, forecastARIMA, h = 1, window = 1) %>% na.omit()
-    actual <- ts1$kWh[1: length(errors)]
+    errors <- tsCV(tsLab$kWh, forecastARIMA, h = 1, window = 5) %>% na.omit()
+    actual <- tsLab$kWh[1: length(errors)]
 
     # Calculamos la prediccion haciendo real + error
     predicted <- actual + errors
@@ -368,16 +412,39 @@ procesarCsvHoras <- function(csv_file) {
       MASE = mase,
       sMAPE = smape,
       RMSE = rmse,
-      Modelo = "ARIMA"
+      Modelo = "ARIMA",
+      TipoDia = "Laborable"
+    )
+    
+    errors <- tsCV(tsFinde$kWh, forecastARIMA, h = 1, window = 3) %>% na.omit()
+    actual <- tsFinde$kWh[1: length(errors)]
+
+    # Calculamos la prediccion haciendo real + error
+    predicted <- actual + errors
+
+    # Calcular métricas
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    mase <- mase(actual, predicted)
+
+    # Almacenar los resultados en el tibble
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      MASE = mase,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "ARIMA",
+      TipoDia = "Finde"
     )
 
     
     # Mismo para Red Neuronal
     
-    errors <- tsCV(ts1$kWh, forecastNN, h = 1, window = 3) 
+    errors <- tsCV(tsLab$kWh, forecastNN, h = 1, window = 5, n = 1) # el mejor resultado nos sale 1 neurona
     omitir <- which(is.na(errors)) 
     errors <- errors[-omitir]
-    actual <- ts1$kWh[-omitir]
+    actual <- tsLab$kWh[-omitir]
 
     # quitamos los valores NA de errores y de los valores reales.
     
@@ -399,10 +466,50 @@ procesarCsvHoras <- function(csv_file) {
       MASE = mase,
       sMAPE = smape,
       RMSE = rmse,
-      Modelo = "Red Neuronal"
+      Modelo = "Red Neuronal",
+      TipoDia = "Laborable"
     )
+    
+    errors <- tsCV(tsFinde$kWh, forecastNN, h = 1, window = 3, n = 1) 
+    omitir <- which(is.na(errors)) 
+    errors <- errors[-omitir]
+    actual <- tsFinde$kWh[-omitir]
+
+    # quitamos los valores NA de errores y de los valores reales.
+    
+    # Calculamos la prediccion haciendo real + error
+    
+    predicted <- actual + errors 
+
+    
+    # Calcular métricas
+    smape <- smape(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    mase <- mase(actual, predicted)
+    rmse <- rmse(actual, predicted)
+    
+    # Almacenar los resultados en el tibble
+    resultadosTotales <<- resultadosTotales %>% add_row(
+      Hora = hora,
+      Predicted = predicted,
+      MASE = mase,
+      sMAPE = smape,
+      RMSE = rmse,
+      Modelo = "Red Neuronal",
+      TipoDia = "Finde"
+    )
+    
+    write.csv(resultadosTotales, file = fileIteracion, append = T, col.names = F)
+    
+    
   }
 }
+
+num_cores <- 4  # Ajusta según la cantidad de núcleos de tu CPU
+
+# Configurar el clúster paralelo
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
 
 
 foreach(csv_file = csv_files,
