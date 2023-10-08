@@ -735,12 +735,14 @@ SvmDia <- function(csv_file) {
         sMAPE = smapeLab,
         RMSE = rmseLab,
         # MASE = NA,
-        nNeuronas = numNeurona,
+        kernel = hyperparameters$kernel,
+        cost = hyperparameters$cost,
+        gamma = hyperparameters$gamma,
         TipoDia = "Laborable"
       )
       
       # Entrenar el modelo neuronal para días de fin de semana
-      errorsFinde <- tsCV(ts1Finde, forecastNN, h = 1, window = 3, n = numNeurona) %>% na.omit()
+      errorsFinde <- tsCV(ts1Finde, forecastNN, h = 1, window = 3, hyperparameters) %>% na.omit()
       actualFinde <- ts1Finde$kWh[1: length(errorsFinde)]
       predictedFinde <- actualFinde + errorsFinde
       
@@ -772,8 +774,11 @@ resultados <- foreach(csv_file = csv_files,
 stopCluster(cl)
 
 csv_file <- fread(csv_files[10])
-csv_filets <- ts(csv_file)
-csv_filets[1:3, "kWh"]
+csv_actual <- csv_file %>%
+  mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+  mutate(Dia = weekdays(timestamp)) %>% mutate(TipoDia = ifelse(Dia %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
+                                                                "Laborable", "Finde")) %>%
+  select(-imputed)
 
 # Define una cuadrícula de hiperparámetros para buscar
 param_grid <- expand.grid(
@@ -794,3 +799,121 @@ tune_results <- tune(svm, target_variable ~ ., data = train_data, kernel = kerne
 # Muestra los resultados
 print(tune_results)
 
+### BUCLE GRANDE DE OTRA MANERA
+
+resultadosDia <- tibble(
+  Hora = numeric(),
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric(),
+  # MASE = numeric(),
+  kernel = character(),
+  cost = numeric(),
+  gamma = numeric(),
+  TipoDia = character()
+)
+
+
+horas <- 0:23
+iteraciones <- 1:10
+kernel_values <- c("radial", "radial", "radial", "radial", "radial", "lineal", "lineal", "lineal", "lineal", "lineal")
+cost_values <- c(0.01, 0.1, 1, 10, 100, 0.01, 0.1, 1, 10, 100)
+gamma_values <- c(0.001, 0.1, 1, 10, 100, 0.01, 0.1, 1, 10, 100)
+
+forecastSVM <- function(x, h, kernel, cost, gamma){
+  prediccion <- predict(svm(x$kWh ~ x$timestamp, kernel = kernel, 
+                            cost = cost, gamma = gamma), h = h)
+  return(prediccion)
+}
+
+cl <- makeCluster(4) 
+registerDoParallel(cl)
+
+
+SvmDia <- function(csv_file) {
+  csv_actual <- fread(csv_file)
+  
+  csv_actual <- csv_actual %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+    mutate(Dia = weekdays(timestamp), 
+           TipoDia = ifelse(Dia %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
+                                                       "Laborable", "Finde")) %>%
+    select(-imputed)
+  
+  # Bucle para procesar cada hora
+  foreach(hora = horas, .packages = librerias, .combine = 'c') %dopar% {
+    # Filtrar los datos para la hora actual
+    datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ] 
+    
+    datosHoraLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% distinct()
+    datosHoraFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% distinct()
+    
+    
+    # Crear un tsibble para la hora actual - Laborable
+    ts1Lab <- datosHoraLab %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp) 
+    
+    
+    # Crear un tsibble para el siguiente día - Finde
+    ts1Finde <- datosHoraFinde %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp) 
+    
+    
+    foreach(i = iteraciones, .packages = librerias) %dopar% {
+      # Entrenar el modelo neuronal para días laborables
+      errorsLab <- tsCV(ts1Lab, forecastSVM, h = 1, window = 5, kernel = kernel_values[i], cost = cost_values[i], gamma = gamma_values[i]) %>% na.omit()
+      actualLab <- ts1Lab$kWh[1: length(errorsLab)]
+      predictedLab <- actualLab + errorsLab
+      
+      # Calcular métricas para días laborables
+      smapeLab <- smape(actualLab, predictedLab)
+      rmseLab <- rmse(actualLab, predictedLab)
+      
+      # Almacenar los resultados en el tibble para días laborables
+      resultadosDia <<- resultadosDia %>% add_row(
+        Hora = hora,
+        Predicted = predictedLab,
+        sMAPE = smapeLab,
+        RMSE = rmseLab,
+        # MASE = NA,
+        kernel = kernel_values[i],
+        cost = cost_values[i],
+        gamma = gamma_values[i],
+        TipoDia = "Laborable"
+      )
+      
+      # Entrenar el modelo neuronal para días de fin de semana
+      errorsFinde <- tsCV(ts1Finde, forecastNN, h = 1, window = 3,kernel = kernel_values[i], cost = cost_values[i], gamma = gamma_values[i]) %>% na.omit()
+      actualFinde <- ts1Finde$kWh[1: length(errorsFinde)]
+      predictedFinde <- actualFinde + errorsFinde
+      
+      # Calcular métricas para días de fin de semana
+      smapeFinde <- smape(actualFinde, predictedFinde)
+      rmseFinde <- rmse(actualFinde, predictedFinde)
+      
+      # Almacenar los resultados en el tibble para días de fin de semana
+      resultadosDia <<- resultadosDia %>% add_row(
+        Hora = hora,
+        Predicted = predictedFinde,
+        sMAPE = smapeFinde,
+        RMSE = rmseFinde,
+        # MASE = NA,
+        kernel = kernel_values[i],
+        cost = cost_values[i],
+        gamma = gamma_values[i],
+        TipoDia = "Finde"
+      )
+    }
+  }
+}
+
+
+
+resultados <- foreach(csv_file = csv_files,  
+                      .packages = librerias) %dopar% SvmDia(csv_file)
+
+stopCluster(cl)
