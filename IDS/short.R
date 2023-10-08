@@ -4,31 +4,36 @@ library(zoo)
 library(forecast)
 library(neuralnet)
 library(e1071)
-library(TSSVM)
 library(doFuture)
 library(matrixStats)
 library(PMCMRplus)
 library(rcompanion)
 library(multcompView)
-#library(progressr)
+
 plan(multisession)
-#handlers(global = TRUE)
 
 TRAIN_LIMIT <- 0.75  ### length of the training period
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
-SAMPLE      <- 2000  ### number of cups to assess
+SAMPLE      <- 100  ### number of cups to assess
 
-FILES       <- list.files(path="post_cooked/",pattern="*.csv")
-CT          <- list.files(path="post_cooked/",pattern="*-CT.csv")
+#### aqui podria leer lo que se ha generado en results y no recalcular de nuevo
+
+ALL         <- list.files(path="post_cooked/",pattern="*.csv")
+CT          <- list.files(path="post_cooked/",pattern="*CT.csv")
+CUPS        <- setdiff(ALL,CT)
 
 MODELS      <- c("mean","rw","snaive","simple","lr","ann","svm","arima","ses","ens")
 KPI         <- c("model","length","zeros","imputed","mean","sd","min","q1","q2","q3","max")
 LO          <- 2*length(MODELS)
 
-dir.create("results/mape",showWarnings = F, recursive = T)
-dir.create("results/rmse",showWarnings = F, recursive = T)
+dir.create("results/mape",    showWarnings = F, recursive = T)
+dir.create("results/rmse",    showWarnings = F, recursive = T)
+dir.create("results/forecast",showWarnings = F, recursive = T)
+dir.create("results/test",    showWarnings = F, recursive = T)
 
-B <- foreach(NAME = union(sample(FILES,SAMPLE),sample(CT,SAMPLE))) %dofuture% {
+B <- foreach(NAME = union(sample(CUPS,SAMPLE),sample(CT,SAMPLE,replace=T)),
+             .options.future = list(seed = TRUE),
+             .errorhandling = "remove") %dofuture% {
 
   a <- fread(paste("post_cooked/",NAME,sep=""))
   r <- zoo(a$kWh, order.by = a$time)
@@ -37,57 +42,104 @@ B <- foreach(NAME = union(sample(FILES,SAMPLE),sample(CT,SAMPLE))) %dofuture% {
   ZEROS   <- sum(a$kWh==0)/LENGTH
   IMPUTED <- sum(a$issue)/LENGTH
 
-  ZZ   <- floor(0.75*(length(r)/24))    #### training days
-  RMSE <- MAPE <- data.frame(matrix(ncol = length(MODELS), nrow = (floor(length(r)/24)-ZZ-1)))
-  p    <- data.frame(matrix(ncol = length(MODELS), nrow = 24))
-  colnames(p) <- colnames(RMSE) <- colnames(MAPE) <- MODELS
+  ZZ    <- floor(0.75*(length(r)/24))    #### training days
+  RMSE  <- MAPE  <- data.frame(matrix(ncol = length(MODELS), nrow = (floor(length(r)/24)-ZZ-1)))
+  TKPI  <- data.frame(matrix(ncol = length(MODELS), nrow = 2))
+  
+  p <- f <- data.frame(matrix(ncol = length(MODELS), nrow = 24))
+  colnames(p) <- colnames(f) <- colnames(RMSE) <- colnames(MAPE) <- colnames(TKPI) <- MODELS
   
   if( IMPUTED < COMPLETE ) {                 ### If we have enough non imputed values in the dataset,
                                              ### we continue with the assessment
-    ARMA <- arimaorder(auto.arima(r))        ### ÑAPA: get hyperparameters of arima model taking the full serie
     
-    #### METER AQUI LA PREDICCION DE LOS MODELOS COMPLETOS
+    f["mean"]  <- as.numeric(rep(mean(r),24))
+    f["rw"]    <- as.numeric(window(r,start=index(r)[length(r)-23]))
+    f["snaive"]<- as.numeric(window(r,start=index(r)[length(r)-24*6-23], end=index(r)[length(r)-24*6]))
+    f["simple"]<- rowMeans(data.frame(
+                  a=(as.numeric(window(r,start=index(r)[length(r)-24*6 -23],end=index(r)[length(r)-24*6] ))), 
+                  b=(as.numeric(window(r,start=index(r)[length(r)-24*13-23],end=index(r)[length(r)-24*13]))),
+                  c=(as.numeric(window(r,start=index(r)[length(r)-24*20-23],end=index(r)[length(r)-24*20])))),
+                  na.rm=T)
 
-    ##  NN    <- nnetar(rt)
-    ##  SVM   <- ARSVM(rt,h=24)
+    rr              <- merge(r,lag(r,-24))
+    TRAINSET        <- window(rr,start=index(r)[length(r)-24*20-23])
+    PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)-23])))
+    names(TRAINSET) <- c("real","past")
+      
+    LM     <- lm(real~past,data=TRAINSET)
+    ARIMA  <- auto.arima(r)
+    ES     <- ses(r,h=24)
+    NN     <- nnetar(r)
+    SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))
 
+    f["lr"]    <- as.numeric(forecast(LM,PREDICT)$mean)
+    f["arima"] <- as.numeric(forecast(ARIMA,h=24)$mean)
+    f["ses"]   <- as.numeric(forecast(ES,h=24)$mean)
+    f["ann"]   <- as.numeric(forecast(NN,h=24)$mean)
+    f["svm"]   <- as.numeric(predict(SVM$best.model,PREDICT))
+    f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
+  
+    write.csv(f, file=paste("results/forecast/forecast-",NAME,".csv",sep=""),row.names=F)
+    
+    ###  TESTSET with real hidden values 
+    #real <- fread()
+    real <- as.numeric(window(r,start=index(r)[length(r)-23]))   ####### ÑAPA hasta tener los datos finales
+    aux  <- real != 0
+    for(j in MODELS)
+    {
+      TKPI[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(real[aux]-f[aux,j])/real[aux],NA))
+      TKPI[2,j] <- sqrt(median((real-f[,j])^2))
+    }
+    
+    rownames(TKPI) <- c("mape","rmse")
+    write.csv(TKPI,file=paste("results/test/kpi-test-",NAME,".csv",sep=""))
+
+    HARIMA <- arimaorder(ARIMA)              ### ÑAPA: get hyperparameters of arima model taking the full serie
+    HSVM   <- SVM$best.parameters
+    
     for (i in ZZ:(floor(length(r)/24)-1))    ### time series cross validation
     {
-      rt     <-            window(r,                       end=index(r)[i*24])
-      rv     <- as.numeric(window(r,start=index(r)[i*24+1],end=index(r)[i*24+24]))
-
-      #### TRAINING
-      p["mean"]  <- rep(mean(rt),24)
-      p["rw"]    <- as.numeric(window(r,start=index(r)[i*24-23],      end=index(r)[i*24]))
-      p["snaive"]<- as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))
-      p["simple"]<- rowMeans(data.frame(
-                    a=(as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))), 
-                    b=(as.numeric(window(r,start=index(r)[i*24-24*13-23],end=index(r)[i*24-24*13]))),
-                    c=(as.numeric(window(r,start=index(r)[i*24-24*20-23],end=index(r)[i*24-24*20])))),na.rm=T)
-
-      TRAINSET        <- merge(rt,lag(rt,-24))
-      names(TRAINSET) <- c("real","past")
-    
-      LM    <- lm(real~past,data=TRAINSET)
-      ARIMA <- Arima(rt,order=ARMA)
-      ES    <- ses(rt,h=24)
-      ##NN    <- neuralnet(real~past,data=TRAINSET,hidden=24,linear.output = FALSE)
-      ##SVM   <- neuralnet(real~past,data=TRAINSET,hidden=24,linear.output = FALSE)
-
-      p["lr"]    <- forecast(LM,rv)$mean
-      p["arima"] <- forecast(ARIMA,h=24)$mean
-      p["ses"]   <- forecast(ES,h=24)$mean
-    ##  p["ann"]   <- as.numeric(forecast(NN,h=24)$mean)
-    ##  p["svm"]   <- as.numeric(forecast(SVM,h=24))
-      p["svm"]   <- p["ann"] <- p["rw"]
-      p["ens"]   <- rowMedians(as.matrix(p),na.rm=T)
-      
-      #### VALIDATION
-      aux     <- rv != 0
-      for(j in MODELS)
+      rt <-                 window(r,start=index(r)[i*24-24*7*4*2+1],end=index(r)[i*24])
+      rv <- data.frame(past=window(r,start=index(r)[i*24+1],        end=index(r)[i*24+24]))
+          
+      #####@ if it is constant vector or has too many values imputed, skip
+      if ( (length(unique(rt$kWh)) != 1) & 
+            (sum(rt$issue)/length(rt$kWh) < COMPLETE) )
       {
-        MAPE[i-ZZ,j] <- 100*median(ifelse(sum(aux)!=0,abs(rv[aux]-p[aux,j])/rv[aux],NA))
-        RMSE[i-ZZ,j] <- sqrt(median((rv-p[,j])^2))
+        #### TRAINING
+        p["mean"]  <- as.numeric(rep(mean(rt),24))
+        p["rw"]    <- as.numeric(window(r,start=index(r)[i*24-23],      end=index(r)[i*24]))
+        p["snaive"]<- as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))
+        p["simple"]<- rowMeans(data.frame(
+                      a=(as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))), 
+                      b=(as.numeric(window(r,start=index(r)[i*24-24*13-23],end=index(r)[i*24-24*13]))),
+                      c=(as.numeric(window(r,start=index(r)[i*24-24*20-23],end=index(r)[i*24-24*20])))),na.rm=T)
+
+        rr              <- merge(rt,lag(rt,-24))
+        TRAINSET        <- window(rr,start=index(rr)[25])
+        names(TRAINSET) <- c("real","past")
+      
+        LM    <- lm(real~past,data=TRAINSET)
+        ARIMA <- Arima(rt,order=HARIMA)
+        ES    <- ses(rt,h=24)
+        NN    <- neuralnet(real~past,data=TRAINSET,hidden=24,linear.output=F)
+        SVM   <- svm(      real~past,data=TRAINSET,elsilon=HSVM[[1]],cost=HSVM[[2]],linear.output=F)
+
+        p["lr"]    <- as.numeric(forecast(LM,rv)$mean)
+        p["arima"] <- as.numeric(forecast(ARIMA,h=24)$mean)
+        p["ses"]   <- as.numeric(forecast(ES,h=24)$mean)
+        p["ann"]   <- as.numeric(predict(NN,rv))
+        p["svm"]   <- as.numeric(predict(SVM,rv))
+        p["ens"]   <- rowMedians(as.matrix(p),na.rm=T)
+        
+        #### VALIDATION
+        rv  <- as.numeric(unlist(rv))
+        aux <- rv != 0
+        for(j in MODELS)
+        {
+          MAPE[i-ZZ,j] <- 100*median(ifelse(sum(aux)!=0,abs(rv[aux]-p[aux,j])/rv[aux],NA))
+          RMSE[i-ZZ,j] <- sqrt(median((rv-p[,j])^2))
+        }
       }
     }
   }
