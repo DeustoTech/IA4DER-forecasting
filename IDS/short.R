@@ -14,7 +14,7 @@ plan(multisession)
 
 TRAIN_LIMIT <- 0.75  ### length of the training period
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
-SAMPLE      <- 100  ### number of cups to assess
+SAMPLE      <- 50  ### number of cups to assess
 
 #### aqui podria leer lo que se ha generado en results y no recalcular de nuevo
 
@@ -49,8 +49,9 @@ B <- foreach(NAME = union(sample(CUPS,SAMPLE),sample(CT,SAMPLE,replace=T)),
   p <- f <- data.frame(matrix(ncol = length(MODELS), nrow = 24))
   colnames(p) <- colnames(f) <- colnames(RMSE) <- colnames(MAPE) <- colnames(TKPI) <- MODELS
   
-  if( IMPUTED < COMPLETE ) {                 ### If we have enough non imputed values in the dataset,
-                                             ### we continue with the assessment
+  ### If we have enough non zero, non imputed values in the dataset,
+  ### then we continue with the assessment
+  if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
     
     f["mean"]  <- as.numeric(rep(mean(r),24))
     f["rw"]    <- as.numeric(window(r,start=index(r)[length(r)-23]))
@@ -101,45 +102,44 @@ B <- foreach(NAME = union(sample(CUPS,SAMPLE),sample(CT,SAMPLE,replace=T)),
     {
       rt <-                 window(r,start=index(r)[i*24-24*7*4*2+1],end=index(r)[i*24])
       rv <- data.frame(past=window(r,start=index(r)[i*24+1],        end=index(r)[i*24+24]))
-          
-      #####@ if it is constant vector or has too many values imputed, skip
-      if ( (length(unique(rt$kWh)) != 1) & 
-            (sum(rt$issue)/length(rt$kWh) < COMPLETE) )
-      {
+
+result = tryCatch({
         #### TRAINING
-        p["mean"]  <- as.numeric(rep(mean(rt),24))
-        p["rw"]    <- as.numeric(window(r,start=index(r)[i*24-23],      end=index(r)[i*24]))
-        p["snaive"]<- as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))
-        p["simple"]<- rowMeans(data.frame(
-                      a=(as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))), 
-                      b=(as.numeric(window(r,start=index(r)[i*24-24*13-23],end=index(r)[i*24-24*13]))),
-                      c=(as.numeric(window(r,start=index(r)[i*24-24*20-23],end=index(r)[i*24-24*20])))),na.rm=T)
+      p["mean"]  <- as.numeric(rep(mean(rt),24))
+      p["rw"]    <- as.numeric(window(r,start=index(r)[i*24-23],      end=index(r)[i*24]))
+      p["snaive"]<- as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))
+      p["simple"]<- rowMeans(data.frame(
+                    a=(as.numeric(window(r,start=index(r)[i*24-24*6-23], end=index(r)[i*24-24*6]))), 
+                    b=(as.numeric(window(r,start=index(r)[i*24-24*13-23],end=index(r)[i*24-24*13]))),
+                    c=(as.numeric(window(r,start=index(r)[i*24-24*20-23],end=index(r)[i*24-24*20])))),na.rm=T)
 
-        rr              <- merge(rt,lag(rt,-24))
-        TRAINSET        <- window(rr,start=index(rr)[25])
-        names(TRAINSET) <- c("real","past")
-      
-        LM    <- lm(real~past,data=TRAINSET)
-        ARIMA <- Arima(rt,order=HARIMA)
-        ES    <- ses(rt,h=24)
-        NN    <- neuralnet(real~past,data=TRAINSET,hidden=24,linear.output=F)
-        SVM   <- svm(      real~past,data=TRAINSET,elsilon=HSVM[[1]],cost=HSVM[[2]],linear.output=F)
+      rr              <- merge(rt,lag(rt,-24))
+      TRAINSET        <- window(rr,start=index(rr)[25])
+      names(TRAINSET) <- c("real","past")
+    
+      LM    <- lm(real~past,data=TRAINSET)
+      ARIMA <- Arima(rt,order=HARIMA)
+      ES    <- ses(rt,h=24)
+      NN    <- neuralnet(real~past,data=TRAINSET,hidden=24,linear.output=F)
+      SVM   <- svm(      real~past,data=TRAINSET,elsilon=HSVM[[1]],cost=HSVM[[2]],linear.output=F)
 
-        p["lr"]    <- as.numeric(forecast(LM,rv)$mean)
-        p["arima"] <- as.numeric(forecast(ARIMA,h=24)$mean)
-        p["ses"]   <- as.numeric(forecast(ES,h=24)$mean)
-        p["ann"]   <- as.numeric(predict(NN,rv))
-        p["svm"]   <- as.numeric(predict(SVM,rv))
-        p["ens"]   <- rowMedians(as.matrix(p),na.rm=T)
-        
-        #### VALIDATION
-        rv  <- as.numeric(unlist(rv))
-        aux <- rv != 0
-        for(j in MODELS)
-        {
-          MAPE[i-ZZ,j] <- 100*median(ifelse(sum(aux)!=0,abs(rv[aux]-p[aux,j])/rv[aux],NA))
-          RMSE[i-ZZ,j] <- sqrt(median((rv-p[,j])^2))
-        }
+      p["lr"]    <- as.numeric(forecast(LM,rv)$mean)
+      p["arima"] <- as.numeric(forecast(ARIMA,h=24)$mean)
+      p["ses"]   <- as.numeric(forecast(ES,h=24)$mean)
+      p["ann"]   <- as.numeric(predict(NN,rv))
+      p["svm"]   <- as.numeric(predict(SVM,rv))
+      p["ens"]   <- rowMedians(as.matrix(p),na.rm=T)
+}, warning = {
+}, error = function(e) { (c("la he pificado en",NAME,e))  
+}, finally = {}
+)
+      #### VALIDATION
+      rv  <- as.numeric(unlist(rv))
+      aux <- rv != 0
+      for(j in MODELS)
+      {
+        MAPE[i-ZZ,j] <- 100*median(ifelse(sum(aux)!=0,abs(rv[aux]-p[aux,j])/rv[aux],NA))
+        RMSE[i-ZZ,j] <- sqrt(median((rv-p[,j])^2))
       }
     }
   }
@@ -170,11 +170,12 @@ RCU <- foreach(NAME = setdiff(ALL,KCT),.combine=rbind) %dofuture% {
   fread(paste("results/mape/",NAME,sep=""),select=KPI)
 }
 
-EVAL <- function(R)
+EVAL <- function(R,NAME)
 {
   setDT(R)
   R$model <- as.factor(R$model)
   print(R[,as.list(summary(q2)), by = "model"])
+  write.csv(RCT[,as.list(summary(q2)), by = "model"],row.names=F,file=paste("results",NAME,".csv",sep=""))
   boxplot(q2~model,data=R,outline=F,ylab="MAPE (%)")
   print(kruskalTest(q2~model,data=R))
   multiple <- kwAllPairsNemenyiTest(q2~model,data=R)
@@ -182,8 +183,8 @@ EVAL <- function(R)
   plot(multiple)
 }
 
-EVAL(RCT)
-EVAL(RCU)
+EVAL(RCT,"CT")
+EVAL(RCU,"CUPS")
 
 #R <- fread("kpi.csv")
 # cat("cups","model","kpi","length","zeros","imputed","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
