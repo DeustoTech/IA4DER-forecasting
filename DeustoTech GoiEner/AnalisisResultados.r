@@ -279,7 +279,7 @@ ggplot(data = resultados, aes(x = Modelo, y = sMAPE)) +
   facet_wrap(~Modelo, scales = "free_y", ncol = 2) +
   scale_fill_manual(values = colores_modelos)
 
-# RMSE 
+# RMSE d
 ggplot(data = resultados, aes(x = Modelo, y = RMSE)) +
   geom_boxplot() +
   labs(
