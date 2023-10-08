@@ -408,7 +408,7 @@ foreach(csv_file = csv_files[1:5],
 # SVM
 
 horas <- 0:23
-
+set.seed(123)
 # Definir rangos de valores para los hiperparámetros
 kernel_values <- c("linear", "radial")
 cost_values <- seq(0.01, 100, length.out = 20) 
@@ -421,7 +421,7 @@ hyperparameters <- expand.grid(
   gamma = gamma_values
 )
 
-set.seed(123)
+
 h <- hyperparameters[sample(nrow(hyperparameters), 20),] %>% arrange(cost)
 
 resultadosSVM <- tibble(
@@ -482,11 +482,13 @@ tunearSVM <- function(csv_file){
     slicesLab <- createTimeSlices(ts1Lab$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
     slicesFinde <- createTimeSlices(ts1Finde$timestamp, initialWindow = 3, horizon = 1, skip = 0, fixedWindow = F)
     
-    foreach(hp = h, .packages = librerias, .combine = 'c') %dopar%{
+    for (i in 1:nrow(h)){
+      
+      hp <- h[i, ]
       
       # Primero con los dias laborables
       
-      for (j in 1:lengths(slicesLab)) {
+      for (j in 1:length(slicesLab$train)) {
         
         train_index <- slices$train[[j]]
         test_index <- slices$test[[j]]
@@ -504,6 +506,7 @@ tunearSVM <- function(csv_file){
         
         resultadosSVM <<- resultadosSVM %>% 
           add_row(
+            Hora = hora,
             # MASE = test_metrics["MASE"],
             sMAPE = smape,
             RMSE = rmse,
@@ -516,26 +519,27 @@ tunearSVM <- function(csv_file){
       }
       
       # Ahora con finde
-      
-      for (k in 1:lengths(slicesFinde)) {
-        
+
+      for (k in 1:length(slicesFinde$train)) {
+
         train_index <- slicesFinde$train[[k]]
         test_index <- slicesFinde$test[[k]]
-        
+
         trainSet <- ts1Finde[train_index, ] %>% na.omit()
         testSet <- ts1Finde[test_index, ] %>% na.omit()
-        
+
         model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp$kernel,
                             cost = hp$cost, gamma = hp$gamma, type = "eps-regression")
         fit <- predict(model, h = 1)
-        
+
         smape = smape(testSet$kWh, fit)
         rmse = rmse(testSet$kWh, fit)
-        
-        
-        resultadosSVM <<- resultadosSVM %>% 
+
+
+        resultadosSVM <<- resultadosSVM %>%
           add_row(
-            # MASE = test_metrics["MASE"],
+            Hora = hora,
+            MASE = test_metrics["MASE"],
             sMAPE = smape,
             RMSE = rmse,
             kernel = hp$kernel, # Ajusta el índice de la columna según corresponda
@@ -546,8 +550,6 @@ tunearSVM <- function(csv_file){
         write.csv(resultadosSVM, file = fileIteracion, append = T, col.names = F)
       }
 
-      
-      
     }
     
   }
@@ -557,61 +559,6 @@ tunearSVM <- function(csv_file){
 
 foreach(csv_file = csv_files,
         .packages = librerias, .combine = 'c') %dopar% tunearSVM(csv_file)
-
-
-
-
-foreach(hp = h, .packages = librerias) %dopar% {
-  slices <- createTimeSlices(ts1Lab20$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
-  
-  
-  for (i in 1:nrow(h)){
-    
-    
-    kernel <- h$kernel[i]
-    cost <- h$cost[i]
-    gamma <- h$gamma[i]
-    
-    for (j in 1:lengths(slices)) {
-      
-      train_index <- slices$train[[j]]
-      test_index <- slices$test[[j]]
-      
-      trainSet <- ts1Lab20[train_index, ] %>% na.omit()
-      testSet <- ts1Lab20[test_index, ] %>% na.omit()
-      
-      model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp1$kernel,
-                          cost = hp1$cost, gamma = hp1$gamma, type = "eps-regression")
-      fit <- predict(model, h = 1)
-      
-      smape = smape(testSet$kWh, fit)
-      rmse = rmse(testSet$kWh, fit)
-      
-      
-      
-      
-      resultadosSVM <- resultadosSVM %>% 
-        add_row(
-          # MASE = test_metrics["MASE"],
-          sMAPE = smape,
-          RMSE = rmse,
-          kernel = h[i, 1],  # Ajusta el índice de la columna según corresponda
-          cost = h[i, 2],  # Ajusta el índice de la columna según corresponda
-          gamma = h[i, 3],   # Ajusta el índice de la columna según corresponda
-          TipoDia = "Laborable"
-        )
-      
-    }
-  }
-}
-
-
-
-
-
-
-
-
 
 
 ##pruebas svm
@@ -664,7 +611,7 @@ forecastSVM <- function(x, hp, h){
   return(prediccion)
 }
 
-resultadosSVM <- tibble(
+resultadosSVM0 <- tibble(
   Hora = numeric(),
   # Predicted = numeric(),
   sMAPE = numeric(),
@@ -676,49 +623,46 @@ resultadosSVM <- tibble(
   TipoDia = character()
 )
 
-foreach(hp = h, .packages = librerias) %dopar% {
-slices <- createTimeSlices(ts1Lab20$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
-
+slices0 <- createTimeSlices(ts1Lab20$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
 
 for (i in 1:nrow(h)){
-
   
-  kernel <- h$kernel[i]
-  cost <- h$cost[i]
-  gamma <- h$gamma[i]
+  hp <- h[i, ]
+  
+  kernel <- hp$kernel
+  cost <- hp$cost
+  gamma <- hp$gamma
 
-  for (j in 1:lengths(slices)) {
+  for (j in 1:lengths(slices0)) {
     
-    train_index <- slices$train[[j]]
-    test_index <- slices$test[[j]]
+    train_index <- slices0$train[[j]]
+    test_index <- slices0$test[[j]]
     
     trainSet <- ts1Lab20[train_index, ] %>% na.omit()
     testSet <- ts1Lab20[test_index, ] %>% na.omit()
     
-    model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp1$kernel,
-                        cost = hp1$cost, gamma = hp1$gamma, type = "eps-regression")
+    model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp$kernel,
+                        cost = hp$cost, gamma = hp$gamma, type = "eps-regression")
     fit <- predict(model, h = 1)
     
     smape = smape(testSet$kWh, fit)
     rmse = rmse(testSet$kWh, fit)
 
-
     
-    
-    resultadosSVM <- resultadosSVM %>% 
+    resultadosSVM0 <- resultadosSVM0 %>% 
       add_row(
         # MASE = test_metrics["MASE"],
         sMAPE = smape,
         RMSE = rmse,
-        kernel = h[i, 1],  # Ajusta el índice de la columna según corresponda
-        cost = h[i, 2],  # Ajusta el índice de la columna según corresponda
-        gamma = h[i, 3],   # Ajusta el índice de la columna según corresponda
+        kernel = hp$kernel,  # Ajusta el índice de la columna según corresponda
+        cost = hp$cost,  # Ajusta el índice de la columna según corresponda
+        gamma = hp$gamma,   # Ajusta el índice de la columna según corresponda
         TipoDia = "Laborable"
        )
   
     }
   }
-}
+
 
 hp1 <- h[1, ]
 
