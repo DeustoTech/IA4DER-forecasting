@@ -435,7 +435,7 @@ resultadosSVM <- tibble(
   TipoDia = character()
 )
 
-fileIteracion <- "SVM.csv"
+fileIteracion <- "SVM_finde.csv"
 fwrite(resultadosSVM, file = fileIteracion, col.names = T)
 
 
@@ -490,8 +490,8 @@ tunearSVM <- function(csv_file){
       
       for (j in 1:length(slicesLab$train)) {
         
-        train_index <- slices$train[[j]]
-        test_index <- slices$test[[j]]
+        train_index <- slicesLab$train[[j]]
+        test_index <- slicesLab$test[[j]]
         
         trainSet <- ts1Lab[train_index, ] %>% na.omit()
         testSet <- ts1Lab[test_index, ] %>% na.omit()
@@ -539,7 +539,7 @@ tunearSVM <- function(csv_file){
         resultadosSVM <<- resultadosSVM %>%
           add_row(
             Hora = hora,
-            MASE = test_metrics["MASE"],
+            #MASE = test_metrics["MASE"],
             sMAPE = smape,
             RMSE = rmse,
             kernel = hp$kernel, # Ajusta el índice de la columna según corresponda
@@ -559,6 +559,28 @@ tunearSVM <- function(csv_file){
 
 foreach(csv_file = csv_files,
         .packages = librerias, .combine = 'c') %dopar% tunearSVM(csv_file)
+
+
+svm_dataset <- fread("SVM_finde.csv")
+svm_datasetFinde <- svm_dataset %>% filter(TipoDia == "Finde")
+svm_datasetLab <- svm_dataset %>% filter(TipoDia == "Laborable")
+
+which.min(svm_datasetLab$sMAPE)
+which.min(svm_datasetLab$RMSE)
+
+which.min(svm_datasetFinde$sMAPE)
+which.min(svm_datasetFinde$RMSE)
+
+svm_datasetLab[2606,]
+svm_datasetFinde[68,]
+
+ggplot(svm_datasetFinde, aes(x = svm_datasetFinde$cost, y = svm_datasetFinde$gamma, fill = svm_datasetFinde$RMSE)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(x = "log10(cost)", y = "log10(gamma)", fill = "RMSE") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  ggtitle("Heart Scale Plot for SVM")
 
 
 ##pruebas svm

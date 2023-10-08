@@ -605,6 +605,143 @@ write.csv(resultadosSVM, file = "resultadosSVM.csv")
 
 
 
+
+## CON HIPERPARAMETROS AJUSTADOS ##
+resultadosSVM <- tibble(
+  Hora = numeric(),
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric(),
+  MASE = numeric(),
+  TipoDia = character(),
+  Modelo = character()
+)
+
+#fileIteracion <- "ResultadosSVM_h.csv"
+fwrite(resultadosSVM, file = fileIteracion, col.names = T)
+
+resultados_SVM <- function(csv_file){
+  
+  csv_actual <- fread(csv_file)
+  
+  csv_actual <- csv_actual %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+    mutate(Dia = weekdays(timestamp)) %>%
+    mutate(TipoDia = ifelse(Dia %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
+                            "Laborable", "Finde")) %>%
+    select(-imputed)
+  
+  
+  datosLab <- csv_actual %>% filter(TipoDia == "Laborable")
+  datosFinde <- csv_actual %>% filter(TipoDia == "Finde")
+  
+  # Bucle para procesar cada hora
+  foreach(hora = horas, .packages = librerias, .combine = 'c') %dopar% {
+    # Filtrar los datos para la hora actual
+    
+    if (any(is.na(csv_actual[hour(csv_actual$timestamp) == hora, ]))){ next }
+    
+    datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ] 
+    
+    datosHoraLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% distinct()
+    datosHoraFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% distinct()
+    
+    # Crear un tsibble para la hora actual - Laborable
+    ts1Lab <- datosHoraLab %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp) 
+    
+    # Crear un tsibble para el siguiente día - Finde
+    ts1Finde <- datosHoraFinde %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp)   
+    
+    
+    slicesLab <- createTimeSlices(ts1Lab$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
+    slicesFinde <- createTimeSlices(ts1Finde$timestamp, initialWindow = 3, horizon = 1, skip = 0, fixedWindow = F)
+    
+      
+      # Primero con los dias laborables
+      
+      for (j in 1:length(slicesLab$train)) {
+        
+        train_index <- slicesLab$train[[j]]
+        test_index <- slicesLab$test[[j]]
+        
+        trainSet <- ts1Lab[train_index, ] %>% na.omit()
+        testSet <- ts1Lab[test_index, ] %>% na.omit()
+        largoTest <- nrow(testSet)
+        
+        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = "linear",
+                            cost = 47.37368, gamma = 21.06053, type = "eps-regression")
+        fit <- predict(model, h = 1)
+        predictions <- as.numeric(fit)
+        predictions2 <- predictions[1:largoTest]
+        
+        smape = smape(testSet$kWh, fit)
+        rmse = rmse(testSet$kWh, fit)
+        
+        
+        resultadosSVM <<- resultadosSVM %>% 
+          add_row(
+            Hora = hora,
+            Predicted = predictions2,
+            #MASE = mase,
+            sMAPE = smape,
+            RMSE = rmse,
+            TipoDia = "Laborable",
+            Modelo = "SVM"
+          )
+        write.csv(resultadosSVM, file = fileIteracion, append = T, col.names = F)
+      }
+      
+      # Ahora con finde
+      
+      for (k in 1:length(slicesFinde$train)) {
+        
+        train_index <- slicesFinde$train[[k]]
+        test_index <- slicesFinde$test[[k]]
+        
+        trainSet <- ts1Finde[train_index, ] %>% na.omit()
+        testSet <- ts1Finde[test_index, ] %>% na.omit()
+        largoTest <- nrow(testSet)
+        
+        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = "radial",
+                            cost = 0.01, gamma = 78.94947, type = "eps-regression")
+        fit <- predict(model, h = 1)
+        predictions <- as.numeric(fit)
+        predictions2 <- predictions[1:largoTest]
+        
+        smape = smape(testSet$kWh, fit)
+        rmse = rmse(testSet$kWh, fit)
+        
+        
+        resultadosSVM <<- resultadosSVM %>%
+          add_row(
+            Hora = hora,
+            Predicted = predictions2,
+            #MASE = mase,
+            sMAPE = smape,
+            RMSE = rmse,
+            TipoDia = "Finde",
+            Modelo = "SVM"
+          )
+        write.csv(resultadosSVM, file = fileIteracion, append = T, col.names = F)
+      }
+      
+
+    
+  }
+}
+
+
+foreach(csv_file = csv_files,
+        .packages = librerias, .combine = 'c') %dopar% resultados_SVM(csv_file)
+
+
+
 #########MEJORAR EL CODIGO DEL PRINCIPIO#################
 
 
