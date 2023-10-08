@@ -2,6 +2,9 @@ library(data.table)
 library(vtable)
 library(zoo)
 library(forecast)
+library(neuralnet)
+library(e1071)
+library(TSSVM)
 library(doFuture)
 library(matrixStats)
 library(PMCMRplus)
@@ -16,26 +19,37 @@ COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
 SAMPLE      <- 2000  ### number of cups to assess
 
 FILES       <- list.files(path="post_cooked/",pattern="*.csv")
+CT          <- list.files(path="post_cooked/",pattern="*-CT.csv")
+
 MODELS      <- c("mean","rw","snaive","simple","lr","ann","svm","arima","ses","ens")
+KPI         <- c("model","length","zeros","imputed","mean","sd","min","q1","q2","q3","max")
 LO          <- 2*length(MODELS)
 
-R <- foreach(NAME = sample(FILES,SAMPLE),.combine = 'rbind') %dofuture% {
+dir.create("results/mape",showWarnings = F, recursive = T)
+dir.create("results/rmse",showWarnings = F, recursive = T)
+
+B <- foreach(NAME = union(sample(FILES,SAMPLE),sample(CT,SAMPLE))) %dofuture% {
 
   a <- fread(paste("post_cooked/",NAME,sep=""))
   r <- zoo(a$kWh, order.by = a$time)
   
   LENGTH  <- length(a$kWh)
-  ZEROS   <- sum(a$kWh==0)/length(LENGTH)
-  IMPUTED <- sum(a$issue)/length(LENGTH)
+  ZEROS   <- sum(a$kWh==0)/LENGTH
+  IMPUTED <- sum(a$issue)/LENGTH
 
   ZZ   <- floor(0.75*(length(r)/24))    #### training days
   RMSE <- MAPE <- data.frame(matrix(ncol = length(MODELS), nrow = (floor(length(r)/24)-ZZ-1)))
   p    <- data.frame(matrix(ncol = length(MODELS), nrow = 24))
   colnames(p) <- colnames(RMSE) <- colnames(MAPE) <- MODELS
   
-  if( IMPUTED > COMPLETE ) {     ### If we have enough non imputed values in the dataset,
-                                 ### we continue with the assessment
+  if( IMPUTED < COMPLETE ) {                 ### If we have enough non imputed values in the dataset,
+                                             ### we continue with the assessment
     ARMA <- arimaorder(auto.arima(r))        ### ÑAPA: get hyperparameters of arima model taking the full serie
+    
+    #### METER AQUI LA PREDICCION DE LOS MODELOS COMPLETOS
+
+    ##  NN    <- nnetar(rt)
+    ##  SVM   <- ARSVM(rt,h=24)
 
     for (i in ZZ:(floor(length(r)/24)-1))    ### time series cross validation
     {
@@ -56,9 +70,9 @@ R <- foreach(NAME = sample(FILES,SAMPLE),.combine = 'rbind') %dofuture% {
     
       LM    <- lm(real~past,data=TRAINSET)
       ARIMA <- Arima(rt,order=ARMA)
-      ES    <- ses(rt,h=24)  
-    ##  NN    <- nnetar(rt)
-    ##  SVM   <- ARSVM(rt,h=24)
+      ES    <- ses(rt,h=24)
+      ##NN    <- neuralnet(real~past,data=TRAINSET,hidden=24,linear.output = FALSE)
+      ##SVM   <- neuralnet(real~past,data=TRAINSET,hidden=24,linear.output = FALSE)
 
       p["lr"]    <- forecast(LM,rv)$mean
       p["arima"] <- forecast(ARIMA,h=24)$mean
@@ -77,33 +91,47 @@ R <- foreach(NAME = sample(FILES,SAMPLE),.combine = 'rbind') %dofuture% {
       }
     }
   }
-  
-  k<-1
-  OUT <- data.frame(cups=character(LO),model=character(LO),kpi=character(LO),
-                    length=numeric(LO),zeros=numeric(LO),imputed=numeric(LO),
-                    mean=numeric(LO),sd=numeric(LO),min=numeric(LO),
-                    q1=numeric(LO),q2=numeric(LO),q3=numeric(LO),max=numeric(LO))
+
+  cat(KPI,"\n",sep=",",file=paste("results/mape/kpi-mape-",NAME,sep=""))
+  cat(KPI,"\n",sep=",",file=paste("results/rmse/kpi-rmse-",NAME,sep=""))
   for(j in MODELS)
   {
-    OUT[k,]   <- c(NAME,j,"mape",LENGTH,ZEROS,IMPUTED, mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T), quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T))
-    OUT[k+1,] <- c(NAME,j,"rmse",LENGTH,ZEROS,IMPUTED, mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T), quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T))
-    k<-k+2
+    cat(j,LENGTH,ZEROS,IMPUTED,
+        mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T),
+        quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T), 
+        "\n",sep=",", file=paste("results/mape/kpi-mape-",NAME,sep=""),append=T)
+    cat(j,LENGTH,ZEROS,IMPUTED,
+        mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T),
+        quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),
+        "\n",sep=",", file=paste("results/rmse/kpi-rmse-",NAME,sep=""),append=T)
   }
-  return(OUT)
 }
 
-fwrite(R,file="kpi-cups.csv")
-setDT(R)
-R[,2:3]  <- R[,lapply(.SD,as.factor),.SDcols=names(R)[2:3]]
-R[,4:length(R)] <- R[,lapply(.SD,as.numeric),.SDcols=names(R)[4:length(R)]]
-R[,as.list(summary(q2)), by = "model"]
-boxplot(q2~model,data=R[R$kpi=="mape",],outline=F,ylab="MAPE (%)")
-boxplot(q2~model,data=R[R$kpi=="rmse",],outline=F,ylab="RMSE (kWh)")
-kruskalTest(q2~model,data=R[R$kpi=="mape",])
+ALL <- list.files(path="results/mape/",pattern="*.csv")
+KCT <- list.files(path="results/mape/",pattern="*CT.csv")
 
-multiple <- kwAllPairsNemenyiTest(q2~model,data=R[R$kpi=="mape",])
-multcompLetters(fullPTable(multiple$p.value))
-plot(multiple)
+RCT <- foreach(NAME = KCT,.combine=rbind) %dofuture% {
+  fread(paste("results/mape/",NAME,sep=""),select=KPI)
+}
+
+RCU <- foreach(NAME = setdiff(ALL,KCT),.combine=rbind) %dofuture% {
+  fread(paste("results/mape/",NAME,sep=""),select=KPI)
+}
+
+EVAL <- function(R)
+{
+  setDT(R)
+  R$model <- as.factor(R$model)
+  print(R[,as.list(summary(q2)), by = "model"])
+  boxplot(q2~model,data=R,outline=F,ylab="MAPE (%)")
+  print(kruskalTest(q2~model,data=R))
+  multiple <- kwAllPairsNemenyiTest(q2~model,data=R)
+  print(multcompLetters(fullPTable(multiple$p.value)))
+  plot(multiple)
+}
+
+EVAL(RCT)
+EVAL(RCU)
 
 #R <- fread("kpi.csv")
 # cat("cups","model","kpi","length","zeros","imputed","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
