@@ -405,6 +405,214 @@ RedNeuronalLaborable <- function(csv_file) {
 foreach(csv_file = csv_files[1:5],
         .packages = librerias) %dopar% RedNeuronalLaborable(csv_file)
 
+# SVM
+
+horas <- 0:23
+
+# Definir rangos de valores para los hiperparámetros
+kernel_values <- c("linear", "radial")
+cost_values <- seq(0.01, 100, length.out = 20) 
+gamma_values <- seq(0.01, 100, length.out = 20)  
+
+# Crear todas las combinaciones de hiperparámetros
+hyperparameters <- expand.grid(
+  kernel = kernel_values,
+  cost = cost_values,
+  gamma = gamma_values
+)
+
+set.seed(123)
+h <- hyperparameters[sample(nrow(hyperparameters), 20),] %>% arrange(cost)
+
+resultadosSVM <- tibble(
+  Hora = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric(),
+  MASE = numeric(),
+  kernel = character(),
+  cost = numeric(),
+  gamma = numeric(),
+  TipoDia = character()
+)
+
+fileIteracion <- "SVM.csv"
+fwrite(resultadosSVM, file = fileIteracion, col.names = T)
+
+
+
+tunearSVM <- function(csv_file){
+  
+  csv_actual <- fread(csv_file)
+  
+  csv_actual <- csv_actual %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+    mutate(Dia = weekdays(timestamp)) %>%
+    mutate(TipoDia = ifelse(Dia %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
+                            "Laborable", "Finde")) %>%
+    select(-imputed)
+  
+  
+  datosLab <- csv_actual %>% filter(TipoDia == "Laborable")
+  datosFinde <- csv_actual %>% filter(TipoDia == "Finde")
+  
+  # Bucle para procesar cada hora
+  foreach(hora = horas, .packages = librerias, .combine = 'c') %dopar% {
+    # Filtrar los datos para la hora actual
+    
+    if (any(is.na(csv_actual[hour(csv_actual$timestamp) == hora, ]))){ next }
+    
+    datos_hora <- csv_actual[hour(csv_actual$timestamp) == hora, ] 
+    
+    datosHoraLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% distinct()
+    datosHoraFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% distinct()
+    
+    # Crear un tsibble para la hora actual - Laborable
+    ts1Lab <- datosHoraLab %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp) 
+    
+    # Crear un tsibble para el siguiente día - Finde
+    ts1Finde <- datosHoraFinde %>%
+      mutate(timestamp = as.Date(timestamp)) %>%
+      as_tsibble(key = kWh, index = timestamp) %>%
+      arrange(timestamp)   
+    
+    
+    slicesLab <- createTimeSlices(ts1Lab$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
+    slicesFinde <- createTimeSlices(ts1Finde$timestamp, initialWindow = 3, horizon = 1, skip = 0, fixedWindow = F)
+    
+    foreach(hp = h, .packages = librerias, .combine = 'c') %dopar%{
+      
+      # Primero con los dias laborables
+      
+      for (j in 1:lengths(slicesLab)) {
+        
+        train_index <- slices$train[[j]]
+        test_index <- slices$test[[j]]
+        
+        trainSet <- ts1Lab[train_index, ] %>% na.omit()
+        testSet <- ts1Lab[test_index, ] %>% na.omit()
+        
+        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp$kernel,
+                            cost = hp$cost, gamma = hp$gamma, type = "eps-regression")
+        fit <- predict(model, h = 1)
+        
+        smape = smape(testSet$kWh, fit)
+        rmse = rmse(testSet$kWh, fit)
+        
+        
+        resultadosSVM <<- resultadosSVM %>% 
+          add_row(
+            # MASE = test_metrics["MASE"],
+            sMAPE = smape,
+            RMSE = rmse,
+            kernel = hp$kernel, # Ajusta el índice de la columna según corresponda
+            cost = hp$cost,  # Ajusta el índice de la columna según corresponda
+            gamma = hp$gamma,   # Ajusta el índice de la columna según corresponda
+            TipoDia = "Laborable"
+          )
+        write.csv(resultadosSVM, file = fileIteracion, append = T, col.names = F)
+      }
+      
+      # Ahora con finde
+      
+      for (k in 1:lengths(slicesFinde)) {
+        
+        train_index <- slicesFinde$train[[k]]
+        test_index <- slicesFinde$test[[k]]
+        
+        trainSet <- ts1Finde[train_index, ] %>% na.omit()
+        testSet <- ts1Finde[test_index, ] %>% na.omit()
+        
+        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp$kernel,
+                            cost = hp$cost, gamma = hp$gamma, type = "eps-regression")
+        fit <- predict(model, h = 1)
+        
+        smape = smape(testSet$kWh, fit)
+        rmse = rmse(testSet$kWh, fit)
+        
+        
+        resultadosSVM <<- resultadosSVM %>% 
+          add_row(
+            # MASE = test_metrics["MASE"],
+            sMAPE = smape,
+            RMSE = rmse,
+            kernel = hp$kernel, # Ajusta el índice de la columna según corresponda
+            cost = hp$cost,  # Ajusta el índice de la columna según corresponda
+            gamma = hp$gamma,   # Ajusta el índice de la columna según corresponda
+            TipoDia = "Finde"
+          )
+        write.csv(resultadosSVM, file = fileIteracion, append = T, col.names = F)
+      }
+
+      
+      
+    }
+    
+  }
+}
+
+
+
+foreach(csv_file = csv_files,
+        .packages = librerias, .combine = 'c') %dopar% tunearSVM(csv_file)
+
+
+
+
+foreach(hp = h, .packages = librerias) %dopar% {
+  slices <- createTimeSlices(ts1Lab20$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
+  
+  
+  for (i in 1:nrow(h)){
+    
+    
+    kernel <- h$kernel[i]
+    cost <- h$cost[i]
+    gamma <- h$gamma[i]
+    
+    for (j in 1:lengths(slices)) {
+      
+      train_index <- slices$train[[j]]
+      test_index <- slices$test[[j]]
+      
+      trainSet <- ts1Lab20[train_index, ] %>% na.omit()
+      testSet <- ts1Lab20[test_index, ] %>% na.omit()
+      
+      model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp1$kernel,
+                          cost = hp1$cost, gamma = hp1$gamma, type = "eps-regression")
+      fit <- predict(model, h = 1)
+      
+      smape = smape(testSet$kWh, fit)
+      rmse = rmse(testSet$kWh, fit)
+      
+      
+      
+      
+      resultadosSVM <- resultadosSVM %>% 
+        add_row(
+          # MASE = test_metrics["MASE"],
+          sMAPE = smape,
+          RMSE = rmse,
+          kernel = h[i, 1],  # Ajusta el índice de la columna según corresponda
+          cost = h[i, 2],  # Ajusta el índice de la columna según corresponda
+          gamma = h[i, 3],   # Ajusta el índice de la columna según corresponda
+          TipoDia = "Laborable"
+        )
+      
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
 
 ##pruebas svm
 
@@ -457,7 +665,7 @@ forecastSVM <- function(x, hp, h){
 }
 
 resultadosSVM <- tibble(
-  # Hora = numeric(),
+  Hora = numeric(),
   # Predicted = numeric(),
   sMAPE = numeric(),
   RMSE = numeric(),
@@ -468,70 +676,97 @@ resultadosSVM <- tibble(
   TipoDia = character()
 )
 
-# foreach(hp = h, .packages = librerias) %dopar% {
+foreach(hp = h, .packages = librerias) %dopar% {
 slices <- createTimeSlices(ts1Lab20$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
 
 
-
-for (i in 1:length(slices)) {
-  train_index <- slices[[i]]$train
-  test_index <- slices[[i]]$test
-  
-  trainSet <- ts1Lab20[train_index, ] %>% na.omit()
-  testSet <- ts1Lab20[test_index, ] %>% na.omit()
-  
-  
-  # Create a custom train control with time series cross-validation
-  custom_control <- trainControl(
-    method = "timeslice", 
-    initialWindow = i, 
-    horizon = 1, 
-    fixedWindow = F,
-    summaryFunction = defaultSummary,
-    returnResamp = "all"
-  )
-  
-  # Train the SVM model with hyperparameter tuning using train function
-  
-  # Como train no puede funcionar con fechas, hacemos una diferencia entre 
-  # la fecha de la observacion y una fecha base que definimos
+for (i in 1:nrow(h)){
 
   
+  kernel <- h$kernel[i]
+  cost <- h$cost[i]
+  gamma <- h$gamma[i]
+
+  for (j in 1:lengths(slices)) {
+    
+    train_index <- slices$train[[j]]
+    test_index <- slices$test[[j]]
+    
+    trainSet <- ts1Lab20[train_index, ] %>% na.omit()
+    testSet <- ts1Lab20[test_index, ] %>% na.omit()
+    
+    model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp1$kernel,
+                        cost = hp1$cost, gamma = hp1$gamma, type = "eps-regression")
+    fit <- predict(model, h = 1)
+    
+    smape = smape(testSet$kWh, fit)
+    rmse = rmse(testSet$kWh, fit)
+
+
+    
+    
+    resultadosSVM <- resultadosSVM %>% 
+      add_row(
+        # MASE = test_metrics["MASE"],
+        sMAPE = smape,
+        RMSE = rmse,
+        kernel = h[i, 1],  # Ajusta el índice de la columna según corresponda
+        cost = h[i, 2],  # Ajusta el índice de la columna según corresponda
+        gamma = h[i, 3],   # Ajusta el índice de la columna según corresponda
+        TipoDia = "Laborable"
+       )
   
-  
-  svm_model <- caret::train(
-    kWh ~ timestamp,
-    data = trainSet,
-    method = "svm", 
-    tuneGrid = h,
-    trControl = custom_control)
-  
-  test_predictions <- predict(svm_model, newdata = testSet)
-  
-  # Calcular las métricas de evaluación con el conjunto de prueba
-  test_metrics <- caret::postResample(test_predictions, obs = test$y)
-  
-  resultados_tibble <- resultados_tibble %>% 
-    add_row(
-      MASE = test_metrics["MASE"],
-      sMAPE = test_metrics["sMAPE"],
-      RMSE = test_metrics["RMSE"],
-      kernel = h[, 1],  # Ajusta el índice de la columna según corresponda
-      cost = h[, 2],  # Ajusta el índice de la columna según corresponda
-      gamma = h[, 3],   # Ajusta el índice de la columna según corresponda
-      TipoDia = "Laborable"
-     )
-  
-  
+    }
+  }
 }
 
+hp1 <- h[1, ]
+
+
+train_index <- slices$train[[1]]
+test_index <- slices$test[[1]]
+
+trainSetb <- ts1Lab20[train_index, ] %>% na.omit()
+testSetb <- ts1Lab20[test_index, ] %>% na.omit()
   
-model <- svm(kWh ~ timestamp, data = trainSet20, kernel = hp1$kernel, cost = hp1$cost, gamma = hp1$gamma)
+model <- e1071::svm(kWh ~ timestamp, data = trainSetb, kernel = hp1$kernel,
+                    cost = hp1$cost, gamma = hp1$gamma, type = "eps-regression")
 fit <- predict(model, h = 1)
 
 
-crtl <- caret::trainControl(method = "cv", savePredictions = T)
-model <- caret::train(kWh ~ timestamp, data = trainSet20, method = "svmLinear", trControl = crtl)
+
+obj <- tune(svm, kWh ~ timestamp + tipoDia, data = trainSetb, gamma = gamma_values, cost = cost_values,
+            tunecontrol = tune.)
+
+
+custom_control <- trainControl(
+  method = "timeslice", 
+  initialWindow = 5,  # Especifica la longitud de la ventana de entrenamiento inicial
+  horizon = 1,         # Especifica la longitud de la ventana de prueba (1 para una observación)
+  fixedWindow = TRUE,  # Utiliza una ventana fija
+  summaryFunction = defaultSummary
+)
+
+
+
+# Acceder al primer conjunto de entrenamiento
+train_data <- slices$train[[1]]
+
+# Calcular la longitud del conjunto de entrenamiento
+train_length <- length(train_data)
+
+# Luego, puedes usar train_length en tune.svm
+params <- tune.svm(kWh ~ timestamp, data = train_data, gamma = gamma_values, cost = cost_values,
+                   tunecontrol = tune.control(sampling = "fix", fix = train_length))
+
+
+params <- tune.svm(kWh ~ timestamp, data = slices$train[1], gamma = gamma_values,
+                   cost = cost_values, tunecontrol = tune.control(sampling = "fix",
+                                                                  fix = length(slices$train[[1]])))
+
+
+crtl <- caret::trainControl(method = "timeslice", savePredictions = T, )
+model <- caret::train(kWh ~ timestamp, data = trainSet20, method = "svmLinear2", trControl = custom_control)
 
 
 caret::train
