@@ -197,8 +197,8 @@ boxplot(divididoMAPE,
 
 # BOXPLOT SMAPE POR MODELOS
 
-
-filtradoSMAPE <- resultados %>% filter(sMAPE < 0.845 & !is.na(sMAPE)) 
+filtradoSMAPE <- resultados %>%
+  filter(!is.na(sMAPE)) %>% filter(sMAPE < quantile(resultados$sMAPE, 0.75, na.rm = T))
 
 
 # Dividir los datos en una lista de data frames por Modelo

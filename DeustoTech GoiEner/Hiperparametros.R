@@ -559,7 +559,7 @@ foreach(csv_file = csv_files,
         .packages = librerias, .combine = 'c') %dopar% tunearSVM(csv_file)
 
 
-svm_dataset <- fread("ResultadosSVM_h.csv")
+svm_dataset <- fread("SVM_finde.csv")
 svm_datasetFinde <- svm_dataset %>% filter(TipoDia == "Finde")
 svm_datasetLab <- svm_dataset %>% filter(TipoDia == "Laborable")
 
@@ -581,11 +581,6 @@ ggplot(svm_datasetFinde, aes(x = svm_datasetFinde$cost, y = svm_datasetFinde$gam
   ggtitle("Heart Scale Plot for SVM")# Supongamos que tienes un data frame 'datos' que contiene los datos con las columnas 'gamma', 'cost' y 'rmse'
 
 # Crea el gráfico utilizando ggplot2
-ggplot(svm_datasetLab, aes(x = cost, y = gamma, color = rmse)) +
-  geom_point() +  # Puntos de dispersión
-  scale_color_gradient(low = "green", high = "red") +  # Escala de colores de verde a rojo
-  labs(x = "log10(gamma)", y = "Cost", color = "RMSE") +  # Etiquetas de ejes y leyenda de colores
-  theme_minimal()  # Estilo del tema del gráfico
 
 
 
