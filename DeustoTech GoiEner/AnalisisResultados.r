@@ -25,6 +25,7 @@ csvSVM <- grep("resultadosSVM.csv", archivos, value = TRUE)
 csvMed <- grep("resultadosMedia2.csv", archivos, value = TRUE)
 csvNav <- grep("resultadosNaiveDia2.csv", archivos, value = TRUE)
 csvSnav <- grep("resultadosSnaive2.csv", archivos, value = TRUE)
+csvSVM2 <- grep("ResultadosSVM_h.csv", archivos, value = TRUE)
 
 
 
@@ -33,7 +34,7 @@ svm <- fread(csvSVM)
 media <- fread(csvMed)
 naive <- fread(csvNav)
 snaive <- fread(csvSnav)
-svm_h <- fread("ResultadosSVM_h.csv")
+svm_h <- fread(csvSVM2)
 
 media <- media %>% na.omit() %>% filter(
   is.finite(MAE),
@@ -74,6 +75,11 @@ svm <- svm %>% na.omit() %>% filter(
   is.finite(RMSE),
   is.finite(MASE),
 )
+svm_h <- svm_h %>% filter(
+  is.finite(sMAPE),
+  is.finite(RMSE),
+  # is.finite(MASE),
+)
 
 
 
@@ -102,7 +108,7 @@ resultados <- resultados %>%
 
 # Filtra las filas con el tipo de error deseado y elimina NA
 filtradoRMSE <- resultados %>%
-  filter(!is.na({{ RMSE }})) %>% filter(RMSE < 4.056e-01)
+  filter(!is.na({{ RMSE }})) %>% filter(RMSE < quantile(resultados$RMSE, 0.75))
 
 
 # Dividir los datos en una lista de data frames por Modelo
