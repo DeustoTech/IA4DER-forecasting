@@ -33,6 +33,7 @@ svm <- fread(csvSVM)
 media <- fread(csvMed)
 naive <- fread(csvNav)
 snaive <- fread(csvSnav)
+svm_h <- fread("ResultadosSVM_h.csv")
 
 media <- media %>% na.omit() %>% filter(
   is.finite(MAE),
@@ -73,11 +74,14 @@ svm <- svm %>% na.omit() %>% filter(
   is.finite(RMSE),
   is.finite(MASE),
 )
+
+
+
 options(digits = 4)
 
 # TIBBLE AGRUPADA POR MODELOS Y HORAS. 24 FILAS (UNA HORA) POR CADA MODELO
 
-resultados <- bind_rows(resultados, svm, media, naive, snaive)
+resultados <- bind_rows(resultados, svm_h, media, naive, snaive)
 
 
 # SOLO SI QUEREMOS AGRUPAR POR MODELO 
@@ -98,7 +102,7 @@ resultados <- resultados %>%
 
 # Filtra las filas con el tipo de error deseado y elimina NA
 filtradoRMSE <- resultados %>%
-  filter(!is.na({{ RMSE }})) %>% filter(RMSE < 0.48)
+  filter(!is.na({{ RMSE }})) %>% filter(RMSE < 4.056e-01)
 
 
 # Dividir los datos en una lista de data frames por Modelo
