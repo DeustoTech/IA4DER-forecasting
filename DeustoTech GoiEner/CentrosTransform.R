@@ -19,7 +19,7 @@ set.seed(123) # Salen unos 200 transformadores y el resto lineas
 # Número de centros a crear. 
 num_out <- 5000
 
-# Número de clientes por línea (entre 20 y 50) 
+# Número de clientes por línea (entre 20 y 50)
 num_clients_per_line <- sample(20:50, num_out, replace = TRUE)
 
 # Número de CUPS por centro de transformación (entre 100 y 1000)
