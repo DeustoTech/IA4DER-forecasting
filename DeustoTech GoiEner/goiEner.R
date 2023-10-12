@@ -22,7 +22,7 @@ unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 # Lista de archivos CSV en la carpeta extraída
 csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
 
-resultadosSVM <- tibble(
+resultadosModelos <- tibble(
   Hora = numeric(),
   TipoDia = character(),
   Predicted = numeric(),
@@ -34,17 +34,21 @@ resultadosSVM <- tibble(
 
 COMPLETE <- 0.10
 horas <- 0:23
+dias_semana <- c("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 
 mediaF <- function(x, h) {
   prediccion <- predict(mean(x), h = h)
   return(prediccion)
 }
 
-ultimoValorF <- function(x, h) {
-  prediccion <- predict(tail(x, 1), h = h)
-  return(prediccion)
+
+naiveF <- function(x, h) {
+  prediccion <- predict(naive(x, h = 1)$mean, h = h)
 }
 
+snaiveF <- function(x, h) {
+  prediccion <- predict(snaive(x, h = 1)$mean, h = h)
+}
 
 #funcion grande con todos los modelos
 predict_models <- function(csv_file) {
@@ -59,26 +63,119 @@ predict_models <- function(csv_file) {
   LENGTH  <- length(csv_actual$kWh)
   ZEROS   <- sum(csv_actual$kWh==0)/LENGTH
   IMPUTED <- sum(csv_actual$imputed == 1)/LENGTH
-
-  propTrain <- 0.75
-  indexTrain <- floor(LENGTH * propTrain)
-  trainSet <- a[1:indexTrain, ]
-  testSet <- a[(indexTrain + 1):LENGTH, ]
   
   
   if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
     
     foreach(hora = horas, .packages = librerias) %dopar% {
       
-      train_hora <- trainSet[hour(trainSet$timestamp) == hora,]
-      test_hora <- testSet[hour(testSet$timestamp) == hora,]
+      datos_hora <- a[hour(a$timestamp) == hora,]
+      datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
+      datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
       
-      mean <- tsCV(train_hora$kWh , mediaF , h = 1)
-      naive <- tsCV(train_hora$kWh , ultimoValorF , h = 1)
-      #seasonal naive no se como hacerlo :)
+      #MEDIA L
+      errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5) %>% na.omit()
+      actual <- datosLab$kWh[1: length(errors)]
+      predicted <- actual + errors
       
+      smape <- smape(actual, predicted)
+      rmse <- rmse(actual, predicted)
+      mase <- mase(actual, predicted)
       
-     
+      resultadosModelos <- resultadosModelos %>% add_row(
+        Hora = hora,
+        TipoDia = "Laborable",
+        Predicted = predicted,
+        sMAPE = smape,
+        RMSE = rmse,
+        MASE = mase,
+        Modelo = "Media"
+      ) 
+      
+      #media F
+      errors <- tsCV(datosFinde$kWh, mediaF, h = 1, window = 3) %>% na.omit()
+      actual <- datosFinde$kWh[1: length(errors)]
+      predicted <- actual + errors
+      
+      smape <- smape(actual, predicted)
+      rmse <- rmse(actual, predicted)
+      mase <- mase(actual, predicted)
+      
+      resultadosModelos <- resultadosModelos %>% add_row(
+        Hora = hora,
+        TipoDia = "Finde",
+        Predicted = predicted,
+        sMAPE = smape,
+        RMSE = rmse,
+        MASE = mase,
+        Modelo = "Media"
+      ) 
+      
+      #NAIVE L
+      errors <- tsCV(datosLab$kWh, naiveF, h = 1, window = 5) %>% na.omit()
+      actual <- datosLab$kWh[1: length(errors)]
+      predicted <- actual + errors
+      
+      smape <- smape(actual, predicted)
+      rmse <- rmse(actual, predicted)
+      mase <- mase(actual, predicted)
+      
+      resultadosModelos <- resultadosModelos %>% add_row(
+        Hora = hora,
+        TipoDia = "Laborable",
+        Predicted = predicted,
+        sMAPE = smape,
+        RMSE = rmse,
+        MASE = mase,
+        Modelo = "Naive"
+      ) 
+      
+      #NAIVE F
+      errors <- tsCV(datosFinde$kWh, naiveF, h = 1, window = 3) %>% na.omit()
+      actual <- datosFinde$kWh[1: length(errors)]
+      predicted <- actual + errors
+      
+      smape <- smape(actual, predicted)
+      rmse <- rmse(actual, predicted)
+      mase <- mase(actual, predicted)
+      
+      resultadosModelos <- resultadosModelos %>% add_row(
+        Hora = hora,
+        TipoDia = "Finde",
+        Predicted = predicted,
+        sMAPE = smape,
+        RMSE = rmse,
+        MASE = mase,
+        Modelo = "Naive"
+      ) 
+      
+      #SNAIVE L
+      foreach(dia = dias_semana, .packages = librerias) %dopar% {
+        
+        dia_semana <- datos_hora[weekdays(datos_hora$timestamp) == dia, ]
+        
+        errors <- tsCV(dia_semana$kWh, snaiveF, h = 1, window = 5) %>% na.omit()
+        actual <- dia_semana$kWh[1: length(errors)]
+        predicted <- actual + errors
+        
+        smape <- smape(actual, predicted)
+        rmse <- rmse(actual, predicted)
+        mase <- mase(actual, predicted)
+        
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = dia,
+          Predicted = predicted,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          Modelo = "sNaive"
+        ) 
+        
+      }
+      
+      #ARIMA L
+      
     }
     
   }
@@ -92,6 +189,16 @@ foreach(csv_file = csv_files,
 
 
 
+#PARA HACER PRUEBAS
+resultadosModelos <- tibble(
+  Hora = numeric(),
+  TipoDia = character(),
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric(),
+  MASE = numeric(),
+  Modelo = character()
+)
 
 
 prueba <- fread(csv_files[1])
@@ -105,23 +212,15 @@ IMPUTED <- sum(prueba$imputed == 1)/LENGTH
 
 prueba <- prueba %>% select(- imputed)
 
-propPrueba <- 0.75
-indexPrueba <- floor(LENGTH * propPrueba)
-trainPrueba <- prueba[1:indexPrueba, ]
-testPrueba <- prueba[(indexPrueba + 1):LENGTH, ]
 
 if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
   
-  foreach(hora = horas, .packages = librerias) %dopar% {
-    
-    datos_hora <- prueba[hour(prueba$timestamp) == hora, ] 
-    datos_naive <- datos_hora %>% as.data.frame() %>% select(-timestamp)
-    
-    mean <- as.numeric(mean(datos_hora$kWh))
-    naive <- as.numeric(naive(datos_naive$kWh, h = 1))
-    
-    datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
-    datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
-  }
+  prueba_hora <- prueba[hour(prueba$timestamp) == 20,]
   
+  datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
+  datosFindeP <- prueba_hora %>% filter(TipoDia == "Finde") %>% unique()
+
+ 
+ 
 }
+
