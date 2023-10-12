@@ -14,6 +14,7 @@ tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 
 
+
 # Lista de archivos CSV en la carpeta extraída
 
 archivos <- list.files(tempdir, pattern = ".csv$", recursive = TRUE, full.names = TRUE)
@@ -91,7 +92,7 @@ resultados <- bind_rows(resultados, svm_h, media, naive, snaive)
 
 
 # SOLO SI QUEREMOS AGRUPAR POR MODELO 
-resultados <- resultados %>%
+resultadosGrouped <- resultados %>%
   group_by(Modelo) %>%
   summarise(
     Prediccion = mean(Predicted, na.rm = T),
