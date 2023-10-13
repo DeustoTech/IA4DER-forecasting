@@ -442,6 +442,17 @@ IMPUTED <- sum(prueba$imputed == 1)/LENGTH
 prueba <- prueba %>% select(- imputed)
 
 
+kernel_valuesP <- c("linear", "radial")
+cost_valuesP <- seq(0.01, 5, length.out = 2) 
+gamma_valuesP <- seq(0.01,5, length.out = 2)  
+
+# Crear todas las combinaciones de hiperparámetros
+svmHP_P <- expand.grid(
+  kernel = kernel_valuesP,
+  cost = cost_valuesP,
+  gamma = gamma_valuesP
+)
+
 if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
   
   prueba_hora <- prueba[hour(prueba$timestamp) == 20,]
@@ -449,7 +460,37 @@ if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
   datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
   datosFindeP <- prueba_hora %>% filter(TipoDia == "Finde") %>% unique()
 
- 
- 
+  slicesLab <- createTimeSlices(prueba_hora$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
+  slicesFinde <- createTimeSlices(prueba_hora$timestamp, initialWindow = 3, horizon = 1, skip = 0, fixedWindow = F)
+  
+  for (j in 1:length(slicesLab$train)) {
+    
+    train_index <- slicesLab$train[[j]]
+    test_index <- slicesLab$test[[j]]
+    
+    trainSet <- datosLabP[train_index, ] %>% na.omit()
+    testSet <- datosLabP[test_index, ] %>% na.omit()
+    
+    svmGrid <- expand.grid(C = c(0.1, 1, 10), gamma = c(0.1, 1, 10))
+    svm_params <- e1071::tune.svm(kWh ~ timestamp, data = trainSet, kernel = "radial", 
+                           tuneGrid = svmHP_P)
+  
+    svm_params$best.parameters
+    
+   
+    
+    
+      resultadosModelos <<- resultadosModelos %>% 
+      add_row(
+        Hora = hora,
+        TipoDia = "Laborable",
+        Predicted = fit,
+        sMAPE = smape,
+        RMSE = rmse,
+        MASE = NA,
+        Modelo = "SVM"
+      )
+    write.csv(resultadosModelos, file = fileIteracion, append = T, col.names = F)
+  }
 }
 
