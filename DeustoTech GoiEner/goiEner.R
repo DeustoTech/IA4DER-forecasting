@@ -443,8 +443,8 @@ prueba <- prueba %>% select(- imputed)
 
 
 kernel_valuesP <- c("linear", "radial")
-cost_valuesP <- seq(0.01, 5, length.out = 2) 
-gamma_valuesP <- seq(0.01,5, length.out = 2)  
+cost_valuesP <- seq(0.01, 20, length.out = 5) 
+gamma_valuesP <- seq(0.01,20, length.out = 5)  
 
 # Crear todas las combinaciones de hiperparámetros
 svmHP_P <- expand.grid(
@@ -460,6 +460,16 @@ if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
   datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
   datosFindeP <- prueba_hora %>% filter(TipoDia == "Finde") %>% unique()
 
+  tuned_model <- tune.svm(kWh ~ timestamp, data = datosLabP, kernel = "radial", cost = svmHP_P$cost, gamma = svmHP_P$gamma)
+  
+  cost <- tuned_model$best.parameters$cost
+  gamma <- tuned_model$best.parameters$gamma
+  
+  model <- svm(kWh ~ timestamp, data = datosLabP, kernel = "radial", cost = cost, gamma = gamma, epsilon = 0.1)
+
+  ctrl <- trainControl(method = "cv", number = 5)  # 5-fold cross-validation
+  cv_model <- train(model, data = datosLabP, method = "svm", trControl = ctrl)
+  
   slicesLab <- createTimeSlices(prueba_hora$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
   slicesFinde <- createTimeSlices(prueba_hora$timestamp, initialWindow = 3, horizon = 1, skip = 0, fixedWindow = F)
   
