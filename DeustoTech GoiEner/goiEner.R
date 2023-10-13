@@ -70,15 +70,13 @@ NEURON_RANGE <- c(1:4, seq(5, 30, by = 5))
 
 # Constantes de SVM
 
-kernel_values <- c("linear", "radial")
-cost_values <- seq(0.01, 100, length.out = 20) 
-gamma_values <- seq(0.01, 100, length.out = 20)  
+set.seed(123)
+
 
 # Crear todas las combinaciones de hiperparámetros
-svmHP <- expand.grid(
-  kernel = kernel_values,
-  cost = cost_values,
-  gamma = gamma_values
+svmHP <- list(
+  cost = 10^(-4:4),
+  gamma = 10^(-3:2)
 )
 
 
@@ -364,6 +362,17 @@ predict_models <- function(csv_file) {
       
       # LABORABLE
       
+      # antes de hacer CV, sacamos los hiperparámetros para toda la serie temporal
+      
+      tunned_model <- tune.svm(kWh ~ timestamp, data = datosLab, kernel = "linear",
+                               gamma = svmHP$gamma, cost = svmHP$gamma)
+      
+      bestGamma <- tunned_model$best.parameters$gamma
+      bestCost <- tunned_model$best.parameters$cost
+
+
+      # Ahora, usando estos parámetros, hacemos CV
+            
       for (j in 1:length(slicesLab$train)) {
         
         train_index <- slicesLab$train[[j]]
@@ -372,38 +381,67 @@ predict_models <- function(csv_file) {
         trainSet <- datosLab[train_index, ] %>% na.omit()
         testSet <- datosLab[test_index, ] %>% na.omit()
         
-        tunned_model <- tune.svm(kWh ~ timestamp, data = trainSet, gamma = svmHP$gamma,
-                                 cost = svmHP$cost)
-        
-        bestCost <- tunned_model$best.model$cost
-        
-        # PROBLEMA, TUNE SVM NO SACA LA MEJOR GAMMA 
-        
-        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = hp$kernel,
-                            cost = hp$cost, gamma = hp$gamma, type = "eps-regression")
+        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = "linear",
+                            cost = bestCost, gamma = bestGamma, type = "eps-regression")
         fit <- predict(model, h = 1)
         
         smape = smape(testSet$kWh, fit)
         rmse = rmse(testSet$kWh, fit)
+        if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
+      
         
-        
-        resultadosSVM <<- resultadosSVM %>% 
-          add_row(
-            Hora = hora,
-            # MASE = test_metrics["MASE"],
-            sMAPE = smape,
-            RMSE = rmse,
-            kernel = hp$kernel, # Ajusta el índice de la columna según corresponda
-            cost = hp$cost,  # Ajusta el índice de la columna según corresponda
-            gamma = hp$gamma,   # Ajusta el índice de la columna según corresponda
-            TipoDia = "Laborable"
-          )
-        write.csv(resultadosSVM, file = fileIteracion, append = T, col.names = F)
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Laborable",
+          Predicted = fit,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          Modelo = "SVM"
+        ) 
+        write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
       }
       
+      # LO MISMO PERO CON FINDE
       
+      tunned_model <- tune.svm(kWh ~ timestamp, data = datosFinde, kernel = "linear",
+                               gamma = svmHP$gamma, cost = svmHP$gamma)
       
+      bestGamma <- tunned_model$best.parameters$gamma
+      bestCost <- tunned_model$best.parameters$cost
+
+
+      # Ahora, usando estos parámetros, hacemos CV
+            
+      for (j in 1:length(slicesFinde$train)) {
+        
+        train_index <- slicesFinde$train[[j]]
+        test_index <- slicesFinde$test[[j]]
+        
+        trainSet <- datosFinde[train_index, ] %>% na.omit()
+        testSet <- datosFinde[test_index, ] %>% na.omit()
+        
+        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = "linear",
+                            cost = bestCost, gamma = bestGamma, type = "eps-regression")
+        fit <- predict(model, h = 1)
+        
+        smape = smape(testSet$kWh, fit)
+        rmse = rmse(testSet$kWh, fit)
+        if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
       
+        
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Finde",
+          Predicted = fit,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          Modelo = "SVM"
+        ) 
+        write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
+      }
+  
       
     }
     
@@ -446,12 +484,38 @@ kernel_valuesP <- c("linear", "radial")
 cost_valuesP <- seq(0.01, 20, length.out = 5) 
 gamma_valuesP <- seq(0.01,20, length.out = 5)  
 
+
+
+
+
+
+
+
+
 # Crear todas las combinaciones de hiperparámetros
 svmHP_P <- expand.grid(
   kernel = kernel_valuesP,
   cost = cost_valuesP,
   gamma = gamma_valuesP
 )
+
+svmHP_P <- list(
+  cost = 10^(-3:3),
+  gamma = 10^(-2:2),
+  kernel = c("radial", "linear")
+)
+
+
+prueba_hora <- prueba[hour(prueba$timestamp) == 20,]
+
+datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
+datosFindeP <- prueba_hora %>% filter(TipoDia == "Finde") %>% unique()
+
+tuned_model <- tune.svm(kWh ~ timestamp, data = datosLabP[1:130], kernel = "linear",
+                        gamma = svmHP_P$gamma, cost = svmHP_P$cost)
+
+
+
 
 if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
   
@@ -460,7 +524,7 @@ if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
   datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
   datosFindeP <- prueba_hora %>% filter(TipoDia == "Finde") %>% unique()
 
-  tuned_model <- tune.svm(kWh ~ timestamp, data = datosLabP, kernel = "radial", cost = svmHP_P$cost, gamma = svmHP_P$gamma)
+  tuned_model <- tune.svm(kWh ~ timestamp, data = datosLabP[1:50], kernel = "radial", cost = svmHP_P$cost, gamma = svmHP_P$gamma)
   
   cost <- tuned_model$best.parameters$cost
   gamma <- tuned_model$best.parameters$gamma
@@ -487,7 +551,7 @@ if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
   
     svm_params$best.parameters
     
-   
+    model <- svm(kWh ~ timestamp, data = trainSet, )
     
     
       resultadosModelos <<- resultadosModelos %>% 
