@@ -15,12 +15,16 @@ foreach(lib = librerias) %do% {
 
 
 #descropmir carpeta de 200 csv
-path <- "dataset_red.zip" # path del zip
+path <- "Transformers.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 
 # Lista de archivos CSV en la carpeta extraída
 csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
+
+ALL <- csv_files
+CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
+L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
 resultadosModelos <- tibble(
   Hora = numeric(),
@@ -483,14 +487,6 @@ prueba <- prueba %>% select(- imputed)
 kernel_valuesP <- c("linear", "radial")
 cost_valuesP <- seq(0.01, 20, length.out = 5) 
 gamma_valuesP <- seq(0.01,20, length.out = 5)  
-
-
-
-
-
-
-
-
 
 # Crear todas las combinaciones de hiperparámetros
 svmHP_P <- expand.grid(
