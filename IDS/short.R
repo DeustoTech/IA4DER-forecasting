@@ -33,11 +33,10 @@ FILES  <- union(sample(CT,SAMPLE),sample(LINE,SAMPLE))
 FILES  <- union(sample(CUPS,SAMPLE),FILES)
 
 MODELS <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
-KPI    <- c("model","length","zeros","imputed","mean","sd","min","q1","q2","q3","max")
 LO     <- 2*length(MODELS)
 
-dir.create("results/forecast",showWarnings = F, recursive = T)
-dir.create("results/test",    showWarnings = F, recursive = T)
+dir.create("stlf/forecast",showWarnings = F, recursive = T)
+dir.create("stlf/test",    showWarnings = F, recursive = T)
 
 B <- foreach(NAME = FILES,
              .options.future = list(seed = TRUE),
@@ -96,7 +95,7 @@ B <- foreach(NAME = FILES,
     f["svm"]   <- try(as.numeric(predict(SVM$best.model,PREDICT)),TRUE)
     f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
   
-    write.csv(f, file=paste("results/forecast/forecast-",NAME,".csv",sep=""),row.names=F)
+    write.csv(f, file=paste("stlf/forecast/forecast-",NAME,".csv",sep=""),row.names=F)
 
     aux  <- real != 0
     for(j in MODELS)
@@ -106,25 +105,25 @@ B <- foreach(NAME = FILES,
     }
     
     rownames(TKPI) <- c("mape","rmse")
-    write.csv(TKPI,file=paste("results/test/kpi-test-",NAME,".csv",sep=""))
+    write.csv(TKPI,file=paste("stlf/test/kpi-test-",NAME,".csv",sep=""))
   } ### if that test if the time series has data
 }   ### foreach
 
-ALL    <- list.files(path="results/test/",pattern="*.csv")
-CT     <- list.files(path="results/test/",pattern="*-CT.csv")
-LINE   <- list.files(path="results/test/",pattern="*-LINE.csv")
+ALL    <- list.files(path="stlf/test/",pattern="*.csv")
+CT     <- list.files(path="stlf/test/",pattern="*-CT.csv")
+LINE   <- list.files(path="stlf/test/",pattern="*-LINE.csv")
 CUPS   <- setdiff(ALL,union(CT,LINE))
 
 RCT <- foreach(NAME = CT,.combine=rbind) %dofuture% {
-  fread(paste("results/test/",NAME,sep=""))
+  fread(paste("stlf/test/",NAME,sep=""))
 }
 
 RLI <- foreach(NAME = LINE,.combine=rbind) %dofuture% {
-  fread(paste("results/test/",NAME,sep=""))
+  fread(paste("stlf/test/",NAME,sep=""))
 }
 
 RCU <- foreach(NAME = CUPS,.combine=rbind) %dofuture% {
-  fread(paste("results/test/",NAME,sep=""))
+  fread(paste("stlf/test/",NAME,sep=""))
 }
 
 EVAL <- function(R,K,TYPE)
