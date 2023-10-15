@@ -475,7 +475,7 @@ predict_models <- function(csv_file) {
 
 
 #ejecutar funcion para todos los csv
-foreach(csv_file = N,
+foreach(csv_file = N, 
         .packages = librerias) %dopar% predict_models(csv_file)
 
 
