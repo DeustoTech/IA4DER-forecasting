@@ -9,6 +9,7 @@ library(matrixStats)
 library(PMCMRplus)
 library(rcompanion)
 library(multcompView)
+library(boot)
 
 plan(multisession)
 
@@ -31,7 +32,7 @@ LINE   <- list.files(path="post_cooked/",pattern="*-LINE.csv")
 FILES  <- union(sample(CT,SAMPLE),sample(LINE,SAMPLE))
 FILES  <- union(sample(CUPS,SAMPLE),FILES)
 
-MODELS <- c("mean","rw","snaive","simple","lr","ann","svm","arima","ses","ens")
+MODELS <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 KPI    <- c("model","length","zeros","imputed","mean","sd","min","q1","q2","q3","max")
 LO     <- 2*length(MODELS)
 
@@ -70,7 +71,7 @@ B <- foreach(NAME = FILES,
   {
     f["mean"]  <- as.numeric(rep(mean(r),24*F_DAYS))
     f["rw"]    <- rep(as.numeric(window(r,start=index(r)[length(r)-23])),F_DAYS)
-    f["snaive"]<- as.numeric(window(r,   start=index(r)[length(r)-24*6-23], end=index(r)[length(r)-24*( 6-F_DAYS-1)]))
+    f["naive"]<- as.numeric(window(r,   start=index(r)[length(r)-24*6-23], end=index(r)[length(r)-24*( 6-F_DAYS-1)]))
     f["simple"]<- rowMeans(data.frame(
                   a=(as.numeric(window(r,start=index(r)[length(r)-24*6 -23],end=index(r)[length(r)-24*( 6-F_DAYS-1)]))),
                   b=(as.numeric(window(r,start=index(r)[length(r)-24*13-23],end=index(r)[length(r)-24*(15-F_DAYS-1)]))),
@@ -110,40 +111,44 @@ B <- foreach(NAME = FILES,
 }   ### foreach
 
 ALL    <- list.files(path="results/test/",pattern="*.csv")
-OTHERS <- list.files(path="results/test/",pattern="-")
-
-CUPS   <- setdiff(ALL,OTHERS)
 CT     <- list.files(path="results/test/",pattern="*-CT.csv")
 LINE   <- list.files(path="results/test/",pattern="*-LINE.csv")
+CUPS   <- setdiff(ALL,union(CT,LINE))
 
 RCT <- foreach(NAME = CT,.combine=rbind) %dofuture% {
-  fread(paste("results/test/",NAME,sep=""),select=KPI)
+  fread(paste("results/test/",NAME,sep=""))
 }
 
 RLI <- foreach(NAME = LINE,.combine=rbind) %dofuture% {
-  fread(paste("results/test/",NAME,sep=""),select=KPI)
+  fread(paste("results/test/",NAME,sep=""))
 }
 
 RCU <- foreach(NAME = CUPS,.combine=rbind) %dofuture% {
-  fread(paste("results/test/",NAME,sep=""),select=KPI)
+  fread(paste("results/test/",NAME,sep=""))
 }
 
-EVAL <- function(R,NAME)
+EVAL <- function(R,K,TYPE)
 {
-  setDT(R)
-  R$model <- as.factor(R$model)
-  print(R[,as.list(summary(q2)), by = "model"])
-  write.csv(R[,as.list(summary(q2)), by = "model"],row.names=F,file=paste("results",NAME,".csv",sep=""))
-  boxplot(q2~model,data=R,outline=F,ylab="MAPE (%)")
-  print(kruskalTest(q2~model,data=R))
-  multiple <- kwAllPairsNemenyiTest(q2~model,data=R)
-  print(multcompLetters(fullPTable(multiple$p.value)))
-  plot(multiple)
+  RR <- na.omit(as.matrix(R[R$V1==K,..MODELS]))
+  rownames(RR) <- 1:nrow(RR)
+
+  write.csv(as.data.frame(apply(RR, 2, summary)),
+            file=paste("stlf-",TYPE,"-",K,".csv",sep=""))
+  BOOT <- boot(data=RR,statistic=function(data,i) colMedians(data[i,],na.rm=T),R=100)
+
+  pdf(file=paste("stlf-",TYPE,"-",K,".pdf",sep=""))
+    #boxplot(RR,outline=F,ylab="MAPE (%)")
+    print(friedman.test(RR))
+    multiple <- frdAllPairsNemenyiTest(RR)
+    print(multcompLetters(fullPTable(multiple$p.value)))
+    plot(multiple)
+    boxplot(BOOT$t,names=MODELS,ylab="Confidence Interval over the Median")
+  dev.off()
 }
 
-EVAL(RCT,"CT")
-EVAL(RLI,"LINE")
-EVAL(RCU,"CUPS")
+EVAL(RCT,"mape","CT")
+EVAL(RLI,"mape","LINE")
+EVAL(RCU,"mape","CUPS")
 
 #R <- fread("kpi.csv")
 # cat("cups","model","kpi","length","zeros","imputed","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
