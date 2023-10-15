@@ -22,7 +22,7 @@ FORECAST <- function(R,TT,KPI,N)
 
   f["mean"]  <- as.numeric(rep(mean(R),F_DAYS))
   f["rw"]    <- rep(as.numeric(window(R,start=index(R)[length(R)])),F_DAYS)
-  f["naive"] <- as.numeric(window(r,    start=index(R)[length(R)-F_DAYS+1]))
+  f["naive"] <- as.numeric(window(R,    start=index(R)[length(R)-F_DAYS+1]))
 
   TR        <- merge(R,lag(R,-1))
   PREDICT   <- data.frame(past=f["naive"][[1]])
