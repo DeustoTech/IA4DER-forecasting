@@ -18,16 +18,24 @@ foreach(lib = librerias) %do% {
 path <- "Transformers.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
+plan(multisession)
 
 
 folder <- "Transformers/"
-
 # Lista de archivos CSV en la carpeta extraída
 csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
 
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
+
+# Agregar el prefijo 'folder' a las rutas en N, CT y L
+N <- paste(folder, N, sep = "")
+CT <- paste(folder, CT, sep = "")
+L <- paste(folder, L, sep = "")
+
+
+
 
 resultadosModelos <- tibble(
   Hora = numeric(),
@@ -102,7 +110,7 @@ predict_models <- function(csv_file) {
   IMPUTED <- sum(csv_actual$imputed == 1)/LENGTH
   
   
-  RESULT_FILE <- "ResultadosTotales_N2.csv"
+  RESULT_FILE <- "ResultadosTotales_Clientes.csv"
   
   if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
     
@@ -458,7 +466,7 @@ predict_models <- function(csv_file) {
 }
 
 #ejecutar funcion para todos los csv
-foreach(csv_file = N2,
+foreach(csv_file = N,
         .packages = librerias) %dopar% predict_models(csv_file)
 
 
