@@ -19,11 +19,13 @@ path <- "Transformers.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 
+
+folder <- "Transformers/"
+
 # Lista de archivos CSV en la carpeta extraída
-csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
+csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
 
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
-N2 <- tail(N)
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
