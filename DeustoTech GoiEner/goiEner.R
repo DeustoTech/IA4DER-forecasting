@@ -23,6 +23,7 @@ unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 csv_files <- list.files(tempdir, pattern = ".csv$", recursive = T, full.names = F)
 
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
+N2 <- tail(N)
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
@@ -99,7 +100,7 @@ predict_models <- function(csv_file) {
   IMPUTED <- sum(csv_actual$imputed == 1)/LENGTH
   
   
-  RESULT_FILE <- "ResultadosTotales_L.csv"
+  RESULT_FILE <- "ResultadosTotales_N2.csv"
   
   if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
     
@@ -455,7 +456,7 @@ predict_models <- function(csv_file) {
 }
 
 #ejecutar funcion para todos los csv
-foreach(csv_file = L,
+foreach(csv_file = N2,
         .packages = librerias) %dopar% predict_models(csv_file)
 
 
