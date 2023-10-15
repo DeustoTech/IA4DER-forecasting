@@ -98,6 +98,8 @@ svmHP <- list(
 #funcion grande con todos los modelos
 predict_models <- function(csv_file) {
   
+  RESULT_FILE <- "ResultadosTotales_Clientes.csv"
+  
   csv_actual <- fread(csv_file)
   
   a <- csv_actual %>%
@@ -110,7 +112,6 @@ predict_models <- function(csv_file) {
   IMPUTED <- sum(csv_actual$imputed == 1)/LENGTH
   
   
-  RESULT_FILE <- "ResultadosTotales_Clientes.csv"
   
   if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
     
@@ -465,9 +466,19 @@ predict_models <- function(csv_file) {
   
 }
 
+
+# num_cores <- 4  # Ajusta según la cantidad de núcleos de tu CPU
+# 
+# # Configurar el clúster paralelo
+# cl <- makeCluster(num_cores)
+# registerDoParallel(cl)
+
+
 #ejecutar funcion para todos los csv
 foreach(csv_file = N,
         .packages = librerias) %dopar% predict_models(csv_file)
+
+
 
 
 
