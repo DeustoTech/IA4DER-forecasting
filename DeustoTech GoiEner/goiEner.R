@@ -100,9 +100,15 @@ svmHP <- list(
 #funcion grande con todos los modelos
 predict_models <- function(csv_file) {
   
-  RESULT_FILE <- "ResultadosTotales_Clientes.csv"
+  RESULT_FILE <- "ResultadosCT.csv"
   
   csv_actual <- fread(csv_file)
+  
+  if ("time" %in% colnames(csv_actual)) {
+    # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
+    colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
+  }
+  
   
   a <- csv_actual %>%
     mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
@@ -477,7 +483,7 @@ predict_models <- function(csv_file) {
 
 
 #ejecutar funcion para todos los csv
-foreach(csv_file = N, 
+foreach(csv_file = CT, 
         .packages = librerias) %dopar% predict_models(csv_file)
 
 
