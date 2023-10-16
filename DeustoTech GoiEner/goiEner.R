@@ -107,6 +107,7 @@ predict_models <- function(csv_file) {
   if ("time" %in% colnames(csv_actual)) {
     # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
     colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
+    csv_actual$imputed <- 0
   }
   
   
