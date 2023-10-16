@@ -25,6 +25,8 @@ folder <- "Transformers/"
 # Lista de archivos CSV en la carpeta extraída
 csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
 
+csv_files <- csv_files[201:length(csv_files)]
+
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
