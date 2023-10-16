@@ -335,8 +335,10 @@ predict_models <- function(csv_file) {
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       
-      # para que no pete mase
-      if (is.numeric(mase(actual, predicted))){  mase <- mase(actual, predicted)      }
+      # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
+      # lo dejamos en NA
+      # if (is.numeric(mase(actual, predicted))){  mase <- mase(actual, predicted)      }
+      
       
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -344,7 +346,7 @@ predict_models <- function(csv_file) {
         Predicted = predicted,
         sMAPE = smape,
         RMSE = rmse,
-        MASE = mase,
+        MASE = NA,
         Modelo = "NN"
       ) 
       
@@ -362,8 +364,9 @@ predict_models <- function(csv_file) {
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       
-      # para que no pete mase
-      if (is.numeric(mase(actual, predicted))){  mase <- mase(actual, predicted)      }
+      # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
+      # lo dejamos en NA
+      # if (is.numeric(mase(actual, predicted))){  mase <- mase(actual, predicted)      }
       
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -371,7 +374,7 @@ predict_models <- function(csv_file) {
         Predicted = predicted,
         sMAPE = smape,
         RMSE = rmse,
-        MASE = mase,
+        MASE = NA,
         Modelo = "NN"
       ) 
       
@@ -412,8 +415,8 @@ predict_models <- function(csv_file) {
         
         smape = smape(testSet$kWh, fit)
         rmse = rmse(testSet$kWh, fit)
-        if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
-      
+        # if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
+        
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -421,7 +424,7 @@ predict_models <- function(csv_file) {
           Predicted = fit,
           sMAPE = smape,
           RMSE = rmse,
-          MASE = mase,
+          MASE = NA,
           Modelo = "SVM"
         ) 
         write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
@@ -452,7 +455,7 @@ predict_models <- function(csv_file) {
         
         smape = smape(testSet$kWh, fit)
         rmse = rmse(testSet$kWh, fit)
-        if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
+        # if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
       
         
         resultadosModelos <- resultadosModelos %>% add_row(
@@ -461,7 +464,7 @@ predict_models <- function(csv_file) {
           Predicted = fit,
           sMAPE = smape,
           RMSE = rmse,
-          MASE = mase,
+          MASE = NA,
           Modelo = "SVM"
         ) 
         write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
