@@ -55,7 +55,7 @@ FORECAST <- function(R,TT,KPI,N)
 }
 
 TEST        <- TRUE
-SAMPLE      <- 500     ### number of elements to assess per each type
+SAMPLE      <- 2000    ### number of elements to assess per each type
 COMPLETE    <- 0.10    ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75    ### length of the training period
 F_DAYS      <- 7*4*3   ### number of days to forecast for MTLF
@@ -117,28 +117,20 @@ CT     <- list.files(path="mtlf/mape/",pattern="*-CT.csv")
 LINE   <- list.files(path="mtlf/mape/",pattern="*-LINE.csv")
 CUPS   <- setdiff(ALL,union(CT,LINE))
 
-RCT <- foreach(NAME = CT,.combine=rbind) %dofuture% {
-  fread(paste("mtlf/mape/",NAME,sep=""))
-}
-
-RLI <- foreach(NAME = LINE,.combine=rbind) %dofuture% {
-  fread(paste("mtlf/mape/",NAME,sep=""))
-}
-
-RCU <- foreach(NAME = CUPS,.combine=rbind) %dofuture% {
-  fread(paste("mtlf/mape/",NAME,sep=""))
-}
-
-EVAL <- function(R,TYPE)
+EVAL <- function(ALL,TYPE,KPI)
 {
+  R <- foreach(NAME = ALL,.combine=rbind) %dofuture% {
+    fread(paste("mtlf/mape/",NAME,sep=""))
+  }
+
   RR <- na.omit(as.matrix(R[,..MODELS]))
   rownames(RR) <- 1:nrow(RR)
 
   write.csv(as.data.frame(apply(RR, 2, summary)),
-            file=paste("mtlf-",TYPE,"-mape.csv",sep=""))
+            file=paste("mtlf-",TYPE,"-mape-",KPI,".csv",sep=""))
   BOOT <- boot(data=RR,statistic=function(data,i) colMedians(data[i,],na.rm=T),R=100)
 
-  pdf(file=paste("mtlf-",TYPE,"-mape.pdf",sep=""))
+  pdf(file=paste("mtlf-",TYPE,"-mape-",KPI,".pdf",sep=""))
     print(friedman.test(RR))
     multiple <- frdAllPairsNemenyiTest(RR)
     print(multcompLetters(fullPTable(multiple$p.value)))
@@ -147,6 +139,14 @@ EVAL <- function(R,TYPE)
   dev.off()
 }
 
-EVAL(RCT,"CT")
-EVAL(RLI,"LINE")
-EVAL(RCU,"CUPS")
+EVAL(  CT[grepl("*-max-*",CT)],  "CT",  "max")
+EVAL(LINE[grepl("*-max-*",LINE)],"LINE","max")
+EVAL(CUPS[grepl("*-max-*",CUPS)],"CUPS","max")
+
+EVAL(  CT[grepl("*-min-*",CT)],  "CT",  "min")
+EVAL(LINE[grepl("*-min-*",LINE)],"LINE","min")
+EVAL(CUPS[grepl("*-min-*",CUPS)],"CUPS","min")
+
+EVAL(  CT[grepl("*-sum-*",CT)],  "CT",  "sum")
+EVAL(LINE[grepl("*-sum-*",LINE)],"LINE","sum")
+EVAL(CUPS[grepl("*-sum-*",CUPS)],"CUPS","sum")
