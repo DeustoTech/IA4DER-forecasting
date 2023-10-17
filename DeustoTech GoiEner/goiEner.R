@@ -37,6 +37,7 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
+RESULT_FILE <- "ResultadosClientes.csv"
 
 
 resultadosModelos <- tibble(
@@ -48,6 +49,8 @@ resultadosModelos <- tibble(
   MASE = numeric(),
   Modelo = character()
 )
+
+# fwrite(resultadosModelos, file = RESULT_FILE, row.names = T) SOLO SI SE QUIERE HACER UNO NUEVO
 
 COMPLETE <- 0.10
 horas <- 0:23
@@ -99,8 +102,6 @@ svmHP <- list(
 
 #funcion grande con todos los modelos
 predict_models <- function(csv_file) {
-  
-  RESULT_FILE <- "ResultadosClientes.csv"
   
   csv_actual <- fread(csv_file)
   
@@ -206,13 +207,6 @@ predict_models <- function(csv_file) {
         Modelo = "Naive"
       )
 
-      if (!file.exists(RESULT_FILE)) {
-        # Si el archivo no existe, crea el archivo y agrega los nombres de las columnas
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = TRUE)
-      } else {
-        # Si el archivo ya existe, solo appendea los resultados
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      }
 
       #SNAIVE
       foreach(dia = dias_semana, .packages = librerias) %dopar% {
@@ -431,7 +425,7 @@ predict_models <- function(csv_file) {
           MASE = mase,
           Modelo = "SVM"
         ) 
-        write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       }
       
       # LO MISMO PERO CON FINDE
@@ -472,7 +466,7 @@ predict_models <- function(csv_file) {
           MASE = mase,
           Modelo = "SVM"
         ) 
-        write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       }
   
       
