@@ -91,15 +91,28 @@ resultados <- bind_rows(resultados, svm_h, media, naive, snaive)
 
 
 # SOLO SI QUEREMOS AGRUPAR POR MODELO 
-resultados <- resultados %>%
+resultadosGrouped <- resultados %>%
   group_by(Modelo) %>%
   summarise(
-    Prediccion = mean(Predicted, na.rm = T),
+    # Prediccion = mean(Predicted, na.rm = T),
     sMAPE= mean(sMAPE, na.rm = TRUE),
     RMSE = mean(RMSE, na.rm = TRUE),
     MASE = mean(MASE, na.rm = TRUE)
   ) %>%
   ungroup
+
+
+resultados <- fread("ResultadosClientes.csv")
+
+nObs <- min(table(resultados$Modelo), na.rm = T)
+
+set.seed(34234)
+
+
+
+resultados <- resultados %>%
+  group_by(Modelo) %>%
+  slice_head(n = nObs)
 
 
 # BOXPLOT RMSE ENTRE MODELOS
@@ -108,8 +121,8 @@ resultados <- resultados %>%
 
 # Filtra las filas con el tipo de error deseado y elimina NA
 filtradoRMSE <- resultados %>%
-  filter(!is.na({{ RMSE }})) %>% filter(RMSE < quantile(resultados$RMSE, 0.75))
-
+  filter(RMSE < quantile(resultados$RMSE, 0.75))
+# filter(!is.na({{ RMSE }})) %>% 
 
 # Dividir los datos en una lista de data frames por Modelo
 divididoRMSE <- split(filtradoRMSE$RMSE, filtradoRMSE$Modelo)
@@ -229,9 +242,14 @@ errMedios <- resultados %>%
   ungroup()
 
 
+
+
 # Grafico sMAPE
 
 colores_modelos <- c("cadetblue3", "#EE3B3B", "#00CD00", "#CD1076")  # Puedes agregar más colores si es necesario
+
+
+colores <- rainbow(nrow(errMedios))
 
 
 ggplot(data = errMedios, aes(x = Modelo, y = sMAPE, fill = Modelo)) +
@@ -242,7 +260,7 @@ ggplot(data = errMedios, aes(x = Modelo, y = sMAPE, fill = Modelo)) +
     x = "Modelo",
     y = "sMAPE Medio"
   ) +
-  scale_fill_manual(values = colores_modelos, 
+  scale_fill_manual(values = colores, 
                     name = "") +
   theme(legend.position = "top")
 
@@ -254,9 +272,9 @@ ggplot(data = errMedios, aes(x = Modelo, y = MASE, fill = Modelo)) +
   labs(
     title = "Comparación de MASE Medios",
     x = "Modelo",
-    y = "sMAPE Medio"
+    y = "MAPE Medio"
   ) +
-  scale_fill_manual(values = colores_modelos, 
+  scale_fill_manual(values = colores, 
                     name = "") +
   theme(legend.position = "top") 
 
@@ -271,9 +289,80 @@ ggplot(data = errMedios, aes(x = Modelo, y = RMSE, fill = Modelo)) +
     x = "Modelo",
     y = "RMSE Medio"
   ) +
-  scale_fill_manual(values = colores_modelos, 
+  scale_fill_manual(values = colores, 
                     name = "") +
   theme(legend.position = "top")
+
+# Mediana de errores
+
+
+errMediana <- resultados %>%
+  group_by(Modelo) %>%
+  summarize(RMSE = median(RMSE, na.rm = TRUE),
+            sMAPE = median(sMAPE, na.rm = T),
+            MASE = median(MASE, na.rm = T)) %>%
+  ungroup()
+
+
+
+colores <- rainbow(nrow(errMediana))
+
+#smape
+
+ggplot(data = errMediana, aes(x = Modelo, y = sMAPE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(x =Modelo, y = sMAPE, label = sprintf("%.4f", sMAPE)), vjust = -0.25) + 
+  labs(
+    title = "Mediana de sMAPE",
+    x = "Modelo",
+    y = "sMAPE"
+  ) +
+  scale_fill_manual(values = colores, 
+                    name = "") +
+  theme(legend.position = "top")
+
+# Grafico MASE
+
+ggplot(data = errMediana, aes(x = Modelo, y = MASE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(x =Modelo, y = MASE, label = sprintf("%.4f", MASE)), vjust = -0.25) + 
+  labs(
+    title = "Comparación de MASE Medios",
+    x = "Modelo",
+    y = "MAPE Medio"
+  ) +
+  scale_fill_manual(values = colores, 
+                    name = "") +
+  theme(legend.position = "top") 
+
+
+# Grafico RMSE
+
+ggplot(data = errMediana, aes(x = Modelo, y = RMSE, fill = Modelo)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = sprintf("%.4f", RMSE)), vjust = -0.5) + 
+  labs(
+    title = "Mediana del RMSE",
+    x = "Modelo",
+    y = "RMSE"
+  ) +
+  scale_fill_manual(values = colores, 
+                    name = "") +
+  theme(legend.position = "top")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Distribución de los errores
 
