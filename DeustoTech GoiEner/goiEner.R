@@ -37,7 +37,7 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "ResultadosClientes.csv"
+RESULT_FILE <- "ResultadosCT.csv"
 
 
 resultadosModelos <- tibble(
@@ -50,7 +50,7 @@ resultadosModelos <- tibble(
   Modelo = character()
 )
 
-# fwrite(resultadosModelos, file = RESULT_FILE, row.names = T) SOLO SI SE QUIERE HACER UNO NUEVO
+fwrite(resultadosModelos, file = RESULT_FILE, col.names = T)  # SOLO SI SE QUIERE HACER UNO NUEVO
 
 COMPLETE <- 0.10
 horas <- 0:23
@@ -486,7 +486,7 @@ predict_models <- function(csv_file) {
 
 
 #ejecutar funcion para todos los csv
-foreach(csv_file = N, 
+foreach(csv_file = CT, 
         .packages = librerias) %dopar% predict_models(csv_file)
 
 
