@@ -7,7 +7,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071') 
+               'quantmod', 'caret', 'e1071', 'nnet') 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -100,7 +100,7 @@ svmHP <- list(
 #funcion grande con todos los modelos
 predict_models <- function(csv_file) {
   
-  RESULT_FILE <- "ResultadosCT.csv"
+  RESULT_FILE <- "ResultadosClientes.csv"
   
   csv_actual <- fread(csv_file)
   
@@ -130,15 +130,15 @@ predict_models <- function(csv_file) {
       datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
       datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
       
-      #MEDIA L
+      # #MEDIA L
       errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Laborable",
@@ -147,17 +147,17 @@ predict_models <- function(csv_file) {
         RMSE = rmse,
         MASE = mase,
         Modelo = "Media"
-      ) 
-      
+      )
+
       #media F
       errors <- tsCV(datosFinde$kWh, mediaF, h = 1, window = 3) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Finde",
@@ -166,17 +166,17 @@ predict_models <- function(csv_file) {
         RMSE = rmse,
         MASE = mase,
         Modelo = "Media"
-      ) 
-      
+      )
+
       #NAIVE L
       errors <- tsCV(datosLab$kWh, naiveF, h = 1, window = 5) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Laborable",
@@ -185,17 +185,17 @@ predict_models <- function(csv_file) {
         RMSE = rmse,
         MASE = mase,
         Modelo = "Naive"
-      ) 
-      
+      )
+
       #NAIVE F
       errors <- tsCV(datosFinde$kWh, naiveF, h = 1, window = 3) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Finde",
@@ -205,7 +205,7 @@ predict_models <- function(csv_file) {
         MASE = mase,
         Modelo = "Naive"
       )
-      
+
       if (!file.exists(RESULT_FILE)) {
         # Si el archivo no existe, crea el archivo y agrega los nombres de las columnas
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = TRUE)
@@ -213,20 +213,20 @@ predict_models <- function(csv_file) {
         # Si el archivo ya existe, solo appendea los resultados
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       }
-      
-      #SNAIVE 
+
+      #SNAIVE
       foreach(dia = dias_semana, .packages = librerias) %dopar% {
-        
+
         dia_semana <- datos_hora[weekdays(datos_hora$timestamp) == dia, ]
-        
+
         errors <- tsCV(dia_semana$kWh, snaiveF, h = 1, window = 5) %>% na.omit()
         actual <- dia_semana$kWh[1: length(errors)]
         predicted <- actual + errors
-        
+
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
-        
+
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = dia,
@@ -235,20 +235,20 @@ predict_models <- function(csv_file) {
           RMSE = rmse,
           MASE = mase,
           Modelo = "sNaive"
-        ) 
+        )
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       }
-      
+
       #ARIMA L
-      
+
       errors <- tsCV(datosLab$kWh, arimaF, h = 1, window = 5) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Laborable",
@@ -257,19 +257,19 @@ predict_models <- function(csv_file) {
         RMSE = rmse,
         MASE = mase,
         Modelo = "Arima"
-      ) 
+      )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      
+
       # ARIMA F
-      
+
       errors <- tsCV(datosFinde$kWh, arimaF, h = 1, window = 3) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Finde",
@@ -278,19 +278,19 @@ predict_models <- function(csv_file) {
         RMSE = rmse,
         MASE = mase,
         Modelo = "Arima"
-      ) 
+      )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      
+
       # EXP SMOOTHING L
-      
+
       errors <- tsCV(datosLab$kWh, etsF, h = 1, window = 5) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Laborable",
@@ -299,19 +299,19 @@ predict_models <- function(csv_file) {
         RMSE = rmse,
         MASE = mase,
         Modelo = "ETS"
-      ) 
+      )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      
+
       # EXP SMOOTHING F
-      
+
       errors <- tsCV(datosFinde$kWh, etsF, h = 1, window = 3) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Finde",
@@ -320,64 +320,66 @@ predict_models <- function(csv_file) {
         RMSE = rmse,
         MASE = mase,
         Modelo = "ETS"
-      ) 
+      )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       
       # RED NEURONAL L
-      
+
       tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosLab, size = NEURON_RANGE)
-      best_size <- tuned_nn$best.model$size
+      best_size <- as.numeric(tuned_nn$best.parameters)
       
       errors <- tsCV(datosLab$kWh, nnF, h = 1, window = 5, n = best_size) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
-      
+      mase <- mase(actual, predicted)
+
       # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
       # lo dejamos en NA
       # if (is.numeric(mase(actual, predicted))){  mase <- mase(actual, predicted)      }
-      
-      
+
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Laborable",
         Predicted = predicted,
         sMAPE = smape,
         RMSE = rmse,
-        MASE = NA,
+        MASE = mase,
         Modelo = "NN"
-      ) 
-      
+      )
+
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      
+
       # RED NEURONAL F
-      
+
       tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosFinde, size = NEURON_RANGE)
-      best_size <- tuned_nn$best.model$size
+      best_size <- as.numeric(tuned_nn$best.parameters)
       
       errors <- tsCV(datosFinde$kWh, nnF, h = 1, window = 3, n = best_size) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
-      
+      mase <- mase(actual, predicted)
+
       # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
       # lo dejamos en NA
       # if (is.numeric(mase(actual, predicted))){  mase <- mase(actual, predicted)      }
-      
+
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
         TipoDia = "Finde",
         Predicted = predicted,
         sMAPE = smape,
         RMSE = rmse,
-        MASE = NA,
+        MASE = mase,
         Modelo = "NN"
-      ) 
-      
+      )
+
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       
       
@@ -415,6 +417,8 @@ predict_models <- function(csv_file) {
         
         smape = smape(testSet$kWh, fit)
         rmse = rmse(testSet$kWh, fit)
+        mase <- mase(testSet$kWh, fit)
+        
         # if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
         
         
@@ -424,7 +428,7 @@ predict_models <- function(csv_file) {
           Predicted = fit,
           sMAPE = smape,
           RMSE = rmse,
-          MASE = NA,
+          MASE = mase,
           Modelo = "SVM"
         ) 
         write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
@@ -453,8 +457,9 @@ predict_models <- function(csv_file) {
                             cost = bestCost, gamma = bestGamma, type = "eps-regression")
         fit <- predict(model, h = 1)
         
-        smape = smape(testSet$kWh, fit)
-        rmse = rmse(testSet$kWh, fit)
+        smape <- smape(testSet$kWh, fit)
+        rmse <- rmse(testSet$kWh, fit)
+        mase <- mase(testSet$kWh, fit)
         # if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
       
         
@@ -464,7 +469,7 @@ predict_models <- function(csv_file) {
           Predicted = fit,
           sMAPE = smape,
           RMSE = rmse,
-          MASE = NA,
+          MASE = mase,
           Modelo = "SVM"
         ) 
         write.csv(resultadosModelos, file = RESULT_FILE, append = T, col.names = F)
@@ -487,7 +492,7 @@ predict_models <- function(csv_file) {
 
 
 #ejecutar funcion para todos los csv
-foreach(csv_file = CT, 
+foreach(csv_file = N, 
         .packages = librerias) %dopar% predict_models(csv_file)
 
 
@@ -506,7 +511,7 @@ resultadosModelos <- tibble(
 )
 
 
-prueba <- fread(csv_files[1])
+prueba <- fread(paste("Transformers/",csv_files[1], sep = ""))
 prueba <- prueba %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
   mutate(TipoDia = ifelse(weekdays(timestamp) %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
                           "Laborable", "Finde")) 
@@ -516,6 +521,39 @@ ZEROS   <- sum(prueba$kWh==0)/LENGTH
 IMPUTED <- sum(prueba$imputed == 1)/LENGTH
 
 prueba <- prueba %>% select(- imputed)
+
+
+prueba_hora <- prueba[hour(prueba$timestamp) == 20,]
+
+datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
+
+
+
+
+tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosLabP, size = NEURON_RANGE)
+best_size <- as.numeric(tuned_nn$best.parameters)
+
+errors <- tsCV(datosLabP$kWh, nnF, h = 1, window = 5, n = best_size) %>% na.omit()
+actual <- datosLabP$kWh[1: length(errors)]
+predicted <- actual + errors
+
+smape <- smape(actual, predicted)
+rmse <- rmse(actual, predicted)
+
+# mase peta. Creemos que es por como have CV, pero no lo tenemos claro
+# lo dejamos en NA
+# if (is.numeric(mase(actual, predicted))){  mase <- mase(actual, predicted)      }
+
+
+resultadosModelos <- resultadosModelos %>% add_row(
+  Hora = hora,
+  TipoDia = "Laborable",
+  Predicted = predicted,
+  sMAPE = smape,
+  RMSE = rmse,
+  MASE = NA,
+  Modelo = "NN"
+)
 
 
 kernel_valuesP <- c("linear", "radial")
