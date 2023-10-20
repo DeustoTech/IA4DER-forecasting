@@ -90,7 +90,7 @@ NEURON_RANGE <- c(1:4, seq(5, 30, by = 5))
 
 # Constantes de SVM
 
-set.seed(123)
+# set.seed(123)
 
 
 # Crear todas las combinaciones de hiperparámetros
@@ -132,13 +132,24 @@ predict_models <- function(csv_file) {
       datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
       
       # #MEDIA L
-      errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5) %>% na.omit()
+      
+      # USAR EL INITIAL CON MAS O MENOS LA MITAD DE LA SERIE TEMPORAL. MIRARLO MAS
+      errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5, initial = ) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
+      
+      aux  <- actual != 0
+      # mape a mano
+      
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+
 
       smape <- smape(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      
+      
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -147,7 +158,9 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
-        Modelo = "Media"
+        MAPE1 = mape,
+        MAPEBien = mape2,
+        Modelo = "Media" # AÑADIR MAPE ARRIBA
       )
 
       #media F
@@ -319,10 +332,11 @@ predict_models <- function(csv_file) {
       
       # RED NEURONAL L
 
-      tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosLab, size = NEURON_RANGE)
-      best_size <- as.numeric(tuned_nn$best.parameters)
+      # tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosLab, size = NEURON_RANGE)
+      # best_size <- as.numeric(tuned_nn$best.parameters)
       
       errors <- tsCV(datosLab$kWh, nnF, h = 1, window = 5, n = best_size) %>% na.omit()
+      # QUITAR BEST SIZE. LA WINDOW PEQUEÑA = MUELTE. PONER EL WINDOW AL MISMO TAMAÑO Q INITIAL
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
 
@@ -394,6 +408,15 @@ predict_models <- function(csv_file) {
       bestGamma <- tunned_model$best.parameters$gamma
       bestCost <- tunned_model$best.parameters$cost
 
+      
+      rr              <- merge(r,lag(r,-1))
+      SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))
+      TRAINSET        <- window(rr,start=index(r)[length(r)-24*T_DAYS-23])
+      PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)-24*F_DAYS+1])))
+      names(TRAINSET) <- c("real","past")
+
+      f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
+      
 
       # Ahora, usando estos parámetros, hacemos CV
             
