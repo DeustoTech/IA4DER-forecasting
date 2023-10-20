@@ -8,6 +8,11 @@ library(purrr)
 library(data.table)
 library(tidyverse)
 
+
+# AÑADIR GRAFICO DE LINEAS PARA PREDICCIONES VS REAL. PUNTITOS PA PREDICCIONES, LINEA PA REAL
+# resultados de las predicciones y errores x modelo para el fformat en una tabla. 
+# hacer mediana, media y ultimo error
+
 path <- "ResultadosModelos.zip" # path del zip
 tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
 
