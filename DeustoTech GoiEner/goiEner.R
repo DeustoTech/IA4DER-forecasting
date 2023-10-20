@@ -47,6 +47,8 @@ resultadosModelos <- tibble(
   sMAPE = numeric(),
   RMSE = numeric(),
   MASE = numeric(),
+  MAPE1 = numeric(),
+  MAPEBien = numeric(),
   Modelo = character()
 )
 
@@ -86,7 +88,8 @@ nnF <- function(x, h, n){
   return(prediccion)
 }
 
-NEURON_RANGE <- c(1:4, seq(5, 30, by = 5))
+#NEURON_RANGE <- c(1:4, seq(5, 30, by = 5))
+NEURON_RANGE <- c(seq(5, 60, by=5)) #nose si esto asi está bien
 
 # Constantes de SVM
 
@@ -130,11 +133,11 @@ predict_models <- function(csv_file) {
       datos_hora <- a[hour(a$timestamp) == hora,]
       datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
       datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
-      
+     
       # #MEDIA L
-      
+      iL <- ceiling(length(datosLab) / 2)
       # USAR EL INITIAL CON MAS O MENOS LA MITAD DE LA SERIE TEMPORAL. MIRARLO MAS
-      errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5, initial = ) %>% na.omit()
+      errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5, initial = iL) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
       
@@ -164,6 +167,7 @@ predict_models <- function(csv_file) {
       )
 
       #media F
+      iF <- ceiling(length(datosFinde) / 2)
       errors <- tsCV(datosFinde$kWh, mediaF, h = 1, window = 3) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
@@ -334,8 +338,7 @@ predict_models <- function(csv_file) {
 
       # tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosLab, size = NEURON_RANGE)
       # best_size <- as.numeric(tuned_nn$best.parameters)
-      
-      errors <- tsCV(datosLab$kWh, nnF, h = 1, window = 5, n = best_size) %>% na.omit()
+      errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL, n = best_size) %>% na.omit()
       # QUITAR BEST SIZE. LA WINDOW PEQUEÑA = MUELTE. PONER EL WINDOW AL MISMO TAMAÑO Q INITIAL
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
@@ -366,7 +369,7 @@ predict_models <- function(csv_file) {
       tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosFinde, size = NEURON_RANGE)
       best_size <- as.numeric(tuned_nn$best.parameters)
       
-      errors <- tsCV(datosFinde$kWh, nnF, h = 1, window = 3, n = best_size) %>% na.omit()
+      errors <- tsCV(datosFinde$kWh, nnF, h = 1, window = iF, n = best_size) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
 
