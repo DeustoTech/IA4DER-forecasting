@@ -10,41 +10,70 @@ library(PMCMRplus)
 library(rcompanion)
 library(multcompView)
 library(boot)
+library(stringr)
+library(arrow)
 
 plan(multisession)
 
 TEST        <- TRUE  ### si estoy haciendo test
-SAMPLE      <- 50    ### number of elements to assess per each type
+SAMPLE      <- 200   ### number of elements to assess per each type
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75  ### length of the training period
 F_DAYS      <- 7     ### number of days to forecast for STLF
 T_DAYS      <- 21    ### number of days to use in the training widnow for AI methods for STLF
+MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
+TYPES       <- c("CUPS","LINE","CT")
 
-#### aqui podria leer lo que se ha generado en results y no recalcular de nuevo
+CUPS <- Sys.glob(paths="post_cooked/CUPS/*")
+LINE <- Sys.glob(paths="post_cooked/LINE/*")
+CT   <- Sys.glob(paths="post_cooked/CT/*")
+ALL  <- union(sample(CUPS,SAMPLE),sample(LINE,SAMPLE))
+ALL  <- union(ALL,sample(CT,SAMPLE))
 
-ALL    <- list.files(path="post_cooked/",pattern="*.csv")
-OTHERS <- list.files(path="post_cooked/",pattern="-")
+# ALL  <- Sys.glob(paths="post_cooked/*/*")
 
-CUPS   <- setdiff(ALL,OTHERS)
-CT     <- list.files(path="post_cooked/",pattern="*-CT.csv")
-LINE   <- list.files(path="post_cooked/",pattern="*-LINE.csv")
+for (TY in TYPES)
+{
+  dir.create(paste("stlf/forecast/",TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/mape/",    TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/rmse/",    TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/time/",    TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/effe/",    TY,sep="/"),showWarnings = F, recursive = T)
+}
 
-FILES  <- union(sample(CT,SAMPLE),sample(LINE,SAMPLE))
-FILES  <- union(sample(CUPS,SAMPLE),FILES)
+d    <- open_dataset(source="./inputdata/data/anm_ids01_punto_suministro")
+so   <- Scanner$create(d)
+at   <- so$ToTable()
+cups <- as.data.frame(at)
 
-MODELS <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
-LO     <- 2*length(MODELS)
+LIM  <- cups[,c("CUPS","VAL_POT_AUTORIZADA")]
 
-dir.create("stlf/forecast",showWarnings = F, recursive = T)
-dir.create("stlf/test",    showWarnings = F, recursive = T)
+d    <- open_dataset(source="./inputdata/data/anm_ids01_cgp")
+so   <- Scanner$create(d)
+at   <- so$ToTable()
+cgp  <- as.data.frame(at)
 
-B <- foreach(NAME = FILES,
+cgp$VAL_POT_AUTORIZADA  <- (cgp$COD_INT_NOMI_FUSIB * cgp$COD_TENS_SUMI) * 1000
+names(cgp)[2] <- "CUPS"
+
+LIM  <- rbind(LIM,cgp[,c("CUPS","VAL_POT_AUTORIZADA")])
+
+d    <- open_dataset(source="./inputdata/data/anm_ids01_cgp")
+so   <- Scanner$create(d)
+at   <- so$ToTable()
+cgp  <- as.data.frame(at)
+
+
+B <- foreach(NAME = ALL,
              .options.future = list(seed = TRUE),
              .errorhandling = "remove") %dofuture% {
 
-  a <- fread(paste("post_cooked/",NAME,sep=""))
+  a <- fread(NAME)
   r <- zoo(a$kWh, order.by = a$time)
 
+  FILE <- strsplit(NAME,"/")[[1]][3]
+  TYPE <- strsplit(NAME,"/")[[1]][2]
+  
   if (TEST) ####### ÑAPA hasta tener los datos finales acorto una semana la serie temporal
   {
     a    <- a[1:(length(a[[1]])-24*F_DAYS)]
@@ -60,9 +89,9 @@ B <- foreach(NAME = FILES,
   ZEROS       <- sum(a$kWh==0)/LENGTH
   IMPUTED     <- sum(a$issue)/LENGTH
 
-  TKPI        <- data.frame(matrix(ncol = length(MODELS), nrow = 2))
-  f           <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
-  colnames(f) <- colnames(TKPI) <- MODELS
+  f     <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
+  MAPE  <- RMSE  <- TIME <- EFFE <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
+  colnames(MAPE) <- colnames(RMSE) <- colnames(TIME) <- colnames(EFFE) <- colnames(f) <- MODELS
   
   ### If we have enough non zero, non imputed values in the dataset,
   ### then we continue with the assessment
@@ -70,7 +99,7 @@ B <- foreach(NAME = FILES,
   {
     f["mean"]  <- as.numeric(rep(mean(r),24*F_DAYS))
     f["rw"]    <- rep(as.numeric(window(r,start=index(r)[length(r)-23])),F_DAYS)
-    f["naive"]<- as.numeric(window(r,   start=index(r)[length(r)-24*6-23], end=index(r)[length(r)-24*( 6-F_DAYS-1)]))
+    f["naive"] <- as.numeric(window(r,   start=index(r)[length(r)-24*6-23], end=index(r)[length(r)-24*( 6-F_DAYS-1)]))
     f["simple"]<- rowMeans(data.frame(
                   a=(as.numeric(window(r,start=index(r)[length(r)-24*6 -23],end=index(r)[length(r)-24*( 6-F_DAYS-1)]))),
                   b=(as.numeric(window(r,start=index(r)[length(r)-24*13-23],end=index(r)[length(r)-24*(15-F_DAYS-1)]))),
@@ -82,48 +111,59 @@ B <- foreach(NAME = FILES,
     PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)-24*F_DAYS+1])))
     names(TRAINSET) <- c("real","past")
 
-    LM     <- lm(real~past,data=TRAINSET)
-    ARIMA  <- auto.arima(r)
-    ES     <- ses(r,h=24*F_DAYS)
-    NN     <- nnetar(r)
-    SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))
+    tryCatch({LM     <- lm(real~past,data=TRAINSET)},warning=function(w) {},error=function(e) {print(j)},finally = {})
+    tryCatch({ARIMA  <- auto.arima(r)},              warning=function(w) {},error=function(e) {print(j)},finally = {})
+    tryCatch({ES     <- ses(r,h=24*F_DAYS)},         warning=function(w) {},error=function(e) {print(j)},finally = {})
+    tryCatch({NN     <- nnetar(r)},                  warning=function(w) {},error=function(e) {print(j)},finally = {})
+    tryCatch({SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))},warning=function(w) {},error=function(e) {print(j)},finally = {})
 
-    f["lr"]    <- try(as.numeric(forecast(LM,PREDICT)$mean),TRUE)
-    f["arima"] <- try(as.numeric(forecast(ARIMA,h=24*F_DAYS)$mean),TRUE)
-    f["ses"]   <- try(as.numeric(forecast(ES,h=24*F_DAYS)$mean),TRUE)
-    f["ann"]   <- try(as.numeric(forecast(NN,h=24*F_DAYS)$mean),TRUE)
-    f["svm"]   <- try(as.numeric(predict(SVM$best.model,PREDICT)),TRUE)
+    tryCatch({f["lr"]    <- as.numeric(forecast(LM,PREDICT)$mean)},       warning=function(w) {},error= function(e) {print(j)},finally = {})
+    tryCatch({f["arima"] <- as.numeric(forecast(ARIMA,h=24*F_DAYS)$mean)},warning=function(w) {},error= function(e) {print(j)},finally = {})
+    tryCatch({f["ses"]   <- as.numeric(forecast(ES,h=24*F_DAYS)$mean)},   warning=function(w) {},error= function(e) {print(j)},finally = {})
+    tryCatch({f["ann"]   <- as.numeric(forecast(NN,h=24*F_DAYS)$mean)},   warning=function(w) {},error= function(e) {print(j)},finally = {})
+    tryCatch({f["svm"]   <- as.numeric(predict(SVM$best.model,PREDICT))}, warning=function(w) {},error= function(e) {print(j)},finally = {})
     f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
   
-    write.csv(f, file=paste("stlf/forecast/forecast-",NAME,".csv",sep=""),row.names=F)
+    write.csv(f, file=paste("stlf/forecast",TYPE,FILE,sep="/"), row.names=F)
 
     aux  <- real != 0
     for(j in MODELS)
     {
-      TKPI[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(real[aux]-f[aux,j])/real[aux],NA))
-      TKPI[2,j] <- sqrt(median((real-f[,j])^2))
+      MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(real[aux]-f[aux,j])/real[aux],NA),na.rm=T)
+      RMSE[1,j] <- sqrt(median((real-f[,j])^2,na.rm=T))
+      
+      aux_real  <- aux_f <- numeric(F_DAYS)
+      for (D in 1:F_DAYS)
+      {
+        aux_real[D] <- which.max(real[(24*D-23):(24*D)])  -1
+        aux_f[D]    <- which.max(f[   (24*D-23):(24*D),j])-1
+      }
+      
+      TIME[1,j] <- median(abs(aux_real-aux_f))
+      EFFE[1,j] <- sum(f[,j] >= 0.8*)
     }
     
-    rownames(TKPI) <- c("mape","rmse")
-    write.csv(TKPI,file=paste("stlf/test/kpi-test-",NAME,".csv",sep=""))
+    write.csv(MAPE,file=paste("stlf/mape",TYPE,FILE,sep="/"))
+    write.csv(RMSE,file=paste("stlf/rmse",TYPE,FILE,sep="/"))
+    write.csv(TIME,file=paste("stlf/time",TYPE,FILE,sep="/"))
+    write.csv(EFFE,file=paste("stlf/effe",TYPE,FILE,sep="/"))
   } ### if that test if the time series has data
 }   ### foreach
 
-ALL    <- list.files(path="stlf/test/",pattern="*.csv")
-CT     <- list.files(path="stlf/test/",pattern="*-CT.csv")
-LINE   <- list.files(path="stlf/test/",pattern="*-LINE.csv")
-CUPS   <- setdiff(ALL,union(CT,LINE))
+CUPS   <- list.files(path="stlf/mape/",pattern="*-CUPS.csv")
+LINE   <- list.files(path="stlf/mape/",pattern="*-LINE.csv")
+CT     <- list.files(path="stlf/mape/",pattern="*-CT.csv")
 
 RCT <- foreach(NAME = CT,.combine=rbind) %dofuture% {
-  fread(paste("stlf/test/",NAME,sep=""))
+  fread(paste("stlf/mape/",NAME,sep=""))
 }
 
 RLI <- foreach(NAME = LINE,.combine=rbind) %dofuture% {
-  fread(paste("stlf/test/",NAME,sep=""))
+  fread(paste("stlf/mape/",NAME,sep=""))
 }
 
 RCU <- foreach(NAME = CUPS,.combine=rbind) %dofuture% {
-  fread(paste("stlf/test/",NAME,sep=""))
+  fread(paste("stlf/mape/",NAME,sep=""))
 }
 
 EVAL <- function(R,K,TYPE)
