@@ -136,7 +136,7 @@ EVAL <- function(ERROR,TYPE,KPI)
   rownames(RR) <- 1:nrow(RR)
 
   write.csv(as.data.frame(apply(RR, 2, summary)),
-            file=paste("mtlf/",ERROR,TYPE,KPI,"summary.csv",sep="/"))
+            file=paste("mtlf",ERROR,TYPE,KPI,"summary.csv",sep="/"))
   BOOT <- boot(data=RR,statistic=function(data,i) colMedians(data[i,],na.rm=T),R=100)
 
   sink(paste("mtlf/",ERROR,TYPE,KPI,"p-values.txt",sep="/"))
