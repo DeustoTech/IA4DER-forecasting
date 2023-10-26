@@ -21,11 +21,11 @@ unzip(path, exdir = tempdir) # descomprime. Tarda un poco
 plan(multisession)
 
 
-folder <- "Transformers/"
+folder <- "TransformersV2/"
 # Lista de archivos CSV en la carpeta extraída
 csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
 
-csv_files <- csv_files[201:length(csv_files)]
+# csv_files <- csv_files[201:length(csv_files)]
 
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
@@ -479,7 +479,7 @@ predict_models <- function(csv_file) {
       bestCost <- tunned_model$best.parameters$cost
 
       
-      rr              <- merge(r,lag(r,-1))
+      rr              <- merge(r,lag(r,-1)) 
       SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))
       TRAINSET        <- window(rr,start=index(r)[length(r)-24*T_DAYS-23])
       PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)-24*F_DAYS+1])))
@@ -598,7 +598,7 @@ resultadosModelos <- tibble(
 )
 
 
-prueba <- fread(paste("Transformers/",csv_files[1], sep = ""))
+prueba <- fread(paste("TransformersV2/",csv_files[1], sep = ""))
 prueba <- prueba %>% mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
   mutate(TipoDia = ifelse(weekdays(timestamp) %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
                           "Laborable", "Finde")) 
@@ -614,6 +614,14 @@ prueba_hora <- prueba[hour(prueba$timestamp) == 20,]
 
 datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
 
+
+rr              <- merge(r,lag(r,-1)) # esto excluye el último día. En nuestro caso tenemos q excluir la ultima hora
+SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))
+TRAINSET        <- window(rr,start=index(r)[length(r)-24*T_DAYS-23])
+PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)-24*F_DAYS+1])))
+names(TRAINSET) <- c("real","past")
+
+f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
 
 
 
@@ -722,4 +730,11 @@ if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)) {
     write.csv(resultadosModelos, file = fileIteracion, append = T, col.names = F)
   }
 }
+
+
+
+
+
+
+
 
