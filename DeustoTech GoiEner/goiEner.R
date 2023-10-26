@@ -83,8 +83,12 @@ etsF <- function(x, h) {
   return(prediccion)
 }
 
-nnF <- function(x, h, n){
-  prediccion <- forecast(nnetar(x, size = n), h = h)
+# nnF <- function(x, h, n){
+#   prediccion <- forecast(nnetar(x, size = n), h = h)
+#   return(prediccion)
+# }
+nnF <- function(x, h){ # nnetar con numero automático de neuronas
+  prediccion <- forecast(nnetar(x), h = h)
   return(prediccion)
 }
 
@@ -137,6 +141,7 @@ predict_models <- function(csv_file) {
       # #MEDIA L
       iL <- ceiling(length(datosLab) / 2)
       # USAR EL INITIAL CON MAS O MENOS LA MITAD DE LA SERIE TEMPORAL. MIRARLO MAS
+      
       errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5, initial = iL) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
@@ -382,7 +387,10 @@ predict_models <- function(csv_file) {
 
       # tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosLab, size = NEURON_RANGE)
       # best_size <- as.numeric(tuned_nn$best.parameters)
-      errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL, n = best_size) %>% na.omit()
+      # errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL, n = best_size) %>% na.omit()
+      # NN con numero automático de neuronas
+      
+      errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL) %>% na.omit()
       # QUITAR BEST SIZE. LA WINDOW PEQUEÑA = MUELTE. PONER EL WINDOW AL MISMO TAMAÑO Q INITIAL
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
@@ -419,7 +427,10 @@ predict_models <- function(csv_file) {
       tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosFinde, size = NEURON_RANGE)
       best_size <- as.numeric(tuned_nn$best.parameters)
       
-      errors <- tsCV(datosFinde$kWh, nnF, h = 1, window = iF, n = best_size) %>% na.omit()
+      # errors <- tsCV(datosFinde$kWh, nnF, h = 1, window = iF, n = best_size) %>% na.omit()
+      # NN con numero automático de neuronas
+      
+      errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
 
