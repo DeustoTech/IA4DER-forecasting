@@ -168,13 +168,17 @@ predict_models <- function(csv_file) {
 
       #media F
       iF <- ceiling(length(datosFinde) / 2)
-      errors <- tsCV(datosFinde$kWh, mediaF, h = 1, window = 3) %>% na.omit()
+      errors <- tsCV(datosFinde$kWh, mediaF, h = 1, window = 3, initial = iF) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -183,6 +187,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "Media"
       )
 
@@ -191,9 +197,12 @@ predict_models <- function(csv_file) {
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -202,6 +211,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "Naive"
       )
 
@@ -210,9 +221,13 @@ predict_models <- function(csv_file) {
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -221,6 +236,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "Naive"
       )
 
@@ -234,9 +251,12 @@ predict_models <- function(csv_file) {
         actual <- dia_semana$kWh[1: length(errors)]
         predicted <- actual + errors
 
+        aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
+        mape <- mape(actual[aux], predicted[aux])
+        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -245,6 +265,8 @@ predict_models <- function(csv_file) {
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
+          MAPE1 = mape,
+          MAPEBien = mape2,
           Modelo = "sNaive"
         )
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
@@ -256,9 +278,13 @@ predict_models <- function(csv_file) {
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -267,6 +293,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "Arima"
       )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
@@ -277,9 +305,12 @@ predict_models <- function(csv_file) {
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -288,6 +319,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "Arima"
       )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
@@ -298,9 +331,13 @@ predict_models <- function(csv_file) {
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -309,6 +346,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "ETS"
       )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
@@ -319,9 +358,12 @@ predict_models <- function(csv_file) {
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -330,6 +372,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "ETS"
       )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
@@ -343,9 +387,13 @@ predict_models <- function(csv_file) {
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      
 
       # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
       # lo dejamos en NA
@@ -359,6 +407,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "NN"
       )
 
@@ -373,9 +423,13 @@ predict_models <- function(csv_file) {
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
 
+      aux  <- actual != 0
       smape <- smape(actual, predicted)
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
+      mape <- mape(actual[aux], predicted[aux])
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      
 
       # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
       # lo dejamos en NA
@@ -388,6 +442,8 @@ predict_models <- function(csv_file) {
         sMAPE = smape,
         RMSE = rmse,
         MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
         Modelo = "NN"
       )
 
