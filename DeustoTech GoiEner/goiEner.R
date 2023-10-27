@@ -37,7 +37,7 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "ResultadosCT.csv"
+RESULT_FILE <- "ResultadosPruebaSVM.csv"
 
 
 resultadosModelos <- tibble(
@@ -57,6 +57,8 @@ fwrite(resultadosModelos, file = RESULT_FILE, col.names = T)  # SOLO SI SE QUIER
 COMPLETE <- 0.10
 horas <- 0:23
 dias_semana <- c("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+F_DAYS <- 5 # Días que vamos a predecir con SVM
+T_DAYS <- 30 # Días con los que vamos a entrenar
 
 mediaF <- function(x, h) {
   prediccion <- predict(mean(x), h = h)
@@ -137,18 +139,18 @@ predict_models <- function(csv_file) {
       datos_hora <- a[hour(a$timestamp) == hora,]
       datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
       datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
-     
+
       # #MEDIA L
       iL <- ceiling(length(datosLab) / 2)
       # USAR EL INITIAL CON MAS O MENOS LA MITAD DE LA SERIE TEMPORAL. MIRARLO MAS
-      
+
       errors <- tsCV(datosLab$kWh, mediaF, h = 1, window = 5, initial = iL) %>% na.omit()
       actual <- datosLab$kWh[1: length(errors)]
       predicted <- actual + errors
-      
+
       aux  <- actual != 0
       # mape a mano
-      
+
       mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
 
@@ -156,8 +158,8 @@ predict_models <- function(csv_file) {
       mape <- mape(actual[aux], predicted[aux])
       rmse <- rmse(actual, predicted)
       mase <- mase(actual, predicted)
-      
-      
+
+
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -183,7 +185,7 @@ predict_models <- function(csv_file) {
       mase <- mase(actual, predicted)
       mape <- mape(actual[aux], predicted[aux])
       mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-      
+
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -232,7 +234,7 @@ predict_models <- function(csv_file) {
       mase <- mase(actual, predicted)
       mape <- mape(actual[aux], predicted[aux])
       mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-      
+
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -289,7 +291,7 @@ predict_models <- function(csv_file) {
       mase <- mase(actual, predicted)
       mape <- mape(actual[aux], predicted[aux])
       mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-      
+
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -342,7 +344,7 @@ predict_models <- function(csv_file) {
       mase <- mase(actual, predicted)
       mape <- mape(actual[aux], predicted[aux])
       mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-      
+
 
       resultadosModelos <- resultadosModelos %>% add_row(
         Hora = hora,
@@ -382,14 +384,14 @@ predict_models <- function(csv_file) {
         Modelo = "ETS"
       )
       fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      
+
       # RED NEURONAL L
 
       # tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosLab, size = NEURON_RANGE)
       # best_size <- as.numeric(tuned_nn$best.parameters)
       # errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL, n = best_size) %>% na.omit()
       # NN con numero automático de neuronas
-      
+
       errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL) %>% na.omit()
       # QUITAR BEST SIZE. LA WINDOW PEQUEÑA = MUELTE. PONER EL WINDOW AL MISMO TAMAÑO Q INITIAL
       actual <- datosLab$kWh[1: length(errors)]
@@ -401,7 +403,7 @@ predict_models <- function(csv_file) {
       mase <- mase(actual, predicted)
       mape <- mape(actual[aux], predicted[aux])
       mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-      
+
 
       # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
       # lo dejamos en NA
@@ -426,10 +428,10 @@ predict_models <- function(csv_file) {
 
       tuned_nn <- tune.nnet(kWh ~ timestamp, data = datosFinde, size = NEURON_RANGE)
       best_size <- as.numeric(tuned_nn$best.parameters)
-      
+
       # errors <- tsCV(datosFinde$kWh, nnF, h = 1, window = iF, n = best_size) %>% na.omit()
       # NN con numero automático de neuronas
-      
+
       errors <- tsCV(datosLab$kWh, nnF, h = 1, window = iL) %>% na.omit()
       actual <- datosFinde$kWh[1: length(errors)]
       predicted <- actual + errors
@@ -440,7 +442,7 @@ predict_models <- function(csv_file) {
       mase <- mase(actual, predicted)
       mape <- mape(actual[aux], predicted[aux])
       mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-      
+
 
       # mase peta. Creemos que es por como have CV, pero no lo tenemos claro
       # lo dejamos en NA
@@ -463,105 +465,82 @@ predict_models <- function(csv_file) {
       
       # SVM 
       
-      # para svm, no nos sirve la misma forma de hacer CV. Lo hacemos de otra manera
-      
-      slicesLab <- createTimeSlices(datos_hora$timestamp, initialWindow = 5, horizon = 1, skip = 0, fixedWindow = F)
-      slicesFinde <- createTimeSlices(datos_hora$timestamp, initialWindow = 3, horizon = 1, skip = 0, fixedWindow = F)
-      
       # LABORABLE
+      r <- zoo(datosLab$kWh, order.by = datosLab$timestamp) # cambiamos el tipo del objeto
+      r    <- window(r,end=index(r)[length(r) - F_DAYS]) # Coge del archivo salvo los ultimos F_DAYS dias 
+      actual <- window(r,start=index(r)[length(r) - F_DAYS]) # Coge los siguientes dias a F_DAYS. Es el test set 
+      retrasados  <- merge(r,lag(r,1)) # hace un dataframe que contiene el dia D y el D-1
+      TRAINSET        <- window(retrasados,start=index(r)[length(r) - T_DAYS]) # Es el trainset. Coge los días marcado por T_DAYS
+      PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)- F_DAYS ]))) # dataframe de los dias q va a predecir
+      names(TRAINSET) <- c("actual","past")
       
-      # antes de hacer CV, sacamos los hiperparámetros para toda la serie temporal
+      SVM    <- tune(svm,actual~past,data=TRAINSET,ranges=list(gamma = 10^(-3:2), cost=seq(1,100,10))) # tunea el SVM prediciendo en funcion de los valores pasados
       
-      tunned_model <- tune.svm(kWh ~ timestamp, data = datosLab, kernel = "linear",
-                               gamma = svmHP$gamma, cost = svmHP$gamma)
+      predicted <- predict(SVM$best.model,PREDICT)
       
-      bestGamma <- tunned_model$best.parameters$gamma
-      bestCost <- tunned_model$best.parameters$cost
-
+      aux  <- actual != 0
+      # mape a mano
       
-      rr              <- merge(r,lag(r,-1)) 
-      SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))
-      TRAINSET        <- window(rr,start=index(r)[length(r)-24*T_DAYS-23])
-      PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)-24*F_DAYS+1])))
-      names(TRAINSET) <- c("real","past")
-
-      f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      mape <- mape(actual, predicted)
+      smape <- smape(actual, predicted)
+      mase <- mase(actual, predicted)
+      rmse <- rmse(actual, predicted)
+      smape <- smape(actual, predicted)
       
-
-      # Ahora, usando estos parámetros, hacemos CV
-            
-      for (j in 1:length(slicesLab$train)) {
-        
-        train_index <- slicesLab$train[[j]]
-        test_index <- slicesLab$test[[j]]
-        
-        trainSet <- datosLab[train_index, ] %>% na.omit()
-        testSet <- datosLab[test_index, ] %>% na.omit()
-        
-        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = "linear",
-                            cost = bestCost, gamma = bestGamma, type = "eps-regression")
-        fit <- predict(model, h = 1)
-        
-        smape = smape(testSet$kWh, fit)
-        rmse = rmse(testSet$kWh, fit)
-        mase <- mase(testSet$kWh, fit)
-        
-        # if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
-        
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Laborable",
-          Predicted = fit,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          Modelo = "SVM"
-        ) 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      }
       
+      
+      resultadosModelos <- resultadosModelos %>% add_row(
+        Hora = hora,
+        TipoDia = "Laborable",
+        Predicted = predicted,
+        sMAPE = smape,
+        RMSE = rmse,
+        MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
+        Modelo = "SVM"
+      )
+     
       # LO MISMO PERO CON FINDE
+      r <- zoo(datosFinde$kWh, order.by = datosFinde$timestamp) # cambiamos el tipo del objeto
+      r    <- window(r,end=index(r)[length(r) - F_DAYS]) # Coge del archivo salvo los ultimos F_DAYS dias 
+      actual <- window(r,start=index(r)[length(r) - F_DAYS]) # Coge los siguientes dias a F_DAYS. Es el test set 
+      retrasados  <- merge(r,lag(r,1)) # hace un dataframe que contiene el dia D y el D-1
+      TRAINSET        <- window(retrasados,start=index(r)[length(r) - T_DAYS]) # Es el trainset. Coge los días marcado por T_DAYS
+      PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)- F_DAYS ]))) # dataframe de los dias q va a predecir
+      names(TRAINSET) <- c("actual","past")
       
-      tunned_model <- tune.svm(kWh ~ timestamp, data = datosFinde, kernel = "linear",
-                               gamma = svmHP$gamma, cost = svmHP$gamma)
+      SVM    <- tune(svm,actual~past,data=TRAINSET,ranges=list(gamma = 10^(-3:2), cost=seq(1,100,10))) # tunea el SVM prediciendo en funcion de los valores pasados
       
-      bestGamma <- tunned_model$best.parameters$gamma
-      bestCost <- tunned_model$best.parameters$cost
-
-
-      # Ahora, usando estos parámetros, hacemos CV
-            
-      for (j in 1:length(slicesFinde$train)) {
-        
-        train_index <- slicesFinde$train[[j]]
-        test_index <- slicesFinde$test[[j]]
-        
-        trainSet <- datosFinde[train_index, ] %>% na.omit()
-        testSet <- datosFinde[test_index, ] %>% na.omit()
-        
-        model <- e1071::svm(kWh ~ timestamp, data = trainSet, kernel = "linear",
-                            cost = bestCost, gamma = bestGamma, type = "eps-regression")
-        fit <- predict(model, h = 1)
-        
-        smape <- smape(testSet$kWh, fit)
-        rmse <- rmse(testSet$kWh, fit)
-        mase <- mase(testSet$kWh, fit)
-        # if (is.numeric(mase(actual, fit))){  mase <- mase(actual, fit)      }
+      predicted <- predict(SVM$best.model,PREDICT)
       
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Finde",
-          Predicted = fit,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          Modelo = "SVM"
-        ) 
+      aux  <- actual != 0
+      # mape a mano
+      
+      mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+      mape <- mape(actual, predicted)
+      smape <- smape(actual, predicted)
+      mase <- mase(actual, predicted)
+      rmse <- rmse(actual, predicted)
+      smape <- smape(actual, predicted)
+      
+      
+      
+      resultadosModelos <- resultadosModelos %>% add_row(
+        Hora = hora,
+        TipoDia = "Finde",
+        Predicted = predicted,
+        sMAPE = smape,
+        RMSE = rmse,
+        MASE = mase,
+        MAPE1 = mape,
+        MAPEBien = mape2,
+        Modelo = "SVM"
+      )
+      
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-      }
-  
+      
       
     }
     
@@ -614,6 +593,15 @@ prueba_hora <- prueba[hour(prueba$timestamp) == 20,]
 
 datosLabP <- prueba_hora %>% filter(TipoDia == "Laborable") %>% unique()
 
+N_DAYS <- 7 # cuantas horas quermos predecir.
+
+train <- datosLabP[1:nrow(datosLabP) - N_DAYS] # quitamos la ultima semana a esa hora
+real <- datosLabP
+
+SVM <- tune(svm, real ~ train)
+r    <- window(r,end=index(r)[length(r)-24*F_DAYS]) # 
+real <- window(r,start=index(r)[length(r)-24*F_DAYS+1])
+
 
 rr              <- merge(r,lag(r,-1)) # esto excluye el último día. En nuestro caso tenemos q excluir la ultima hora
 SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))
@@ -622,6 +610,37 @@ PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)-
 names(TRAINSET) <- c("real","past")
 
 f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
+
+# Como creo que funciona. Donde pone 24, para nosotros es 1
+
+
+F_DAYS <- 5 # cuantos días tiene el train set
+T_DAYS <- 30 # con cuantos días se va a entrenar
+
+
+
+r <- zoo(datosLabP$kWh, order.by = datosLabP$timestamp)
+
+
+ 
+r    <- window(r,end=index(r)[length(r) - F_DAYS]) # Coge del archivo salvo los ultimos F_DAYS dias
+real <- window(r,start=index(r)[length(r) - F_DAYS]) # Coge los siguientes dias a F_DAYS. Es el test set 
+retrasados  <- merge(r,lag(r,1)) # hace un dataframe que contiene el dia D y el D-1
+TRAINSET        <- window(retrasados,start=index(r)[length(r) - T_DAYS]) # Es el trainset. Coge los días marcado por T_DAYS
+PREDICT         <- data.frame(past=as.numeric(window(r,start=index(r)[length(r)- F_DAYS ]))) # dataframe de los dias q va a predecir
+names(TRAINSET) <- c("real","past")
+
+SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(gamma = 10^(-3:2), cost=seq(1,100,10))) # tunea el SVM prediciendo en funcion de los valores pasados
+
+preds <- predict(SVM$best.model,PREDICT)
+
+aux  <- real != 0
+# mape a mano
+
+mape2 <- 100*median(ifelse(sum(aux)!=0,abs(real[aux]-preds[aux])/real[aux],NA))
+
+
+
 
 
 
