@@ -197,7 +197,7 @@ get_seasonal_features_from_timeseries <- function(csv_actual, maxmin = FALSE) {
       sum_factor <- as.factor(100 * sum_factor_2 + sum_factor_1)
     }
     if (bb == 19) {
-      
+      #aqui deberiamos de añadir algo para nuestra nueva feature
     }
     # Aggregate data (mean) according to the bins
     o[[name[[bb]]]]$"mean" <- stats::aggregate(
