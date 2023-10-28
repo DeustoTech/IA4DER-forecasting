@@ -16,9 +16,10 @@ library(arrow)
 plan(multisession)
 
 TEST        <- TRUE  ### si estoy haciendo test
-SAMPLE      <- 5     ### number of elements to assess per each type
+SAMPLE      <- 200   ### number of elements to assess per each type
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75  ### length of the training period
+POT_OBJ     <- 0.25  ### potencia limite para considerar las medidas efectivas
 F_DAYS      <- 7     ### number of days to forecast for STLF
 T_DAYS      <- 21    ### number of days to use in the training widnow for AI methods for STLF
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
@@ -29,6 +30,8 @@ LINE <- Sys.glob(paths="post_cooked/LINE/*")
 CT   <- Sys.glob(paths="post_cooked/CT/*")
 ALL  <- union(sample(CUPS,SAMPLE),sample(LINE,SAMPLE))
 ALL  <- union(ALL,sample(CT,SAMPLE))
+
+LIM  <- fread("features.csv")
 
 # ALL  <- Sys.glob(paths="post_cooked/*/*")
 
@@ -41,45 +44,6 @@ for (TY in TYPES)
   dir.create(paste("stlf/effe/",    TY,sep="/"),showWarnings = F, recursive = T)
 }
 
-ARROW2DF <- function(SOURCE)
-{
-  d    <- open_dataset(source=SOURCE)
-  so   <- Scanner$create(d)
-  at   <- so$ToTable()
-  return(as.data.frame(at))
-}
-
-cups   <- ARROW2DF("./inputdata/data/anm_ids01_punto_suministro")
-cgp    <- ARROW2DF("./inputdata/data/anm_ids01_cgp")
-linea  <- ARROW2DF("./inputdata/data/anm_ids01_linea_bt")
-cuadro <- ARROW2DF("./inputdata/data/anm_ids01_cuadro_bt")
-pos    <- ARROW2DF("./inputdata/data/anm_ids01_pos_trafo")
-ct     <- ARROW2DF("./inputdata/data/anm_ids01_ct")
-trafo  <- ARROW2DF("./inputdata/data/anm_ids01_trafo")
-
-ROSETA <- merge(cups,  cgp,   by.x="COD_SIC_SIGRID",    by.y="ID_CAJA")
-ROSETA <- merge(ROSETA,linea, by.x="ID_PADRE_LINEA_BT", by.y="G3E_FID")
-ROSETA <- merge(ROSETA,cuadro,by.x="ID_PADRE_CUADRO_BT",by.y="G3E_FID")
-ROSETA <- merge(ROSETA,trafo, by.x="ID_PADRE_POS_TRAFO",by.y="ID_PADRE_POS_TRAFO")
-
-cgp$ID_CAJA <- str_replace(cgp$ID_CAJA, fixed("+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g=="),fixed(""))
-cgp$ID_CAJA <- str_replace(cgp$ID_CAJA, fixed("/"),fixed("\\"))
-
-ROSETA$ID_USUARIO_INST_PADRE <- str_replace_all(ROSETA$ID_USUARIO_INST_PADRE, fixed("+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g=="),fixed(""))
-ROSETA$ID_USUARIO_INST_PADRE <- str_replace_all(ROSETA$ID_USUARIO_INST_PADRE, fixed("/"),fixed("\\"))
-
-LIM <- data.frame(ID=character(),POT_NOM=numeric())
-for (z in unique(ROSETA$ID_USUARIO_INST_PADRE))
-  LIM[z,"POT_NOM"] <- ROSETA$POT_NOMI_TRAFO[which(ROSETA$ID_USUARIO_INST_PADRE == z)][1]
-
-LIM$ID <- row.names(LIM)
-row.names(LIM) <- NULL
-
-LIM <- rbind(LIM,data.frame(ID=cups$CUPS,  POT_NOM=cups$VAL_POT_AUTORIZADA/1000))
-LIM <- rbind(LIM,data.frame(ID=cgp$ID_CAJA,POT_NOM=(cgp$COD_INT_NOMI_FUSIB * cgp$COD_TENS_SUMI)))
-ID  <- tools::file_path_sans_ext(matrix(unlist(strsplit(ALL,"/")),nrow=3)[3,])
-
-LIM <- LIM[LIM$ID %in% ID,]
 
 B <- foreach(NAME = ALL,
              .options.future = list(seed = TRUE),
@@ -113,7 +77,7 @@ B <- foreach(NAME = ALL,
   
   ### If we have enough non zero, non imputed values in the dataset,
   ### then we continue with the assessment
-  if( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE))
+  if( (IMPUTED < COMPLETE) & (ZEROS < COMPLETE))
   {
     f["mean"]  <- as.numeric(rep(mean(r),24*F_DAYS))
     f["rw"]    <- rep(as.numeric(window(r,start=index(r)[length(r)-23])),F_DAYS)
@@ -158,7 +122,7 @@ B <- foreach(NAME = ALL,
       }
       
       TIME[1,j] <- median(abs(aux_real-aux_f),na.rm=T)
-      EFFE[1,j] <- sum(f[,j] >= 0.8*LIM$POT_NOM[LIM$ID == ID] )
+      EFFE[1,j] <- sum(f[,j] >= POT_OBJ*LIM$POT_NOM[LIM$ID == ID] )
     }
     
     write.csv(MAPE,file=paste("stlf/mape",TYPE,FILE,sep="/"))
