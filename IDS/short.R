@@ -15,13 +15,15 @@ library(arrow)
 
 plan(multisession)
 
-TEST        <- TRUE  ### si estoy haciendo test
+TEST        <- T     ### si estoy haciendo test
 SAMPLE      <- 200   ### number of elements to assess per each type
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75  ### length of the training period
-POT_OBJ     <- 0.25  ### potencia limite para considerar las medidas efectivas
 F_DAYS      <- 7     ### number of days to forecast for STLF
 T_DAYS      <- 21    ### number of days to use in the training widnow for AI methods for STLF
+MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
+MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
+
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 TYPES       <- c("CUPS","LINE","CT")
 
@@ -41,9 +43,9 @@ for (TY in TYPES)
   dir.create(paste("stlf/mape/",    TY,sep="/"),showWarnings = F, recursive = T)
   dir.create(paste("stlf/rmse/",    TY,sep="/"),showWarnings = F, recursive = T)
   dir.create(paste("stlf/time/",    TY,sep="/"),showWarnings = F, recursive = T)
-  dir.create(paste("stlf/effe/",    TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/mca/",     TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/mcb/",     TY,sep="/"),showWarnings = F, recursive = T)
 }
-
 
 B <- foreach(NAME = ALL,
              .options.future = list(seed = TRUE),
@@ -55,6 +57,9 @@ B <- foreach(NAME = ALL,
   FILE <- strsplit(NAME,"/")[[1]][3]
   TYPE <- strsplit(NAME,"/")[[1]][2]
   ID   <- tools::file_path_sans_ext(FILE)
+  
+  POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
+  POT_EST <- LIM$POT_EST[LIM$ID == ID]
   
   if (TEST) ####### ÑAPA hasta tener los datos finales acorto una semana la serie temporal
   {
@@ -71,9 +76,11 @@ B <- foreach(NAME = ALL,
   ZEROS       <- sum(a$kWh==0)/LENGTH
   IMPUTED     <- sum(a$issue)/LENGTH
 
-  f     <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
-  MAPE  <- RMSE  <- TIME <- EFFE <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
-  colnames(MAPE) <- colnames(RMSE) <- colnames(TIME) <- colnames(EFFE) <- colnames(f) <- MODELS
+  f    <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
+  MAPE <- RMSE <- TIME <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
+  MCA  <- MCB  <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
+  colnames(MAPE) <- colnames(RMSE) <- colnames(TIME) <- colnames(MCA) <- colnames(MCB) <- colnames(f) <- MODELS
+  rownames(MCA)  <- rownames(MCB)  <- MCNAMES
   
   ### If we have enough non zero, non imputed values in the dataset,
   ### then we continue with the assessment
@@ -108,6 +115,7 @@ B <- foreach(NAME = ALL,
   
     write.csv(f, file=paste("stlf/forecast",TYPE,FILE,sep="/"), row.names=F)
 
+    ## QQR  <- ecdf(real)
     aux  <- real != 0
     for(j in MODELS)
     {
@@ -122,13 +130,17 @@ B <- foreach(NAME = ALL,
       }
       
       TIME[1,j] <- median(abs(aux_real-aux_f),na.rm=T)
-      EFFE[1,j] <- sum(f[,j] >= POT_OBJ*LIM$POT_NOM[LIM$ID == ID] )
+      
+      QQF     <- ecdf(f[,j])
+      MCA[,j] <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
+      MCB[,j] <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
     }
     
     write.csv(MAPE,file=paste("stlf/mape",TYPE,FILE,sep="/"))
     write.csv(RMSE,file=paste("stlf/rmse",TYPE,FILE,sep="/"))
     write.csv(TIME,file=paste("stlf/time",TYPE,FILE,sep="/"))
-    write.csv(EFFE,file=paste("stlf/effe",TYPE,FILE,sep="/"))
+    write.csv(MCA, file=paste("stlf/mca", TYPE,FILE,sep="/"))
+    write.csv(MCB, file=paste("stlf/mcb", TYPE,FILE,sep="/"))
   } ### if that test if the time series has data
 }   ### foreach
 
@@ -163,7 +175,8 @@ for (TY in TYPES)
   EVAL("mape",TY)
   EVAL("rmse",TY)
   EVAL("time",TY)
-  EVAL("effe",TY)
+  EVAL("mca",TY)
+  EVAL("mcb",TY)
 }
 
 R <- foreach(NAME = Sys.glob("stlf/*/*/summary.csv"),.combine=rbind) %dofuture% {

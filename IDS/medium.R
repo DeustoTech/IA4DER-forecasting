@@ -20,6 +20,8 @@ SAMPLE      <- 200     ### number of elements to assess per each type
 COMPLETE    <- 0.10    ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75    ### length of the training period
 F_DAYS      <- 7*4*3   ### number of days to forecast for MTLF
+MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
+MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
 
 MODELS      <- c("mean","rw","naive","lr","ann","svm","arima","ses","ens")
 TYPES       <- c("CUPS","LINE","CT")
@@ -31,6 +33,8 @@ CT   <- Sys.glob(paths="post_cooked/CT/*")
 ALL  <- union(sample(CUPS,SAMPLE),sample(LINE,SAMPLE))
 ALL  <- union(ALL,sample(CT,SAMPLE))
 
+LIM  <- fread("features.csv")
+
 # ALL  <- Sys.glob(paths="post_cooked/*/*")
 
 for (TY in TYPES)
@@ -39,16 +43,19 @@ for (TY in TYPES)
     dir.create(paste("mtlf/forecast/",TY,KP,sep="/"),showWarnings = F, recursive = T)
     dir.create(paste("mtlf/mape/",    TY,KP,sep="/"),showWarnings = F, recursive = T)
     dir.create(paste("mtlf/rmse/",    TY,KP,sep="/"),showWarnings = F, recursive = T)
-    dir.create(paste("mtlf/monc/",    TY,KP,sep="/"),showWarnings = F, recursive = T)
-    dir.create(paste("mtlf/monp/",    TY,KP,sep="/"),showWarnings = F, recursive = T)
+    dir.create(paste("mtlf/mca/",     TY,KP,sep="/"),showWarnings = F, recursive = T)
+    dir.create(paste("mtlf/mcb/",     TY,KP,sep="/"),showWarnings = F, recursive = T)
   }
 
-FORECAST <- function(R,TT,KPI,FILE,TYPE)
+FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
 {
-  f     <- data.frame(matrix(ncol = length(MODELS), nrow = F_DAYS))
-  MAPE  <- RMSE  <- MONC <- MONP <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
-  colnames(MAPE) <- colnames(RMSE) <- colnames(MONC) <- colnames(MONP) <- colnames(f) <- MODELS
-
+  f    <- data.frame(matrix(ncol = length(MODELS), nrow = F_DAYS))
+  MAPE <- RMSE  <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
+  MCA  <- MCB   <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
+  
+  colnames(MAPE)  <- colnames(RMSE)  <- colnames(MCA) <- colnames(MCB) <- colnames(f) <- MODELS
+  rownames(MCA)   <- rownames(MCB)   <- MCNAMES
+  
   f["mean"]  <- as.numeric(rep(mean(R),F_DAYS))
   f["rw"]    <- rep(as.numeric(window(R,start=index(R)[length(R)])),F_DAYS)
   f["naive"] <- as.numeric(window(R,    start=index(R)[length(R)-F_DAYS+1]))
@@ -72,21 +79,22 @@ FORECAST <- function(R,TT,KPI,FILE,TYPE)
 
   write.csv(f, file=paste("mtlf/forecast",TYPE,KPI,FILE,sep="/"), row.names=F)
 
-  MC   <- quantile(TT,seq(0.6,1,0.01),na.rm=T)
+  ##QQR  <- ecdf(TT)
   aux  <- TT != 0
-  aux2 <- MC != 0
   for (j in MODELS)
   {
-    MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(TT[aux]-f[aux,j])/TT[aux],NA),na.rm=T)
-    RMSE[1,j] <- sqrt(median((TT-f[,j])^2,na.rm=T))
-    MONC[1,j] <- dist(rbind(MC,quantile(f[,j],seq(0.6,1,0.01),na.rm=T)))[1]
-    MONP[1,j] <- 100*median(ifelse(sum(aux2)!=0,abs(MC[aux2]-quantile(f[,j],seq(0.6,1,0.01),na.rm=T)[aux2])/MC[aux2],NA),na.rm=T)
+    MAPE[1,j]  <- 100*median(ifelse(sum(aux)!=0,abs(TT[aux]-f[aux,j])/TT[aux],NA),na.rm=T)
+    RMSE[1,j]  <- sqrt(median((TT-f[,j])^2,na.rm=T))
+
+    QQF     <- ecdf(f[,j])
+    MCA[,j] <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
+    MCB[,j] <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
   }
 
   write.csv(MAPE,file=paste("mtlf/mape",TYPE,KPI,FILE,sep="/"))
   write.csv(RMSE,file=paste("mtlf/rmse",TYPE,KPI,FILE,sep="/"))
-  write.csv(MONC,file=paste("mtlf/monc",TYPE,KPI,FILE,sep="/"))
-  write.csv(MONP,file=paste("mtlf/monp",TYPE,KPI,FILE,sep="/"))
+  write.csv(MCA, file=paste("mtlf/mca",TYPE,KPI,FILE,sep="/"))
+  write.csv(MCB, file=paste("mtlf/mcb",TYPE,KPI,FILE,sep="/"))
 }
 
 B <- foreach(NAME = ALL,
@@ -100,6 +108,10 @@ B <- foreach(NAME = ALL,
 
   FILE <- strsplit(NAME,"/")[[1]][3]
   TYPE <- strsplit(NAME,"/")[[1]][2]
+  ID      <- tools::file_path_sans_ext(FILE)
+  
+  POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
+  POT_EST <- LIM$POT_EST[LIM$ID == ID]
 
   if (TEST) ####### ÑAPA hasta tener los datos finales acorto una semana la serie temporal
   {
@@ -118,11 +130,11 @@ B <- foreach(NAME = ALL,
 
   ### If we have enough non zero, non imputed values in the dataset,
   ### then we continue with the assessment
-  if((IMPUTED < COMPLETE) | (ZEROS < COMPLETE))
+  if((IMPUTED < COMPLETE) & (ZEROS < COMPLETE))
   {
-    FORECAST(d$min,rr$min,"min",FILE,TYPE)
-    FORECAST(d$max,rr$max,"max",FILE,TYPE)
-    FORECAST(d$sum,rr$sum,"sum",FILE,TYPE)
+    FORECAST(d$min,rr$min,"min",FILE,TYPE,POT_NOM,POT_EST)
+    FORECAST(d$max,rr$max,"max",FILE,TYPE,POT_NOM,POT_EST)
+    FORECAST(d$sum,rr$sum,"sum",FILE,TYPE,POT_NOM,POT_EST)
   } ### if that test if the time series has data
 }   ### foreach
 
@@ -157,8 +169,8 @@ for (TY in TYPES)
   {
     EVAL("mape",TY,KP)
     EVAL("rmse",TY,KP)
-    EVAL("monc",TY,KP)
-    EVAL("monp",TY,KP)
+    EVAL("mca", TY,KP)
+    EVAL("mcb", TY,KP)
   }
 
 R <- foreach(NAME = Sys.glob("mtlf/*/*/*/summary.csv"),.combine=rbind) %dofuture% {
