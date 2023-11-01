@@ -33,7 +33,7 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "PruebasAsier.csv"
+RESULT_FILE <- "ResultadosNuevos.csv"
 
 
 resultadosModelos <- tibble(
@@ -43,11 +43,11 @@ resultadosModelos <- tibble(
   sMAPE = numeric(),
   RMSE = numeric(),
   MASE = numeric(),
-  MAPE1 = numeric(),
-  MAPEBien = numeric(),
+  MAPE = numeric(),
   Modelo = character()
 )
-
+#lo pongo aqui por si tenemos que volver a usarlo
+#mape <- mape(actual[aux], predicted[aux])
 
 fwrite(resultadosModelos, file = RESULT_FILE, col.names = T)  # SOLO SI SE QUIERE HACER UNO NUEVO
 
@@ -73,7 +73,7 @@ predict_models <- function(csv_file){
     # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
     colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
     csv_actual$imputed <- 0
-    csv_actual <- csv_actual %>% select(timestamp, kWh)
+    csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
   }
   
   
@@ -117,14 +117,14 @@ predict_models <- function(csv_file){
         
         predicted <- predict(mean(trainSet))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -133,8 +133,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "Media"
         )
         
@@ -144,14 +143,14 @@ predict_models <- function(csv_file){
         
         predicted <- predict(naive(trainSet))
         predicted <- predicted$mean
-
+        predicted <- coredata(predicted)[1]
+        
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -160,8 +159,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "Naive"
         )
         
@@ -208,14 +206,14 @@ predict_models <- function(csv_file){
         
         predicted <- forecast(auto.arima(trainSet))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
 
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -224,25 +222,24 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "Arima"
         )
         
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
         
         # ETS
-        
-        predicted <- forecast(ets(trainSet))
+        trainSetTsETS <- trainSetTs$kWh
+        predicted <- forecast(ets(trainSetTsETS))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -251,8 +248,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "ETS"
         )
         
@@ -260,16 +256,16 @@ predict_models <- function(csv_file){
         
         # NN
         
-        predicted <- forecast(nnetar(trainSet))
+        predicted <- forecast(nnetar(trainSetTs$kWh))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -278,8 +274,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "NN"
         )
         
@@ -341,14 +336,14 @@ predict_models <- function(csv_file){
         
         predicted <- predict(mean(trainSet))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -357,8 +352,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "Media"
         )
         
@@ -368,14 +362,14 @@ predict_models <- function(csv_file){
         
         predicted <- predict(naive(trainSet))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -384,8 +378,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "Naive"
         )
         
@@ -432,14 +425,14 @@ predict_models <- function(csv_file){
         
         predicted <- forecast(auto.arima(trainSet))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -448,8 +441,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "Arima"
         )
         
@@ -457,16 +449,17 @@ predict_models <- function(csv_file){
         
         # ETS
         
-        predicted <- forecast(ets(trainSet))
+        trainSetTsETS <- trainSetTs$kWh
+        predicted <- forecast(ets(trainSetTsETS))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -475,8 +468,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "ETS"
         )
         
@@ -484,16 +476,16 @@ predict_models <- function(csv_file){
         
         # NN
         
-        predicted <- forecast(nnetar(trainSet))
+        predicted <- forecast(nnetar(trainSetTs$kWh))
         predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
         
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
@@ -502,8 +494,7 @@ predict_models <- function(csv_file){
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "NN"
         )
         
@@ -559,19 +550,28 @@ foreach(csv_file = CT,
 
 
 # pruebas
+COMPLETE <- 0.10
+horas <- 0:23
+dias_semana <- c("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+F_DAYS <- 7 # Días que vamos a predecir con SVM
+T_DAYS <- 60 # Días con los que vamos a entrenar en cada trozo
 
+svmHP <- list( # Posibles valores para tunear SVM
+  cost = 10^(-4:4),
+  gamma = 10^(-3:2)
+)
 
 csvPrueba <- fread(CT[1])
+csvPrueba <- csvPrueba[0:5000,]
 
-resultadosModelos <- tibble(
+resultadosModelosP <- tibble(
   Hora = numeric(),
   TipoDia = character(),
   Predicted = numeric(),
   sMAPE = numeric(),
   RMSE = numeric(),
   MASE = numeric(),
-  MAPE1 = numeric(),
-  MAPEBien = numeric(),
+  MAPE = numeric(),
   Modelo = character()
 )
 
@@ -579,7 +579,7 @@ resultadosModelos <- tibble(
 if ("time" %in% colnames(csvPrueba)) {
   # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
   colnames(csvPrueba)[colnames(csvPrueba) == "time"] <- "timestamp"
-  csvPrueba$imputed <- 0
+  colnames(csvPrueba)[colnames(csvPrueba) == "issue"] <- "imputed"
   csvPrueba <- csvPrueba %>% select(timestamp, kWh, imputed)
 }
 
@@ -589,12 +589,11 @@ a <- csvPrueba %>%
                           "Laborable", "Finde")) %>%  select(-imputed)
 
 
-
-
 datos_hora20 <- a[hour(a$timestamp) == 20,]
 datosLab <- datos_hora20 %>% filter(TipoDia == "Laborable") %>% unique()
 datosFinde <- datos_hora20 %>% filter(TipoDia == "Finde") %>% unique()
 
+i = 10
 
 for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
   
@@ -603,38 +602,46 @@ for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
   test_start <- i + T_DAYS
   test_end <- i + T_DAYS + F_DAYS - 1
   
-  trainSet <- datosLab[train_start : train_end]
-  testSet <- datosLab[test_start : test_end]
+  trainSetTs <- datosLab[train_start : train_end]
+  testSetTs <- datosLab[test_start : test_end]
   
-  trainSet <- zoo(trainSet$kWh, order.by = trainSet$timestamp)
-  actual <- zoo(testSet$kWh, order.by = testSet$timestamp) # testSet
+  trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
+  actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
   
-  # arima
+  #svm
+  lagged <- merge(trainSet, lag(trainSet, 1))
+  SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS]) # Es el trainset. Coge los días marcado por T_DAYS
+  PREDICT <- data.frame(past = as.numeric(window(trainSet,
+                                                 start = index(trainSet)[length(trainSet - F_DAYS)])))
+  names(SVM_TRAINSET) <- c("actual", "past")
   
-  predicted <- forecast(auto.arima(trainSet))
-  predicted <- predicted$mean
+  
+  SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, range(list(gamma = 10^(-3:2), cost = 10^(-4:4))))
+  
+  predicted <- predict(SVM$best.model, PREDICT)
   
   aux  <- actual != 0
   smape <- smape(actual, predicted)
   rmse <- rmse(actual, predicted)
   mase <- mase(actual, predicted)
   if (!is.finite(mase)) { mase <- NA}
-  mape <- mape(actual[aux], predicted[aux])
-  mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+  mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
   
-  resultadosModelos <- resultadosModelos %>% add_row(
+  resultadosModelosP <- resultadosModelosP %>% add_row(
     Hora = 20,
     TipoDia = "Laborable",
     Predicted = predicted,
     sMAPE = smape,
     RMSE = rmse,
     MASE = mase,
-    MAPE1 = mape,
-    MAPEBien = mape2,
-    Modelo = "Arima"
+    MAPE = mape,
+    Modelo = "SVM"
   )
+  
+  
 }
 
+print(resultadosModelosP, n= 50)
 
 
 
