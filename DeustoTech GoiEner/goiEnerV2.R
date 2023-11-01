@@ -101,31 +101,31 @@ predict_models <- function(csv_file){
       # primero con los laborables
       
       for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
-        
+
         train_start <- i
         train_end <- i + T_DAYS - 1
         test_start <- i + T_DAYS
         test_end <- i + T_DAYS + F_DAYS - 1
-        
+
         trainSetTs <- datosLab[train_start : train_end]
         testSetTs <- datosLab[test_start : test_end]
-        
+
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
         actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
-        
+
         # MEDIA
-        
+
         predicted <- predict(mean(trainSet))
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
-        
+
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
+
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
@@ -136,15 +136,15 @@ predict_models <- function(csv_file){
           MAPE = mape,
           Modelo = "Media"
         )
-        
+
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
+
         # NAIVE
-        
+
         predicted <- predict(naive(trainSet))
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
-        
+
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
@@ -162,47 +162,11 @@ predict_models <- function(csv_file){
           MAPE = mape,
           Modelo = "Naive"
         )
-        
+
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
-        #SNAIVE SOLO HACE FALTA UNA VEZ, NO REPETIR EN FINDES
-        
-        # for (dia in dias_semana){
-        #   
-        #   snaive_trainsetTs <- datos_hora[weekdays(datos_hora$timestamp) == dia,]
-        #   snaive_testsetTs <- datos_hora[weekdays(datos_hora$timestamp) == dia,]
-        #   
-        #   sn_trainSet <- zoo(snaive_trainsetTs$kWh, order.by = snaive_trainsetTs$timestamp)
-        #   actual <- zoo(snaive_testsetTs$kWh, order.by = snaive_testsetTs$timestamp)
-        #   
-        #   predicted <- predict(snaive(snaive_trainsetTs$kWh, h = F_DAYS))
-        #   predicted <- predicted$mean
-        #  
-        #   aux  <- actual != 0
-        #   smape <- smape(actual, predicted)
-        #   rmse <- rmse(actual, predicted)
-        #   mase <- mase(actual, predicted)
-        #   if (!is.finite(mase)) { mase <- NA}
-        #   mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        #   
-        #   resultadosModelos <- resultadosModelos %>% add_row(
-        #     Hora = hora,
-        #     TipoDia = dia,
-        #     Predicted = predicted,
-        #     sMAPE = smape,
-        #     RMSE = rmse,
-        #     MASE = mase,
-        #     MAPE = mape,
-        #     Modelo = "SNaive"
-        #   )
-        #   
-        # }
-        
-        # fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
-        
-        # ARIMA 
-        
+
+        # ARIMA
+
         predicted <- forecast(auto.arima(trainSet), h = F_DAYS)
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
@@ -213,7 +177,7 @@ predict_models <- function(csv_file){
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
+
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
@@ -224,22 +188,22 @@ predict_models <- function(csv_file){
           MAPE = mape,
           Modelo = "Arima"
         )
-        
+
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
+
         # ETS
         trainSetTsETS <- trainSetTs$kWh
         predicted <- forecast(ets(trainSetTsETS), h = F_DAYS)
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
-        
+
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
+
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
@@ -250,22 +214,22 @@ predict_models <- function(csv_file){
           MAPE = mape,
           Modelo = "ETS"
         )
-        
+
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
+
         # NN
-        
+
         predicted <- forecast(nnetar(trainSetTs$kWh), h = F_DAYS)
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
-        
+
         aux  <- actual != 0
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
+
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
@@ -276,28 +240,28 @@ predict_models <- function(csv_file){
           MAPE = mape,
           Modelo = "NN"
         )
-        
+
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
+
         # SVM. HACER PRUEBAS PARA VER SI VA BIEN
-        
+
         lagged <- merge(trainSet, shift(trainSet, -7))
         SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
         PREDICT <- data.frame(past = as.numeric(window(trainSet,
                                                        start = index(trainSet)[length(trainSet - F_DAYS)])))
         names(SVM_TRAINSET) <- c("actual", "past")
-        
+
         SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-        
+
         predicted <- predict(SVM$best.model, PREDICT)
         aux  <- actual != 0
-        
+
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
+
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
@@ -308,190 +272,241 @@ predict_models <- function(csv_file){
           MAPE = mape,
           Modelo = "SVM"
         )
-        
+
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       }
-      
-      
+
+
       # AHORA LO MISMO PERO CON FINDE
-      
+
       for (i in 1:(nrow(datosFinde) - T_DAYS - F_DAYS + 1)){
+
+        train_start <- i
+        train_end <- i + T_DAYS - 1
+        test_start <- i + T_DAYS
+        test_end <- i + T_DAYS + F_DAYS - 1
+
+        trainSetTs <- datosFinde[train_start : train_end]
+        testSetTs <- datosFinde[test_start : test_end]
+
+        trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
+        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
+
+        # MEDIA
+
+        predicted <- predict(mean(trainSet))
+        predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
+
+        aux  <- actual != 0
+        smape <- smape(actual, predicted)
+        rmse <- rmse(actual, predicted)
+        mase <- mase(actual, predicted)
+        if (!is.finite(mase)) { mase <- NA}
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Finde",
+          Predicted = predicted,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          MAPE = mape,
+          Modelo = "Media"
+        )
+
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+
+        # NAIVE
+
+        predicted <- predict(naive(trainSet))
+        predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
+
+        aux  <- actual != 0
+        smape <- smape(actual, predicted)
+        rmse <- rmse(actual, predicted)
+        mase <- mase(actual, predicted)
+        if (!is.finite(mase)) { mase <- NA}
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Finde",
+          Predicted = predicted,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          MAPE = mape,
+          Modelo = "Naive"
+        )
+
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+
+        # ARIMA
+
+        predicted <- forecast(auto.arima(trainSet), h = F_DAYS)
+        predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
+
+        aux  <- actual != 0
+        smape <- smape(actual, predicted)
+        rmse <- rmse(actual, predicted)
+        mase <- mase(actual, predicted)
+        if (!is.finite(mase)) { mase <- NA}
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Finde",
+          Predicted = predicted,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          MAPE = mape,
+          Modelo = "Arima"
+        )
+
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+
+        # ETS
+
+        trainSetTsETS <- trainSetTs$kWh
+        predicted <- forecast(ets(trainSetTsETS), h = F_DAYS)
+        predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
+
+        aux  <- actual != 0
+        smape <- smape(actual, predicted)
+        rmse <- rmse(actual, predicted)
+        mase <- mase(actual, predicted)
+        if (!is.finite(mase)) { mase <- NA}
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Finde",
+          Predicted = predicted,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          MAPE = mape,
+          Modelo = "ETS"
+        )
+
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+
+        # NN
+
+        predicted <- forecast(nnetar(trainSetTs$kWh), h = F_DAYS)
+        predicted <- predicted$mean
+        predicted <- coredata(predicted)[1]
+
+        aux  <- actual != 0
+        smape <- smape(actual, predicted)
+        rmse <- rmse(actual, predicted)
+        mase <- mase(actual, predicted)
+        if (!is.finite(mase)) { mase <- NA}
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Finde",
+          Predicted = predicted,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          MAPE = mape,
+          Modelo = "NN"
+        )
+
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+
+        # SVM. HACER PRUEBAS PARA VER SI VA BIEN
+
+        lagged <- merge(trainSet, shift(trainSet, -7))
+        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+        PREDICT <- data.frame(past = as.numeric(window(trainSet,
+                                                       start = index(trainSet)[length(trainSet - F_DAYS)])))
+        names(SVM_TRAINSET) <- c("actual", "past")
+
+        SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+
+        predicted <- predict(SVM$best.model, PREDICT)
+        aux  <- actual != 0
+
+        smape <- smape(actual, predicted)
+        rmse <- rmse(actual, predicted)
+        mase <- mase(actual, predicted)
+        if (!is.finite(mase)) { mase <- NA}
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+
+        resultadosModelos <- resultadosModelos %>% add_row(
+          Hora = hora,
+          TipoDia = "Finde",
+          Predicted = predicted,
+          sMAPE = smape,
+          RMSE = rmse,
+          MASE = mase,
+          MAPE = mape,
+          Modelo = "SVM"
+        )
+
+        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+
+      }
+      #SNAIVE SOLO HACE FALTA UNA VEZ
+      
+      datos_SN <- datos_hora %>% unique()
+      
+      for (i in 1:(nrow(datos_SN) - T_DAYS - F_DAYS + 1)){
         
         train_start <- i
         train_end <- i + T_DAYS - 1
         test_start <- i + T_DAYS
         test_end <- i + T_DAYS + F_DAYS - 1
         
-        trainSetTs <- datosFinde[train_start : train_end]
-        testSetTs <- datosFinde[test_start : test_end]
+        trainSetTs <- datos_SN[train_start : train_end]
+        testSetTs <- datos_SN[test_start : test_end]
         
-        trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
-        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
-        
-        # MEDIA
-        
-        predicted <- predict(mean(trainSet))
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
-        
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Finde",
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "Media"
-        )
-        
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
-        # NAIVE
-        
-        predicted <- predict(naive(trainSet))
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
-        
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Finde",
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "Naive"
-        )
-        
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
-        # ARIMA 
-        
-        predicted <- forecast(auto.arima(trainSet), h = F_DAYS)
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
-        
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Finde",
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "Arima"
-        )
-        
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
-        # ETS
-        
-        trainSetTsETS <- trainSetTs$kWh
-        predicted <- forecast(ets(trainSetTsETS), h = F_DAYS)
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
-        
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Finde",
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "ETS"
-        )
-        
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
-        # NN
-        
-        predicted <- forecast(nnetar(trainSetTs$kWh), h = F_DAYS)
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
-        
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Finde",
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "NN"
-        )
-        
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-        
-        # SVM. HACER PRUEBAS PARA VER SI VA BIEN
-        
-        lagged <- merge(trainSet, shift(trainSet, -7))
-        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
-        PREDICT <- data.frame(past = as.numeric(window(trainSet,
-                                                       start = index(trainSet)[length(trainSet - F_DAYS)])))
-        names(SVM_TRAINSET) <- c("actual", "past")
-        
-        SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-        
-        predicted <- predict(SVM$best.model, PREDICT)
-        aux  <- actual != 0
-        
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-        
-        resultadosModelos <- resultadosModelos %>% add_row(
-          Hora = hora,
-          TipoDia = "Finde",
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "SVM"
-        )
-        
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
+        for (dia in dias_semana) {
+          
+          snaive_trainsetTs <- trainSetTs[weekdays(trainSetTs$timestamp) == dia,]
+          snaive_testsetTs <- testSetTs[weekdays(testSetTs$timestamp) == dia,]
+          
+          
+          actual <- zoo(snaive_testsetTs$kWh, order.by = snaive_testsetTs$timestamp)
+          
+          predicted <- predict(snaive(snaive_trainsetTs$kWh, h = F_DAYS))
+          predicted <- predicted$mean
+          
+          aux  <- actual != 0
+          
+          smape <- smape(actual, predicted)
+          rmse <- rmse(actual, predicted)
+          mase <- mase(actual, predicted)
+          if (!is.finite(mase)) { mase <- NA}
+          mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+          
+          resultadosModelos <- resultadosModelos %>% add_row(
+            Hora = hora,
+            TipoDia = dia,
+            Predicted = predicted,
+            sMAPE = smape,
+            RMSE = rmse,
+            MASE = mase,
+            MAPE = mape,
+            Modelo = "SNaive"
+          )
+          
+      fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        
       }
+    }
+      
+      
     }
   }
 }
@@ -635,7 +650,7 @@ for (i in 1:(nrow(datos_hora20) - T_DAYS - F_DAYS + 1)){
   snaive_trainsetTs <- trainSetTs[weekdays(trainSetTs$timestamp) == dia,]
   snaive_testsetTs <- testSetTs[weekdays(testSetTs$timestamp) == dia,]
   
-  sn_trainSet <- zoo(snaive_trainsetTs$kWh, order.by = snaive_trainsetTs$timestamp)
+  # sn_trainSet <- zoo(snaive_trainsetTs$kWh, order.by = snaive_trainsetTs$timestamp)
   actual <- zoo(snaive_testsetTs$kWh, order.by = snaive_testsetTs$timestamp)
   
   predicted <- predict(snaive(snaive_trainsetTs$kWh, h = F_DAYS))
