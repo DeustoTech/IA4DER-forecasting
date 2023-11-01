@@ -167,40 +167,39 @@ predict_models <- function(csv_file){
         
         #SNAIVE SOLO HACE FALTA UNA VEZ, NO REPETIR EN FINDES
         
-        for (dia in dias_semana){
-          
-          snaive_trainsetTs <- datos_hora[weekdays(datos_hora$timestamp) == dia,]
-          snaive_testsetTs <- datos_hora[weekdays(datos_hora$timestamp) == dia,]
-          
-          sn_trainSet <- zoo(snaive_trainsetTs$kWh, order.by = snaive_trainsetTs$timestamp)
-          actual <- zoo(snaive_testsetTs$kWh, order.by = snaive_testsetTs$timestamp)
-          
-          predicted <- predict(snaive(snaive_trainsetTs$kWh, h = F_DAYS))
-          predicted <- predicted$mean
-         
-          aux  <- actual != 0
-          smape <- smape(actual, predicted)
-          rmse <- rmse(actual, predicted)
-          mase <- mase(actual, predicted)
-          if (!is.finite(mase)) { mase <- NA}
-          mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-          
-          resultadosModelos <- resultadosModelos %>% add_row(
-            Hora = hora,
-            TipoDia = dia,
-            Predicted = predicted,
-            sMAPE = smape,
-            RMSE = rmse,
-            MASE = mase,
-            MAPE = mape,
-            Modelo = "SNaive"
-          )
-          
-        }
+        # for (dia in dias_semana){
+        #   
+        #   snaive_trainsetTs <- datos_hora[weekdays(datos_hora$timestamp) == dia,]
+        #   snaive_testsetTs <- datos_hora[weekdays(datos_hora$timestamp) == dia,]
+        #   
+        #   sn_trainSet <- zoo(snaive_trainsetTs$kWh, order.by = snaive_trainsetTs$timestamp)
+        #   actual <- zoo(snaive_testsetTs$kWh, order.by = snaive_testsetTs$timestamp)
+        #   
+        #   predicted <- predict(snaive(snaive_trainsetTs$kWh, h = F_DAYS))
+        #   predicted <- predicted$mean
+        #  
+        #   aux  <- actual != 0
+        #   smape <- smape(actual, predicted)
+        #   rmse <- rmse(actual, predicted)
+        #   mase <- mase(actual, predicted)
+        #   if (!is.finite(mase)) { mase <- NA}
+        #   mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        #   
+        #   resultadosModelos <- resultadosModelos %>% add_row(
+        #     Hora = hora,
+        #     TipoDia = dia,
+        #     Predicted = predicted,
+        #     sMAPE = smape,
+        #     RMSE = rmse,
+        #     MASE = mase,
+        #     MAPE = mape,
+        #     Modelo = "SNaive"
+        #   )
+        #   
+        # }
         
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        # fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
         
-        }
         
         # ARIMA 
         
@@ -299,7 +298,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
-        resultadosModelosP <- resultadosModelosP %>% add_row(
+        resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
           Predicted = predicted,
@@ -479,7 +478,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
-        resultadosModelosP <- resultadosModelosP %>% add_row(
+        resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
           Predicted = predicted,
@@ -493,14 +492,14 @@ predict_models <- function(csv_file){
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
       }
-      
-      
-     
     }
-    
   }
-  
 }
+num_cores <- 4  # Ajusta según la cantidad de núcleos de tu CPU
+
+# Configurar el clúster paralelo
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
 
 foreach(csv_file = CT, 
         .packages = librerias) %dopar% predict_models(csv_file)
