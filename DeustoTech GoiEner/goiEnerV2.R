@@ -282,34 +282,31 @@ predict_models <- function(csv_file){
         
         # SVM. HACER PRUEBAS PARA VER SI VA BIEN
         
-        lagged <- merge(trainSet, lag(trainSet, 1))
-        SVM_TRAINSET <- window(retrasados,start=index(trainSet)[length(trainSet) - T_DAYS]) # Es el trainset. Coge los días marcado por T_DAYS
+        lagged <- merge(trainSet, shift(trainSet, -7))
+        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
         PREDICT <- data.frame(past = as.numeric(window(trainSet,
-              start = index(trainSet)[length(trainSet - F_DAYS)])))
+                                                       start = index(trainSet)[length(trainSet - F_DAYS)])))
         names(SVM_TRAINSET) <- c("actual", "past")
         
-        
-        SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges(list(gamma = 10^(-3:2), cost = 10^(-4:4))))
+        SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
         
         predicted <- predict(SVM$best.model, PREDICT)
-        
         aux  <- actual != 0
+        
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
-        resultadosModelos <- resultadosModelos %>% add_row(
+        resultadosModelosP <- resultadosModelosP %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "SVM"
         )
         
@@ -502,38 +499,36 @@ predict_models <- function(csv_file){
         
         # SVM. HACER PRUEBAS PARA VER SI VA BIEN
         
-        lagged <- merge(trainSet, lag(trainSet, 1))
-        SVM_TRAINSET <- window(retrasados,start=index(trainSet)[length(trainSet) - T_DAYS]) # Es el trainset. Coge los días marcado por T_DAYS
+        lagged <- merge(trainSet, shift(trainSet, -7))
+        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
         PREDICT <- data.frame(past = as.numeric(window(trainSet,
                                                        start = index(trainSet)[length(trainSet - F_DAYS)])))
         names(SVM_TRAINSET) <- c("actual", "past")
         
-        
-        SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges(list(gamma = 10^(-3:2), cost = 10^(-4:4))))
+        SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
         
         predicted <- predict(SVM$best.model, PREDICT)
-        
         aux  <- actual != 0
+        
         smape <- smape(actual, predicted)
         rmse <- rmse(actual, predicted)
         mase <- mase(actual, predicted)
         if (!is.finite(mase)) { mase <- NA}
-        mape <- mape(actual[aux], predicted[aux])
-        mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
         
-        resultadosModelos <- resultadosModelos %>% add_row(
+        resultadosModelosP <- resultadosModelosP %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
           MASE = mase,
-          MAPE1 = mape,
-          MAPEBien = mape2,
+          MAPE = mape,
           Modelo = "SVM"
         )
         
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+
       }
       
       
@@ -571,7 +566,8 @@ resultadosModelosP <- tibble(
   sMAPE = numeric(),
   RMSE = numeric(),
   MASE = numeric(),
-  MAPE = numeric(),
+  MAPEnormal = numeric(),
+  MAPE_mano = numeric(),
   Modelo = character()
 )
 
@@ -608,22 +604,21 @@ for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
   trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
   actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
   
-  #svm
-  lagged <- merge(trainSet, lag(trainSet, 1))
-  SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS]) # Es el trainset. Coge los días marcado por T_DAYS
+  lagged <- merge(trainSet, shift(trainSet, -7))
+  SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
   PREDICT <- data.frame(past = as.numeric(window(trainSet,
                                                  start = index(trainSet)[length(trainSet - F_DAYS)])))
   names(SVM_TRAINSET) <- c("actual", "past")
-  
-  
-  SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, range(list(gamma = 10^(-3:2), cost = 10^(-4:4))))
-  
+ 
+  SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+ 
   predicted <- predict(SVM$best.model, PREDICT)
-  
   aux  <- actual != 0
+  
   smape <- smape(actual, predicted)
   rmse <- rmse(actual, predicted)
   mase <- mase(actual, predicted)
+  mape1 <- mape(actual, predicted)
   if (!is.finite(mase)) { mase <- NA}
   mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
   
@@ -634,9 +629,11 @@ for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
     sMAPE = smape,
     RMSE = rmse,
     MASE = mase,
-    MAPE = mape,
+    MAPE_mano = mape,
+    MAPEnormal = mape1,
     Modelo = "SVM"
   )
+  
   
   
 }
