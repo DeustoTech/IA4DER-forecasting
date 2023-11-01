@@ -381,43 +381,6 @@ predict_models <- function(csv_file){
         
         fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
         
-        #SNAIVE
-        
-        foreach(dia = dias_semana, .packages = librerias) %dopar% {
-          
-          snaive_trainsetTs <- trainSetTs[weekdays(trainSetTs$timestamp) == dia,]
-          snaive_testsetTs <- testSet[weekdays(testSet$timestamp) == dia,]
-          
-          sn_trainSet <- zoo(snaive_trainsetTs$kWh, order.by = snaive_trainsetTs$timestamp)
-          actual <- zoo(snaive_testsetTs$kWh, order.by = snaive_testsetTs$timestamp)
-          
-          predicted <- predict(snaive(sn_trainSet))
-          predicted <- predicted$mean
-          
-          aux  <- actual != 0
-          smape <- smape(actual, predicted)
-          rmse <- rmse(actual, predicted)
-          mase <- mase(actual, predicted)
-          if (!is.finite(mase)) { mase <- NA}
-          mape <- mape(actual[aux], predicted[aux])
-          mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-          
-          resultadosModelos <- resultadosModelos %>% add_row(
-            Hora = hora,
-            TipoDia = "Finde",
-            Predicted = predicted,
-            sMAPE = smape,
-            RMSE = rmse,
-            MASE = mase,
-            MAPE1 = mape,
-            MAPEBien = mape2,
-            Modelo = "SNaive"
-          )
-          
-          fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-          
-        }
-        
         # ARIMA 
         
         predicted <- forecast(auto.arima(trainSet), h = F_DAYS)
