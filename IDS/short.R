@@ -23,6 +23,7 @@ F_DAYS      <- 7     ### number of days to forecast for STLF
 T_DAYS      <- 21    ### number of days to use in the training widnow for AI methods for STLF
 MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
 MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
+MCTARGET    <- MCNAMES[2]
 
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 TYPES       <- c("CUPS","LINE","CT")
@@ -31,7 +32,9 @@ CUPS <- Sys.glob(paths="post_cooked/CUPS/*")
 LINE <- Sys.glob(paths="post_cooked/LINE/*")
 CT   <- Sys.glob(paths="post_cooked/CT/*")
 ALL  <- union(sample(CUPS,SAMPLE),sample(LINE,SAMPLE))
-ALL  <- union(ALL,sample(CT,SAMPLE))
+
+if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
+} else                   { ALL  <- union(ALL,CT) } 
 
 LIM  <- fread("features.csv")
 
@@ -45,6 +48,9 @@ for (TY in TYPES)
   dir.create(paste("stlf/time/",    TY,sep="/"),showWarnings = F, recursive = T)
   dir.create(paste("stlf/mca/",     TY,sep="/"),showWarnings = F, recursive = T)
   dir.create(paste("stlf/mcb/",     TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/riska/",   TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/riskb/",   TY,sep="/"),showWarnings = F, recursive = T)
+  dir.create(paste("stlf/mase/",    TY,sep="/"),showWarnings = F, recursive = T)
 }
 
 B <- foreach(NAME = ALL,
@@ -76,11 +82,12 @@ B <- foreach(NAME = ALL,
   ZEROS       <- sum(a$kWh==0)/LENGTH
   IMPUTED     <- sum(a$issue)/LENGTH
 
-  f    <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
-  MAPE <- RMSE <- TIME <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
-  MCA  <- MCB  <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
-  colnames(MAPE) <- colnames(RMSE) <- colnames(TIME) <- colnames(MCA) <- colnames(MCB) <- colnames(f) <- MODELS
-  rownames(MCA)  <- rownames(MCB)  <- MCNAMES
+  f     <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
+  MASE  <- MAPE  <- RMSE  <- TIME    <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
+  RISKA <- RISKB  <- MCA  <- MCB     <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
+  colnames(MASE)  <- colnames(MAPE)  <- colnames(RMSE) <- colnames(TIME) <- colnames(f) <- MODELS
+  colnames(RISKA) <- colnames(RISKB) <- colnames(MCA)  <- colnames(MCB)  <- MODELS
+  rownames(RISKA) <- rownames(RISKB) <- rownames(MCA)  <- rownames(MCB)  <- MCNAMES
   
   ### If we have enough non zero, non imputed values in the dataset,
   ### then we continue with the assessment
@@ -116,31 +123,41 @@ B <- foreach(NAME = ALL,
     write.csv(f, file=paste("stlf/forecast",TYPE,FILE,sep="/"), row.names=F)
 
     ## QQR  <- ecdf(real)
-    aux  <- real != 0
+    aux     <- real != 0
+    auxmase <- median(abs(real-f[,"naive"]))
+    
+    auxtime <- numeric(F_DAYS)
+    for (D in 1:F_DAYS)
+      auxtime[D] <- which.max(real[(24*D-23):(24*D)]) -1
+    
     for(j in MODELS)
     {
       MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(real[aux]-f[aux,j])/real[aux],NA),na.rm=T)
       RMSE[1,j] <- sqrt(median((real-f[,j])^2,na.rm=T))
-      
-      aux_real  <- aux_f <- numeric(F_DAYS)
+      MASE[1,j] <- median(abs(real-f[,j]))/auxmase
+    
+      aux_f     <- numeric(F_DAYS)
       for (D in 1:F_DAYS)
-      {
-        aux_real[D] <-                                      which.max(real[(24*D-23):(24*D)])  -1
-        aux_f[D]    <- ifelse(!anyNA(f[(24*D-23):(24*D),j]),which.max(f[   (24*D-23):(24*D),j])-1,NA)
-      }
+        aux_f[D]<- ifelse(!anyNA(f[(24*D-23):(24*D),j]),which.max(f[(24*D-23):(24*D),j])-1,NA)
       
-      TIME[1,j] <- median(abs(aux_real-aux_f),na.rm=T)
+      TIME[1,j] <- median(abs(auxtime-aux_f),na.rm=T)
+  
+      RISKA[,j] <- (max(real) < POT_NOM*MC) == (max(f[,j]) < POT_NOM*MC)
+      RISKB[,j] <- (max(real) < POT_EST*MC) == (max(f[,j]) < POT_EST*MC)
       
-      QQF     <- ecdf(f[,j])
-      MCA[,j] <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
-      MCB[,j] <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
+      QQF       <- ecdf(f[,j])
+      MCA[,j]   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
+      MCB[,j]   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
     }
     
-    write.csv(MAPE,file=paste("stlf/mape",TYPE,FILE,sep="/"))
-    write.csv(RMSE,file=paste("stlf/rmse",TYPE,FILE,sep="/"))
-    write.csv(TIME,file=paste("stlf/time",TYPE,FILE,sep="/"))
-    write.csv(MCA, file=paste("stlf/mca", TYPE,FILE,sep="/"))
-    write.csv(MCB, file=paste("stlf/mcb", TYPE,FILE,sep="/"))
+    write.csv(MAPE, file=paste("stlf/mape", TYPE,FILE,sep="/"))
+    write.csv(RMSE, file=paste("stlf/rmse", TYPE,FILE,sep="/"))
+    write.csv(TIME, file=paste("stlf/time", TYPE,FILE,sep="/"))
+    write.csv(MCA,  file=paste("stlf/mca",  TYPE,FILE,sep="/"))
+    write.csv(MCB,  file=paste("stlf/mcb",  TYPE,FILE,sep="/"))
+    write.csv(RISKA,file=paste("stlf/riska",TYPE,FILE,sep="/"))
+    write.csv(RISKB,file=paste("stlf/riskb",TYPE,FILE,sep="/"))
+    write.csv(MASE, file=paste("stlf/mase", TYPE,FILE,sep="/"))
   } ### if that test if the time series has data
 }   ### foreach
 
@@ -150,41 +167,54 @@ EVAL <- function(ERROR,TYPE)
     if (!grepl("summary",NAME,fixed = TRUE)) fread(NAME)
   }
   
-  RR <- na.omit(as.matrix(R[,..MODELS]))
-  rownames(RR) <- 1:nrow(RR)
+  if (!grepl("risk",ERROR))
+  {
+    RR <- as.matrix(as.data.frame(na.omit(as.matrix(R[,..MODELS]))))
+    rownames(RR) <- 1:nrow(RR)
 
-  write.csv(as.data.frame(apply(RR, 2, summary)),
-            file=paste("stlf",ERROR,TYPE,"summary.csv",sep="/"))
-  BOOT <- boot(data=RR,statistic=function(data,i) colMedians(data[i,],na.rm=T),R=100)
+    write.csv(as.data.frame(apply(RR, 2, summary)),
+              file=paste("stlf",ERROR,TYPE,"summary.csv",sep="/"))
 
-  sink(paste("stlf/",ERROR,TYPE,"p-values.txt",sep="/"))
-    print(BOOT)
-    print(friedman.test(RR))
-    multiple <- frdAllPairsNemenyiTest(RR)
-    print(multcompLetters(fullPTable(multiple$p.value)))
-  sink()
+    BOOT <- boot(data=as.matrix(RR),statistic=function(data,i) colMedians(data[i,],na.rm=T),R=100)
 
-  pdf(file=paste("stlf/",ERROR,TYPE,"summary.pdf",sep="/"))
-    plot(multiple)
-    boxplot(BOOT$t,names=MODELS,ylab="Confidence Interval over the Median")
-  dev.off()
+    sink(paste("stlf/",ERROR,TYPE,"p-values.txt",sep="/"))
+      print(BOOT)
+      print(friedman.test(RR))
+      multiple <- frdAllPairsNemenyiTest(RR)
+      print(multcompLetters(fullPTable(multiple$p.value)))
+    sink()
+
+    pdf(file=paste("stlf/",ERROR,TYPE,"summary.pdf",sep="/"))
+      plot(multiple)
+      boxplot(BOOT$t,names=MODELS,ylab="Confidence Interval over the Median")
+    dev.off()
+  } else {
+    RR <- as.matrix(as.data.frame(na.omit(as.matrix(R[R$V1==MCTARGET,..MODELS]))))
+    rownames(RR) <- 1:nrow(RR)
+
+    write.csv(t(apply(RR, 2, function(x) {sum(x,na.rm=T)/length(x) } )),
+              file=paste("stlf",ERROR,TYPE,"summary.csv",sep="/"),row.names=F)
+  }
 }
 
 for (TY in TYPES)
 {
-  EVAL("mape",TY)
-  EVAL("rmse",TY)
-  EVAL("time",TY)
-  EVAL("mca",TY)
-  EVAL("mcb",TY)
+  EVAL("mape", TY)
+  EVAL("rmse", TY)
+  EVAL("time", TY)
+  EVAL("mca",  TY)
+  EVAL("mcb",  TY)
+  EVAL("riska",TY)
+  EVAL("riskb",TY)
+  EVAL("mase", TY)
 }
 
 R <- foreach(NAME = Sys.glob("stlf/*/*/summary.csv"),.combine=rbind) %dofuture% {
-  aux   <- fread(NAME)
   ERROR <- strsplit(NAME,"/")[[1]][2]
   TY    <- strsplit(NAME,"/")[[1]][3]
   
-  return(data.frame(ERROR,TY,aux[3,-1]))
+  if (!grepl("risk",ERROR)) { return(data.frame(ERROR,TY,fread(NAME)[3,-1]))  }
+  else  {                     return(data.frame(ERROR,TY,fread(NAME)))  }
 }
 
 write.csv(R,file="stlf/summary.csv",row.names=F)

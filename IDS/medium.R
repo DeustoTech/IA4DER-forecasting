@@ -22,6 +22,7 @@ TRAIN_LIMIT <- 0.75    ### length of the training period
 F_DAYS      <- 7*4*3   ### number of days to forecast for MTLF
 MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
 MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
+MCTARGET    <- MCNAMES[2]
 
 MODELS      <- c("mean","rw","naive","lr","ann","svm","arima","ses","ens")
 TYPES       <- c("CUPS","LINE","CT")
@@ -45,16 +46,20 @@ for (TY in TYPES)
     dir.create(paste("mtlf/rmse/",    TY,KP,sep="/"),showWarnings = F, recursive = T)
     dir.create(paste("mtlf/mca/",     TY,KP,sep="/"),showWarnings = F, recursive = T)
     dir.create(paste("mtlf/mcb/",     TY,KP,sep="/"),showWarnings = F, recursive = T)
+    dir.create(paste("mtlf/riska/",   TY,KP,sep="/"),showWarnings = F, recursive = T)
+    dir.create(paste("mtlf/riskb/",   TY,KP,sep="/"),showWarnings = F, recursive = T)
+    dir.create(paste("mtlf/mase/",    TY,KP,sep="/"),showWarnings = F, recursive = T)
   }
 
 FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
 {
-  f    <- data.frame(matrix(ncol = length(MODELS), nrow = F_DAYS))
-  MAPE <- RMSE  <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
-  MCA  <- MCB   <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
-  
-  colnames(MAPE)  <- colnames(RMSE)  <- colnames(MCA) <- colnames(MCB) <- colnames(f) <- MODELS
-  rownames(MCA)   <- rownames(MCB)   <- MCNAMES
+  f     <- data.frame(matrix(ncol = length(MODELS), nrow = F_DAYS))
+  MAPE  <- RMSE  <- MASE <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
+  RISKA <- RISKB <- MCA  <- MCB  <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
+    
+  colnames(MAPE)  <- colnames(RMSE)  <- colnames(MASE) <- colnames(f)   <- MODELS
+  colnames(RISKA) <- colnames(RISKB) <- colnames(MCA)  <- colnames(MCB) <- MODELS
+  rownames(RISKA) <- rownames(RISKB) <- rownames(MCA)  <- rownames(MCB) <- MCNAMES
   
   f["mean"]  <- as.numeric(rep(mean(R),F_DAYS))
   f["rw"]    <- rep(as.numeric(window(R,start=index(R)[length(R)])),F_DAYS)
@@ -80,21 +85,29 @@ FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
   write.csv(f, file=paste("mtlf/forecast",TYPE,KPI,FILE,sep="/"), row.names=F)
 
   ##QQR  <- ecdf(TT)
-  aux  <- TT != 0
+  aux     <- TT != 0
+  auxmase <- median(abs(real-f[,"naive"]))
   for (j in MODELS)
   {
-    MAPE[1,j]  <- 100*median(ifelse(sum(aux)!=0,abs(TT[aux]-f[aux,j])/TT[aux],NA),na.rm=T)
-    RMSE[1,j]  <- sqrt(median((TT-f[,j])^2,na.rm=T))
+    MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(TT[aux]-f[aux,j])/TT[aux],NA),na.rm=T)
+    RMSE[1,j] <- sqrt(median((TT-f[,j])^2,na.rm=T))
+    MASE[1,j] <- median(abs(real-f[,j]))/auxmase
 
-    QQF     <- ecdf(f[,j])
-    MCA[,j] <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
-    MCB[,j] <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
+    RISKA[,j] <- (max(real) < POT_NOM*MC) == (max(f[,j]) < POT_NOM*MC)
+    RISKB[,j] <- (max(real) < POT_EST*MC) == (max(f[,j]) < POT_EST*MC)
+
+    QQF       <- ecdf(f[,j])
+    MCA[,j]   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
+    MCB[,j]   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
   }
 
-  write.csv(MAPE,file=paste("mtlf/mape",TYPE,KPI,FILE,sep="/"))
-  write.csv(RMSE,file=paste("mtlf/rmse",TYPE,KPI,FILE,sep="/"))
-  write.csv(MCA, file=paste("mtlf/mca",TYPE,KPI,FILE,sep="/"))
-  write.csv(MCB, file=paste("mtlf/mcb",TYPE,KPI,FILE,sep="/"))
+  write.csv(MAPE, file=paste("mtlf/mape", TYPE,KPI,FILE,sep="/"))
+  write.csv(RMSE, file=paste("mtlf/rmse", TYPE,KPI,FILE,sep="/"))
+  write.csv(MCA,  file=paste("mtlf/mca",  TYPE,KPI,FILE,sep="/"))
+  write.csv(MCB,  file=paste("mtlf/mcb",  TYPE,KPI,FILE,sep="/"))
+  write.csv(RISKA,file=paste("mtlf/riska",TYPE,KPI,FILE,sep="/"))
+  write.csv(RISKB,file=paste("mtlf/riskb",TYPE,KPI,FILE,sep="/"))
+  write.csv(MASE, file=paste("mtlf/mase", TYPE,KPI,FILE,sep="/"))
 }
 
 B <- foreach(NAME = ALL,
@@ -144,42 +157,55 @@ EVAL <- function(ERROR,TYPE,KPI)
     if (!grepl("summary",NAME,fixed = TRUE)) fread(NAME)
   }
 
-  RR <- na.omit(as.matrix(R[,..MODELS]))
-  rownames(RR) <- 1:nrow(RR)
+  if (!grepl("risk",ERROR))
+  {
+    RR <- na.omit(as.matrix(R[,..MODELS]))
+    rownames(RR) <- 1:nrow(RR)
 
-  write.csv(as.data.frame(apply(RR, 2, summary)),
-            file=paste("mtlf",ERROR,TYPE,KPI,"summary.csv",sep="/"))
-  BOOT <- boot(data=RR,statistic=function(data,i) colMedians(data[i,],na.rm=T),R=100)
+    write.csv(as.data.frame(apply(RR, 2, summary)),
+              file=paste("mtlf",ERROR,TYPE,KPI,"summary.csv",sep="/"))
 
-  sink(paste("mtlf/",ERROR,TYPE,KPI,"p-values.txt",sep="/"))
-    print(BOOT)
-    print(friedman.test(RR))
-    multiple <- frdAllPairsNemenyiTest(RR)
-    print(multcompLetters(fullPTable(multiple$p.value)))
-  sink()
+    BOOT <- boot(data=RR,statistic=function(data,i) colMedians(data[i,],na.rm=T),R=100)
 
-  pdf(file=paste("mtlf/",ERROR,TYPE,KPI,"summary.pdf",sep="/"))
-    plot(multiple)
-    boxplot(BOOT$t,names=MODELS,ylab="Confidence Interval over the Median")
-  dev.off()
+    sink(paste("mtlf/",ERROR,TYPE,KPI,"p-values.txt",sep="/"))
+      print(BOOT)
+      print(friedman.test(RR))
+      multiple <- frdAllPairsNemenyiTest(RR)
+      print(multcompLetters(fullPTable(multiple$p.value)))
+    sink()
+
+    pdf(file=paste("mtlf/",ERROR,TYPE,KPI,"summary.pdf",sep="/"))
+      plot(multiple)
+      boxplot(BOOT$t,names=MODELS,ylab="Confidence Interval over the Median")
+    dev.off()
+  } else {
+    RR <- as.matrix(as.data.frame(na.omit(as.matrix(R[R$V1==MCTARGET,..MODELS]))))
+    rownames(RR) <- 1:nrow(RR)
+
+    write.csv(t(apply(RR, 2, function(x) {sum(x,na.rm=T)/length(x) } )),
+              file=paste("mtlf",ERROR,TYPE,KPI,"summary.csv",sep="/"),row.names=F)
+  }
 }
 
 for (TY in TYPES)
   for (KP in KPIS)
   {
-    EVAL("mape",TY,KP)
-    EVAL("rmse",TY,KP)
-    EVAL("mca", TY,KP)
-    EVAL("mcb", TY,KP)
+    EVAL("mape", TY,KP)
+    EVAL("rmse", TY,KP)
+    EVAL("mca",  TY,KP)
+    EVAL("mcb",  TY,KP)
+    EVAL("riska",TY,KP)
+    EVAL("riskb",TY,KP)
+    EVAL("mase", TY,KP)
   }
 
 R <- foreach(NAME = Sys.glob("mtlf/*/*/*/summary.csv"),.combine=rbind) %dofuture% {
-  aux   <- fread(NAME)
   ERROR <- strsplit(NAME,"/")[[1]][2]
   TY    <- strsplit(NAME,"/")[[1]][3]
   KP    <- strsplit(NAME,"/")[[1]][4]
-  
-  return(data.frame(ERROR,TY,KP,aux[3,-1]))
+
+  if (!grepl("risk",ERROR)) { return(data.frame(ERROR,TY,KP,fread(NAME)[3,-1]))  }
+  else  {                     return(data.frame(ERROR,TY,KP,fread(NAME)))  }
 }
 
 write.csv(R,file="mtlf/summary.csv",row.names=F)
