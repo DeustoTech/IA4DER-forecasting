@@ -32,7 +32,9 @@ CUPS <- Sys.glob(paths="post_cooked/CUPS/*")
 LINE <- Sys.glob(paths="post_cooked/LINE/*")
 CT   <- Sys.glob(paths="post_cooked/CT/*")
 ALL  <- union(sample(CUPS,SAMPLE),sample(LINE,SAMPLE))
-ALL  <- union(ALL,sample(CT,SAMPLE))
+
+if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
+} else                   { ALL  <- union(ALL,CT) } 
 
 LIM  <- fread("features.csv")
 
