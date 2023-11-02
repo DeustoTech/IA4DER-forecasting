@@ -12,4 +12,5 @@ L <- fread("ResultadosNuevosL.csv")
 CT <- fread("ResultadosNuevosCT.csv")
 CUPS <- fread("ResultadosNuevosCUPS.csv")
 
+#graficos 
 
