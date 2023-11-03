@@ -33,12 +33,13 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "ResultadosNuevos.csv"
+RESULT_FILE <- "ResultadosNuevosCT.csv"
 
 
 resultadosModelos <- tibble(
   Hora = numeric(),
   TipoDia = character(),
+  Real = numeric(),
   Predicted = numeric(),
   sMAPE = numeric(),
   RMSE = numeric(),
@@ -129,6 +130,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -155,6 +157,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -181,6 +184,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -207,6 +211,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -233,6 +238,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -265,6 +271,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Laborable",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -308,6 +315,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -334,6 +342,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -360,6 +369,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -387,6 +397,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -413,6 +424,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -445,6 +457,7 @@ predict_models <- function(csv_file){
         resultadosModelos <- resultadosModelos %>% add_row(
           Hora = hora,
           TipoDia = "Finde",
+          Real = as.numeric(actual),
           Predicted = predicted,
           sMAPE = smape,
           RMSE = rmse,
@@ -493,6 +506,7 @@ predict_models <- function(csv_file){
           resultadosModelos <- resultadosModelos %>% add_row(
             Hora = hora,
             TipoDia = dia,
+            Real = as.numeric(actual),
             Predicted = predicted,
             sMAPE = smape,
             RMSE = rmse,
@@ -539,6 +553,7 @@ csvPrueba <- csvPrueba[0:5000,]
 resultadosModelosP <- tibble(
   Hora = numeric(),
   TipoDia = character(),
+  Real = numeric(),
   Predicted = numeric(),
   sMAPE = numeric(),
   RMSE = numeric(),
@@ -602,6 +617,7 @@ for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
   resultadosModelosP <- resultadosModelosP %>% add_row(
     Hora = 20,
     TipoDia = "Laborable",
+    Real = as.numeric(actual),
     Predicted = predicted,
     sMAPE = smape,
     RMSE = rmse,
@@ -622,6 +638,7 @@ print(resultadosModelosP, n= 50)
 resultadosModelosP <- tibble(
   Hora = numeric(),
   TipoDia = character(),
+  Real = numeric(),
   Predicted = numeric(),
   sMAPE = numeric(),
   RMSE = numeric(),
@@ -667,6 +684,7 @@ for (i in 1:(nrow(datos_hora20) - T_DAYS - F_DAYS + 1)){
   resultadosModelosP <- resultadosModelosP %>% add_row(
     Hora = 20,
     TipoDia = "Finde",
+    Real = as.numeric(actual),
     Predicted = predicted,
     sMAPE = smape,
     RMSE = rmse,
