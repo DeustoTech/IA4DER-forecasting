@@ -100,14 +100,16 @@ predict_models <- function(csv_file){
       # PARTIMOS LA SERIE TEMPORAL N VECES: 60 DIAS ENTRENAMIENTO, 7 PREDICCION
       
       # primero con los laborables
+      iteracionesLab <- floor(nrow(datosLab) / (F_DAYS + T_DAYS))
+      iteracionesFinde <- floor(nrow(datosFinde) / (F_DAYS + T_DAYS))
       
-      for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
+      for (i in 1:iteracionesLab){
 
-        train_start <- i
-        train_end <- i + T_DAYS - 1
-        test_start <- i + T_DAYS
-        test_end <- i + T_DAYS + F_DAYS - 1
-
+        train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
+        train_end <- train_start + T_DAYS - 1
+        test_start <- train_end + 1
+        test_end <- test_start + F_DAYS - 1
+        
         trainSetTs <- datosLab[train_start : train_end]
         testSetTs <- datosLab[test_start : test_end]
 
@@ -286,15 +288,16 @@ predict_models <- function(csv_file){
 
       # AHORA LO MISMO PERO CON FINDE
 
-      for (i in 1:(nrow(datosFinde) - T_DAYS - F_DAYS + 1)){
+      for (i in 1:iteracionesFinde){
 
-        train_start <- i
-        train_end <- i + T_DAYS - 1
-        test_start <- i + T_DAYS
-        test_end <- i + T_DAYS + F_DAYS - 1
-
-        trainSetTs <- datosFinde[train_start : train_end]
-        testSetTs <- datosFinde[test_start : test_end]
+        
+        train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
+        train_end <- train_start + T_DAYS - 1
+        test_start <- train_end + 1
+        test_end <- test_start + F_DAYS - 1
+        
+        trainSetTs <- datosLab[train_start : train_end]
+        testSetTs <- datosLab[test_start : test_end]
 
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
         actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
@@ -472,16 +475,17 @@ predict_models <- function(csv_file){
       #SNAIVE SOLO HACE FALTA UNA VEZ
       
       datos_SN <- datos_hora %>% unique()
+      iteracionesSN <- floor(nrow(datos_SN) / (T_DAYS + F_DAYS))
       
-      for (i in 1:(nrow(datos_SN) - T_DAYS - F_DAYS + 1)){
+      for (i in 1:iteracionesSN){
         
-        train_start <- i
-        train_end <- i + T_DAYS - 1
-        test_start <- i + T_DAYS
-        test_end <- i + T_DAYS + F_DAYS - 1
+        train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
+        train_end <- train_start + T_DAYS - 1
+        test_start <- train_end + 1
+        test_end <- test_start + F_DAYS - 1
         
-        trainSetTs <- datos_SN[train_start : train_end]
-        testSetTs <- datos_SN[test_start : test_end]
+        trainSetTs <- datosLab[train_start : train_end]
+        testSetTs <- datosLab[test_start : test_end]
         
 
         for (dia in dias_semana) {
