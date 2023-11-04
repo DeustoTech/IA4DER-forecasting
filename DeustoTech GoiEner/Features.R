@@ -7,7 +7,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools') 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture') 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -36,6 +36,121 @@ L <- csv_files[grepl("-L\\.csv$", csv_files)]
 N <- paste(folder, N, sep = "")
 CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
+
+
+horas <- data.frame(
+  hora = 0:23,
+  TARIFA_2.0 = c(
+    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
+    "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano", "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano"
+  ),
+  TARIFA_SOLAR = c(
+    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
+    "llano", "llano",
+    "solar pico", "solar pico", "solar pico", "solar pico",
+    "solar llano", "solar llano",
+    "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano"
+  )
+)
+MC  <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
+
+
+B <- foreach(NAME = N,
+             .combine = rbind,
+             .errorhandling = "remove", .options.future = list(packages = librerias)) %dofuture% { 
+               
+               csv_actual <- fread(NAME)
+               
+               
+               if ("time" %in% colnames(csv_actual)) {
+                 # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
+                 colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
+                 csv_actual$imputed <- 0
+                 csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
+               }
+               
+               
+               a <- csv_actual %>%
+                 mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+                 mutate(Hora = hour(timestamp))
+               
+               T2.0_VALLE <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
+               T2.0_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
+               T2.0_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
+               
+               T_SOLAR_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "llano"]])
+               T_SOLAR_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
+               T_SOLAR_SPICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
+               T_SOLAR_SLLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
+               
+               
+               
+               LENGTH <- length(a$kWh)
+               
+               QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
+               
+               nombre     <- tools::file_path_sans_ext(N[1])
+               
+               ID <-  sub("TransformersV2/", "", nombre)
+               
+               
+               metadatos <- metadata_file[metadata_file$user == ID, ]
+               
+               POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
+               ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
+               
+               aux <- data.frame(
+                 ID=     ID,
+                 LENGTH= LENGTH,
+                 ZERO=   sum(a$kWh==0)/LENGTH,
+                 IMPUTED=sum(a$issue)/LENGTH,
+                 AVG=    mean(a$kWh,na.rm=T),
+                 SD=     sd(a$kWh,na.rm=T),
+                 MIN=    QQ[1],
+                 Q1=     QQ[2],
+                 MEDIAN= QQ[3],
+                 Q3=     QQ[4],
+                 MAX=    QQ[5],
+                 
+                 POT_1 = metadatos$p1,
+                 POT_2 = metadatos$p2,
+                 POT_3 = metadatos$p3,
+                 POT_4 = metadatos$p4,
+                 POT_5 = metadatos$p5,
+                 POT_6 = metadatos$p6,
+                 
+                 MC25=   ECDF[1],
+                 MC50=   ECDF[2],
+                 MC80=   ECDF[3],
+                 MC90=   ECDF[4],
+                 MC95=   ECDF[5],
+                 
+                 P_T2.0_VALLE = T2.0_VALLE,
+                 P_T2.0_LLANO = T2.0_LLANO,
+                 P_T2.0_PICO = T2.0_PICO,
+                 P_T_SOLAR_PICO = T_SOLAR_PICO,
+                 P_T_SOLAR_LLANO = T_SOLAR_LLANO,
+                 P_T_SOLAR_SPICO = T_SOLAR_SPICO,
+                 P_T_SOLAR_SLLANO = T_SOLAR_SLLANO
+                 
+               )
+             }
+
+write.csv(B,file="features.csv",row.names = F)
+
+
+
+
+
+
+
+
 
 
 aggr_data <- stats::aggregate(
@@ -247,93 +362,13 @@ prueba <- msts(fread(CT[1]))
 out <- get_seasonal_features_from_timeseries(prueba)
 
 
-horas <- data.frame(
-  hora = 0:23,
-  TARIFA_2.0 = c(
-    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
-    "llano", "llano",
-    "pico", "pico", "pico", "pico",
-    "llano", "llano", "llano", "llano",
-    "pico", "pico", "pico", "pico",
-    "llano", "llano"
-  ),
-  TARIFA_SOLAR = c(
-    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
-    "llano", "llano",
-    "solar pico", "solar pico", "solar pico", "solar pico",
-    "solar llano", "solar llano",
-    "llano", "llano",
-    "pico", "pico", "pico", "pico",
-    "llano", "llano"
-  )
-)
-
-
-# USANDO CODIGO DE CRUZ
-
-B <- foreach(NAME = N,
-             .combine = rbind,
-             .errorhandling = "remove") %dofuture% { 
-               
-               csv_actual <- fread(NAME)
-               
-               if ("time" %in% colnames(csv_actual)) {
-                 # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
-                 colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
-                 csv_actual$imputed <- 0
-                 csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
-               }
-               
-               
-               a <- csv_actual %>%
-                 mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
-                 mutate(Hora = hour(timestamp))
-               
-               T2.0_VALLE <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
-               T2.0_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
-               T2.0_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
-               
-               T_SOLAR_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "llano"]])
-               T_SOLAR_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
-               T_SOLAR_SPICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
-               T_SOLAR_SLLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
-                 
-                 
-               ID     <- tools::file_path_sans_ext(NAME)
-               LENGTH <- length(a$kWh)
-
-               QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
-
-               aux <- data.frame(
-                 ID=     ID,
-                 LENGTH= LENGTH,
-                 ZERO=   sum(a$kWh==0)/LENGTH,
-                 IMPUTED=sum(a$issue)/LENGTH,
-                 AVG=    mean(a$kWh,na.rm=T),
-                 SD=     sd(a$kWh,na.rm=T),
-                 MIN=    QQ[1],
-                 Q1=     QQ[2],
-                 MEDIAN= QQ[3],
-                 Q3=     QQ[4],
-                 MAX=    QQ[5],
-                 P_T2.0_VALLE = T2.0_VALLE,
-                 P_T2.0_LLANO = T2.0_LLANO,
-                 P_T2.0_PICO = T2.0_PICO,
-                 P_T_SOLAR_PICO = T_SOLAR_PICO,
-                 P_T_SOLAR_LLANO = T_SOLAR_LLANO,
-                 P_T_SOLAR_SPICO = T_SOLAR_SPICO,
-                 P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
-               )
-             }
-
-write.csv(B,file="features.csv",row.names = F)
 
 
 
 
 # pruebas
 
-csv_actual <- fread(CT[1])
+csv_actual <- fread(N[1])
 
 if ("time" %in% colnames(csv_actual)) {
   # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
@@ -362,7 +397,15 @@ LENGTH <- length(a$kWh)
 
 QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
 
-ID     <- tools::file_path_sans_ext(CT[1])
+nombre     <- tools::file_path_sans_ext(N[1])
+
+ID <-  sub("TransformersV2/", "", nombre)
+
+
+metadatos <- metadata_file[metadata_file$user == ID, ]
+
+POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
+ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
 
 aux <- data.frame(
   ID=     ID,
@@ -376,6 +419,20 @@ aux <- data.frame(
   MEDIAN= QQ[3],
   Q3=     QQ[4],
   MAX=    QQ[5],
+  
+  POT_1 = metadatos$p1,
+  POT_2 = metadatos$p2,
+  POT_3 = metadatos$p3,
+  POT_4 = metadatos$p4,
+  POT_5 = metadatos$p5,
+  POT_6 = metadatos$p6,
+  
+  MC25=   ECDF[1],
+  MC50=   ECDF[2],
+  MC80=   ECDF[3],
+  MC90=   ECDF[4],
+  MC95=   ECDF[5],
+  
   P_T2.0_VALLE = T2.0_VALLE,
   P_T2.0_LLANO = T2.0_LLANO,
   P_T2.0_PICO = T2.0_PICO,
@@ -383,6 +440,7 @@ aux <- data.frame(
   P_T_SOLAR_LLANO = T_SOLAR_LLANO,
   P_T_SOLAR_SPICO = T_SOLAR_SPICO,
   P_T_SOLAR_SLLANO = T_SOLAR_SLLANO
+  
 )
 
 
