@@ -7,7 +7,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet') 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools') 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -24,6 +24,7 @@ plan(multisession)
 folder <- "TransformersV2/"
 # Lista de archivos CSV en la carpeta extraída
 csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
+metadata_file <- fread("metadata.csv")
 
 # csv_files <- csv_files[201:length(csv_files)]
 
@@ -51,7 +52,7 @@ get_seasonal_features_from_timeseries <- function(csv_actual, maxmin = FALSE) {
   # DEFINITION OF FUNCTION TO AVOID NaN WHEN VECTOR LENGTH IS 1
   sd_ <- function(x) ifelse(length(x)==1, 0, stats::sd(x))
   # Initial date
-  ini_date <- get_extrema_dates_from_timeseries(tseries)
+  ini_date <- 
   # Date sequence
   samples_per_day <- attr(tseries, "msts")[1]
   date_by <- as.difftime(24 / samples_per_day, units = "hours")
@@ -238,3 +239,151 @@ get_seasonal_features_from_timeseries <- function(csv_actual, maxmin = FALSE) {
 
 foreach(csv_file = csv_files, 
         .packages = librerias) %dopar% get_seasonal_features_from_timeseries(csv_file)
+
+
+# PRUEBAS 
+prueba <- msts(fread(CT[1]))
+
+out <- get_seasonal_features_from_timeseries(prueba)
+
+
+horas <- data.frame(
+  hora = 0:23,
+  TARIFA_2.0 = c(
+    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
+    "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano", "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano"
+  ),
+  TARIFA_SOLAR = c(
+    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
+    "llano", "llano",
+    "solar pico", "solar pico", "solar pico", "solar pico",
+    "solar llano", "solar llano",
+    "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano"
+  )
+)
+
+
+# USANDO CODIGO DE CRUZ
+
+B <- foreach(NAME = N,
+             .combine = rbind,
+             .errorhandling = "remove") %dofuture% { 
+               
+               csv_actual <- fread(NAME)
+               
+               if ("time" %in% colnames(csv_actual)) {
+                 # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
+                 colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
+                 csv_actual$imputed <- 0
+                 csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
+               }
+               
+               
+               a <- csv_actual %>%
+                 mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+                 mutate(Hora = hour(timestamp))
+               
+               T2.0_VALLE <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
+               T2.0_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
+               T2.0_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
+               
+               T_SOLAR_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "llano"]])
+               T_SOLAR_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
+               T_SOLAR_SPICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
+               T_SOLAR_SLLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
+                 
+                 
+               ID     <- tools::file_path_sans_ext(NAME)
+               LENGTH <- length(a$kWh)
+
+               QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
+
+               aux <- data.frame(
+                 ID=     ID,
+                 LENGTH= LENGTH,
+                 ZERO=   sum(a$kWh==0)/LENGTH,
+                 IMPUTED=sum(a$issue)/LENGTH,
+                 AVG=    mean(a$kWh,na.rm=T),
+                 SD=     sd(a$kWh,na.rm=T),
+                 MIN=    QQ[1],
+                 Q1=     QQ[2],
+                 MEDIAN= QQ[3],
+                 Q3=     QQ[4],
+                 MAX=    QQ[5],
+                 P_T2.0_VALLE = T2.0_VALLE,
+                 P_T2.0_LLANO = T2.0_LLANO,
+                 P_T2.0_PICO = T2.0_PICO,
+                 P_T_SOLAR_PICO = T_SOLAR_PICO,
+                 P_T_SOLAR_LLANO = T_SOLAR_LLANO,
+                 P_T_SOLAR_SPICO = T_SOLAR_SPICO,
+                 P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
+               )
+             }
+
+write.csv(B,file="features.csv",row.names = F)
+
+
+
+
+# pruebas
+
+csv_actual <- fread(CT[1])
+
+if ("time" %in% colnames(csv_actual)) {
+  # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
+  colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
+  csv_actual$imputed <- 0
+  csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
+}
+
+
+a <- csv_actual %>%
+  mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+  mutate(Hora = hour(timestamp))
+
+T2.0_VALLE <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
+T2.0_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
+T2.0_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
+
+T_SOLAR_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "llano"]])
+T_SOLAR_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
+T_SOLAR_SPICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
+T_SOLAR_SLLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
+
+
+
+LENGTH <- length(a$kWh)
+
+QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
+
+ID     <- tools::file_path_sans_ext(CT[1])
+
+aux <- data.frame(
+  ID=     ID,
+  LENGTH= LENGTH,
+  ZERO=   sum(a$kWh==0)/LENGTH,
+  IMPUTED=sum(a$issue)/LENGTH,
+  AVG=    mean(a$kWh,na.rm=T),
+  SD=     sd(a$kWh,na.rm=T),
+  MIN=    QQ[1],
+  Q1=     QQ[2],
+  MEDIAN= QQ[3],
+  Q3=     QQ[4],
+  MAX=    QQ[5],
+  P_T2.0_VALLE = T2.0_VALLE,
+  P_T2.0_LLANO = T2.0_LLANO,
+  P_T2.0_PICO = T2.0_PICO,
+  P_T_SOLAR_PICO = T_SOLAR_PICO,
+  P_T_SOLAR_LLANO = T_SOLAR_LLANO,
+  P_T_SOLAR_SPICO = T_SOLAR_SPICO,
+  P_T_SOLAR_SLLANO = T_SOLAR_SLLANO
+)
+
+
+
