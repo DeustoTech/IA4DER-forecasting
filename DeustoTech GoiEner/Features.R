@@ -142,9 +142,20 @@ B <- foreach(NAME = N,
                )
              }
 
-write.csv(B,file="features.csv",row.names = F)
+write.csv(B,file="featuress.csv",row.names = F)
+
+B <- read.csv("features.csv")
 
 
+boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
+        B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO,outline=F )
+nombres_columnas <- c("P_T2.0_VALLE", "P_T2.0_LLANO", "P_T2.0_PICO", "P_T_SOLAR_PICO",
+                      "P_T_SOLAR_LLANO", "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO")
+
+
+
+summary(data.frame(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
+                   B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO))
 
 
 
