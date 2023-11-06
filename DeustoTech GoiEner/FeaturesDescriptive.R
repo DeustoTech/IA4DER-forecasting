@@ -17,6 +17,9 @@ features <- read.csv("features.csv")
 
 summary(features)
 
+features$POT_NOM <- apply(features[, c("POT_1", "POT_2", "POT_3", "POT_4", "POT_5", "POT_6")],
+                          1, max, na.rm = T)
+
 cols <- c("P_T2.0_VALLE", "P_T2.0_LLANO", "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO", "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO")
 medias <- colMeans(features[cols])
 
