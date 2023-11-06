@@ -32,11 +32,11 @@ N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
+
 # Agregar el prefijo 'folder' a las rutas en N, CT y L
 N <- paste(folder, N, sep = "")
 CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
-
 
 horas <- data.frame(
   hora = 0:23,
@@ -95,9 +95,9 @@ B <- foreach(NAME = N,
                
                QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
                
-               nombre     <- tools::file_path_sans_ext(N[1])
-               
+               nombre     <- tools::file_path_sans_ext(NAME)
                ID <-  sub("TransformersV2/", "", nombre)
+               # ID <- tools::file_path_sans_ext(ID)
                
                
                metadatos <- metadata_file[metadata_file$user == ID, ]
@@ -124,6 +124,7 @@ B <- foreach(NAME = N,
                  POT_4 = metadatos$p4,
                  POT_5 = metadatos$p5,
                  POT_6 = metadatos$p6,
+                 POT_NOM = POT_NOM,
                  
                  MC25=   ECDF[1],
                  MC50=   ECDF[2],
@@ -142,7 +143,7 @@ B <- foreach(NAME = N,
                )
              }
 
-write.csv(B,file="featuress.csv",row.names = F)
+write.csv(B,file="features.csv",row.names = F)
 
 B <- read.csv("features.csv")
 
