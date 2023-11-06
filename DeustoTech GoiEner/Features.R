@@ -149,19 +149,19 @@ B <- read.csv("features.csv")
 
 boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
         B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO,outline=F )
-nombres_columnas <- c("P_T2.0_VALLE", "P_T2.0_LLANO", "P_T2.0_PICO", "P_T_SOLAR_PICO",
-                      "P_T_SOLAR_LLANO", "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO")
 
-
+colnames(B)
 
 summary(data.frame(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
                    B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO))
 
 
+B$POT_NOM <- max(B$POT_1, B$POT_2, B$POT_3, B$POT_4, B$POT_5, B$POT_6, na.rm = T)
 
-
-
-
+plot(ecdf(B$ZERO))
+plot(ecdf(B$IMPUTED))
+plot(ecdf(B$MAX/B$POT_NOM))
+ecdf(B$MAX/B$POT_NOM)(0.8)
 
 
 aggr_data <- stats::aggregate(
