@@ -153,6 +153,8 @@ boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
 
 colnames(B)
 
+boxplot(B$POT_NOM[B$POT_NOM <= quantile(B$POT_NOM, 0.75) & B$POT_NOM >= quantile(B$POT_NOM, 0.10)])
+
 summary(data.frame(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
                    B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO))
 
@@ -163,6 +165,8 @@ plot(ecdf(B$ZERO))
 plot(ecdf(B$IMPUTED))
 plot(ecdf(B$MAX/B$POT_NOM))
 ecdf(B$MAX/B$POT_NOM)(0.8)
+
+histogram(B$POT_NOM[B$POT_NOM <= 10])
 
 
 aggr_data <- stats::aggregate(
