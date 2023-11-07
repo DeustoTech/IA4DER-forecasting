@@ -16,7 +16,7 @@ library(stringr)
 plan(multisession)
 
 TEST        <- T
-SAMPLE      <- 200     ### number of elements to assess per each type
+SAMPLE      <- 300     ### number of elements to assess per each type
 COMPLETE    <- 0.10    ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75    ### length of the training period
 F_DAYS      <- 7*4*3   ### number of days to forecast for MTLF
@@ -88,15 +88,15 @@ FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
 
   ##QQR  <- ecdf(TT)
   aux     <- TT != 0
-  auxmase <- median(abs(real-f[,"naive"]))
+  auxmase <- median(abs(TT-f[,"naive"]))
   for (j in MODELS)
   {
     MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(TT[aux]-f[aux,j])/TT[aux],NA),na.rm=T)
     RMSE[1,j] <- sqrt(median((TT-f[,j])^2,na.rm=T))
-    MASE[1,j] <- median(abs(real-f[,j]))/auxmase
+    MASE[1,j] <- median(abs(TT-f[,j]))/auxmase
 
-    RISKA[,j] <- (max(real) < POT_NOM*MC) == (max(f[,j]) < POT_NOM*MC)
-    RISKB[,j] <- (max(real) < POT_EST*MC) == (max(f[,j]) < POT_EST*MC)
+    RISKA[,j] <- (max(TT) < POT_NOM*MC) == (max(f[,j]) < POT_NOM*MC)
+    RISKB[,j] <- (max(TT) < POT_EST*MC) == (max(f[,j]) < POT_EST*MC)
 
     QQF       <- ecdf(f[,j])
     MCA[,j]   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)

@@ -23,7 +23,7 @@ F_DAYS      <- 7     ### number of days to forecast for STLF
 T_DAYS      <- 21    ### number of days to use in the training widnow for AI methods for STLF
 MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
 MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
-MCTARGET    <- MCNAMES[2]
+MCTARGET    <- MCNAMES[1]
 
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 TYPES       <- c("CUPS","LINE","CT")
