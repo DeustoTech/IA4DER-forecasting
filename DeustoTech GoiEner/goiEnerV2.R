@@ -71,6 +71,9 @@ predict_models <- function(csv_file){
   
   csv_actual <- fread(csv_file)
   
+  nombre     <- tools::file_path_sans_ext(csv_file)
+  ID <-  sub("TransformersV2/", "", nombre)
+  
   if ("time" %in% colnames(csv_actual)) {
     # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
     colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
@@ -130,8 +133,10 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
+       
+        
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
           Real = as.numeric(actual),
@@ -159,7 +164,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
           Real = as.numeric(actual),
@@ -187,7 +192,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
           Real = as.numeric(actual),
@@ -215,7 +220,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
           Real = as.numeric(actual),
@@ -243,7 +248,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
           Real = as.numeric(actual),
@@ -277,7 +282,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
           Real = as.numeric(actual),
@@ -323,7 +328,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Finde",
           Real = as.numeric(actual),
@@ -351,7 +356,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Finde",
           Real = as.numeric(actual),
@@ -379,7 +384,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Finde",
           Real = as.numeric(actual),
@@ -408,7 +413,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Finde",
           Real = as.numeric(actual),
@@ -436,7 +441,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Finde",
           Real = as.numeric(actual),
@@ -470,7 +475,7 @@ predict_models <- function(csv_file){
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
         resultadosModelos <- resultadosModelos %>% add_row(
-          File = csv_file,
+          ID = ID,
           Hora = hora,
           TipoDia = "Finde",
           Real = as.numeric(actual),
@@ -521,7 +526,7 @@ predict_models <- function(csv_file){
           mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
           
           resultadosModelos <- resultadosModelos %>% add_row(
-            File = csv_file,
+            ID = ID,
             Hora = hora,
             TipoDia = dia,
             Real = as.numeric(actual),
