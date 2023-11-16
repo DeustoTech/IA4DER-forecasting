@@ -60,6 +60,30 @@ horas <- data.frame(
 )
 MC  <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
 
+# Precios de electricidad
+
+# TD : Peajes €/kWh
+# CS : Cargos Sistema €/kWh
+# CG : Coste Gestión €/MWh
+# L : Precio energía libre €/kWh
+
+TD_p1 <- 0.029098
+TD_p2 <- 0.019794
+TD_p3 <- 0.00098
+
+CS_p1 <- 0.043893
+CS_p2 <- 0.008779
+CS_p3 <- 0.002195
+
+CG_p1 <- 36.115695
+CG_p2 <- 36.115695
+CG_p3 <- 36.115695
+  
+L_p1 <- 0.204321
+L_p2 <- 0.200549
+L_p3 <- 0.185471
+
+
 
 B <- foreach(NAME = N,
              .combine = rbind,
@@ -117,6 +141,8 @@ B <- foreach(NAME = N,
                  MEDIAN= QQ[3],
                  Q3=     QQ[4],
                  MAX=    QQ[5],
+                 TOTAL = sum(a$kWh),
+                 VAR = var(a$kWh),
                  
                  POT_1 = metadatos$p1,
                  POT_2 = metadatos$p2,
@@ -138,7 +164,46 @@ B <- foreach(NAME = N,
                  P_T_SOLAR_PICO = T_SOLAR_PICO,
                  P_T_SOLAR_LLANO = T_SOLAR_LLANO,
                  P_T_SOLAR_SPICO = T_SOLAR_SPICO,
-                 P_T_SOLAR_SLLANO = T_SOLAR_SLLANO
+                 P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
+                 
+                 zip_code = metadatos$zip_code,
+                 cnae = metadatos$cnae,
+                 municipality = metadatos$municipality,
+                 contracted_tariff = metadatos$contracted_tariff,
+                 self_consumption_type = metadatos$self_consumption_type,
+                 
+                 # Errores de cada modelo. 
+                 # Buscar esa serie temporal en el fichero de resultados, 
+                 # coger todos los errores de ese tipo para ese modelo
+                 # y la media? o la mediana? alguno supongo
+                 
+                 mapeMedia = ,
+                 mapeNaive = ,
+                 mapeSN = ,
+                 mapeArima = ,
+                 mapeETS = ,
+                 mapeSVM = ,
+                 mapeNN = ,
+                 
+                 rmseMedia = ,
+                 rmseNaive = ,
+                 rmseSN = ,
+                 rmseArima = ,
+                 rmseETS = ,
+                 rmseSVM = ,
+                 rmseNN = ,
+                 
+                 sMapeMedia = ,
+                 sMapeNaive = ,
+                 sMapeSN = ,
+                 sMapeArima = ,
+                 sMapeETS = ,
+                 sMapeSVM = ,
+                 sMapeNN = ,
+                 
+                 
+                 
+                 
                  
                )
              }
