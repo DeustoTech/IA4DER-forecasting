@@ -177,29 +177,33 @@ B <- foreach(NAME = N,
                  # coger todos los errores de ese tipo para ese modelo
                  # y la media? o la mediana? alguno supongo
                  
-                 mapeMedia = ,
-                 mapeNaive = ,
-                 mapeSN = ,
-                 mapeArima = ,
-                 mapeETS = ,
-                 mapeSVM = ,
-                 mapeNN = ,
+                 mapeMedia_mediana = ,
+                 mapeNaive_mediana = ,
+                 mapeSN_mediana = ,
+                 mapeArima_mediana = ,
+                 mapeETS_mediana = ,
+                 mapeSVM_mediana = ,
+                 mapeNN_mediana = ,
                  
-                 rmseMedia = ,
-                 rmseNaive = ,
-                 rmseSN = ,
-                 rmseArima = ,
-                 rmseETS = ,
-                 rmseSVM = ,
-                 rmseNN = ,
+                 mapeMedia_q1 = ,
+                 mapeNaive_q1 = ,
+                 mapeSN_q1 = ,
+                 mapeArima_q1 = ,
+                 mapeETS_q1 = ,
+                 mapeSVM_q1 = ,
+                 mapeNN_q1 = ,
                  
-                 sMapeMedia = ,
-                 sMapeNaive = ,
-                 sMapeSN = ,
-                 sMapeArima = ,
-                 sMapeETS = ,
-                 sMapeSVM = ,
-                 sMapeNN = ,
+                 
+                 mapeMedia_q3 = ,
+                 mapeNaive_q3 = ,
+                 mapeSN_q3 = ,
+                 mapeArima_q3 = ,
+                 mapeETS_q3 = ,
+                 mapeSVM_q3 = ,
+                 mapeNN_q3 = ,
+                 
+                 
+              
                  
                  # Meter los precios. No se como
           )
