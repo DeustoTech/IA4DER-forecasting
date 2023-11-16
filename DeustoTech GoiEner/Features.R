@@ -141,8 +141,8 @@ B <- foreach(NAME = N,
                  MEDIAN= QQ[3],
                  Q3=     QQ[4],
                  MAX=    QQ[5],
-                 TOTAL = sum(a$kWh),
-                 VAR = var(a$kWh),
+                 TOTAL = sum(a$kWh, na.rm = T),
+                 VAR = var(a$kWh, na.rm = T),
                  
                  POT_1 = metadatos$p1,
                  POT_2 = metadatos$p2,
@@ -201,11 +201,8 @@ B <- foreach(NAME = N,
                  sMapeSVM = ,
                  sMapeNN = ,
                  
-                 
-                 
-                 
-                 
-               )
+                 # Meter los precios. No se como
+          )
              }
 
 write.csv(B,file="features.csv",row.names = F)
