@@ -33,11 +33,11 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "ResultadosNuevosCT.csv"
+RESULT_FILE <- "ResultadosNuevosCT2.csv"
 
 
 ResultadosModelos <- tibble(
-  File = character(),
+  ID = character(),
   Hora = numeric(),
   TipoDia = character(),
   Real = numeric(),
@@ -46,7 +46,7 @@ ResultadosModelos <- tibble(
   RMSE = numeric(),
   MASE = numeric(),
   MAPE = numeric(),
-  Modelo = character()
+  Modelo = character(),
 )
 #lo pongo aqui por si tenemos que volver a usarlo
 #mape <- mape(actual[aux], predicted[aux])
@@ -58,6 +58,9 @@ horas <- 0:23
 dias_semana <- c("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 F_DAYS <- 7 # Días que vamos a predecir con SVM
 T_DAYS <- 60 # Días con los que vamos a entrenar en cada trozo
+
+T_DAYS_SN <- 5
+F_DAYS_SN <- 1
 
 
 
