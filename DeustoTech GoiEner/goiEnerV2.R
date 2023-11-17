@@ -33,10 +33,10 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "ResultadosNuevosCT.csv"
+RESULT_FILE <- "ResultadosNuevosCT1.csv"
 
 
-resultadosModelos <- tibble(
+ResultadosModelos <- tibble(
   File = character(),
   Hora = numeric(),
   TipoDia = character(),
@@ -51,7 +51,7 @@ resultadosModelos <- tibble(
 #lo pongo aqui por si tenemos que volver a usarlo
 #mape <- mape(actual[aux], predicted[aux])
 
-fwrite(resultadosModelos, file = RESULT_FILE, col.names = T)  # SOLO SI SE QUIERE HACER UNO NUEVO
+fwrite(ResultadosModelos, file = RESULT_FILE, col.names = T)  # SOLO SI SE QUIERE HACER UNO NUEVO
 
 COMPLETE <- 0.10
 horas <- 0:23
@@ -135,7 +135,7 @@ predict_models <- function(csv_file){
 
        
         
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
@@ -148,7 +148,7 @@ predict_models <- function(csv_file){
           Modelo = "Media"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # NAIVE
 
@@ -163,7 +163,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
@@ -176,7 +176,7 @@ predict_models <- function(csv_file){
           Modelo = "Naive"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # ARIMA
 
@@ -191,7 +191,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
@@ -204,7 +204,7 @@ predict_models <- function(csv_file){
           Modelo = "Arima"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # ETS
         trainSetTsETS <- trainSetTs$kWh
@@ -219,7 +219,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
@@ -232,7 +232,7 @@ predict_models <- function(csv_file){
           Modelo = "ETS"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # NN
 
@@ -247,7 +247,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
@@ -260,7 +260,7 @@ predict_models <- function(csv_file){
           Modelo = "NN"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # SVM. HACER PRUEBAS PARA VER SI VA BIEN
 
@@ -281,7 +281,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
@@ -294,7 +294,7 @@ predict_models <- function(csv_file){
           Modelo = "SVM"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
       }
 
 
@@ -327,7 +327,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Finde",
@@ -340,7 +340,7 @@ predict_models <- function(csv_file){
           Modelo = "Media"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # NAIVE
 
@@ -355,7 +355,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Finde",
@@ -368,7 +368,7 @@ predict_models <- function(csv_file){
           Modelo = "Naive"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # ARIMA
 
@@ -383,7 +383,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Finde",
@@ -396,7 +396,7 @@ predict_models <- function(csv_file){
           Modelo = "Arima"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # ETS
 
@@ -412,7 +412,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Finde",
@@ -425,7 +425,7 @@ predict_models <- function(csv_file){
           Modelo = "ETS"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # NN
 
@@ -440,7 +440,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Finde",
@@ -453,7 +453,7 @@ predict_models <- function(csv_file){
           Modelo = "NN"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
         # SVM. HACER PRUEBAS PARA VER SI VA BIEN
 
@@ -474,7 +474,7 @@ predict_models <- function(csv_file){
         if (!is.finite(mase)) { mase <- NA}
         mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
 
-        resultadosModelos <- resultadosModelos %>% add_row(
+        ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Finde",
@@ -487,7 +487,7 @@ predict_models <- function(csv_file){
           Modelo = "SVM"
         )
 
-        fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
 
       }
       #SNAIVE SOLO HACE FALTA UNA VEZ
@@ -522,7 +522,7 @@ predict_models <- function(csv_file){
           if (!is.finite(mase)) { mase <- NA}
           mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
           
-          resultadosModelos <- resultadosModelos %>% add_row(
+          ResultadosModelos <- ResultadosModelos %>% add_row(
             ID = ID,
             Hora = 20,
             TipoDia = dia,
@@ -534,7 +534,7 @@ predict_models <- function(csv_file){
             MAPE = mape,
             Modelo = "SNaive"
           )
-          fwrite(resultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+          fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
           
         }
       }
@@ -567,7 +567,7 @@ svmHP <- list( # Posibles valores para tunear SVM
 csvPrueba <- fread(CT[1])
 csvPrueba <- csvPrueba[0:5000,]
 
-resultadosModelosP <- tibble(
+ResultadosModelosP <- tibble(
   Hora = numeric(),
   TipoDia = character(),
   Real = numeric(),
@@ -631,7 +631,7 @@ for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
   if (!is.finite(mase)) { mase <- NA}
   mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
   
-  resultadosModelosP <- resultadosModelosP %>% add_row(
+  ResultadosModelosP <- ResultadosModelosP %>% add_row(
     Hora = 20,
     TipoDia = "Laborable",
     Real = as.numeric(actual),
@@ -648,14 +648,14 @@ for (i in 1:(nrow(datosLab) - T_DAYS - F_DAYS + 1)){
   
 }
 
-print(resultadosModelosP, n= 50)
+print(ResultadosModelosP, n= 50)
 
 # PRUEBAS SNAIVE
 
 T_DAYS_SN <- 5
 F_DAYS_SN <- 1
 
-resultadosModelosP <- tibble(
+ResultadosModelosP <- tibble(
   Hora = numeric(),
   TipoDia = character(),
   Real = numeric(),
@@ -699,7 +699,7 @@ for (dia in dias_semana){
     if (!is.finite(mase)) { mase <- NA}
     mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
     
-    resultadosModelosP <- resultadosModelosP %>% add_row(
+    ResultadosModelosP <- ResultadosModelosP %>% add_row(
       # ID = ID,
       Hora = 20,
       TipoDia = dia,
@@ -751,7 +751,7 @@ for (i in 1:(nrow(datos_hora20) - T_DAYS - F_DAYS + 1)){
   mape <- mape(actual[aux], predicted[aux])
   mape2 <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
   
-  resultadosModelosP <- resultadosModelosP %>% add_row(
+  ResultadosModelosP <- ResultadosModelosP %>% add_row(
     Hora = 20,
     TipoDia = dia,
     Real = as.numeric(actual),
