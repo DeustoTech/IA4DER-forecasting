@@ -33,7 +33,7 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "ResultadosNuevosCT1.csv"
+RESULT_FILE <- "ResultadosNuevosCT.csv"
 
 
 ResultadosModelos <- tibble(
@@ -524,7 +524,7 @@ predict_models <- function(csv_file){
           
           ResultadosModelos <- ResultadosModelos %>% add_row(
             ID = ID,
-            Hora = 20,
+            Hora = hora,
             TipoDia = dia,
             Real = as.numeric(actual),
             Predicted = predicted,
