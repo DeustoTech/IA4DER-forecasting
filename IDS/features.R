@@ -119,15 +119,15 @@ plot(ecdf(B$MAX/B$POT_NOM))
 ecdf(B$MAX/B$POT_NOM)(0.8)
 
 plot(ecdf(B$MAX[B$TYPE=="CUPS"]/B$POT_NOM[B$TYPE=="CUPS"]))
-plot(ecdf(B$MAX[B$TYPE=="LINE"] /B$POT_NOM[B$TYPE=="LINE"]))
+plot(ecdf(B$MAX[B$TYPE=="LINE"]/B$POT_NOM[B$TYPE=="LINE"]))
 plot(ecdf(B$MAX[B$TYPE=="CT"]  /B$POT_NOM[B$TYPE=="CT"]))
 
 plot(ecdf(B$MAX[B$TYPE=="CUPS"]/B$POT_EST[B$TYPE=="CUPS"]))
-plot(ecdf(B$MAX[B$TYPE=="LINE"] /B$POT_EST[B$TYPE=="LINE"]))
+plot(ecdf(B$MAX[B$TYPE=="LINE"]/B$POT_EST[B$TYPE=="LINE"]))
 plot(ecdf(B$MAX[B$TYPE=="CT"]  /B$POT_EST[B$TYPE=="CT"]))
 
 boxplot(B$POT_NOM[B$TYPE=="CUPS"],B$POT_EST[B$TYPE=="CUPS"],outline=F)
-boxplot(B$POT_NOM[B$TYPE=="LINE"], B$POT_EST[B$TYPE=="LINE"],outline=F)
+boxplot(B$POT_NOM[B$TYPE=="LINE"],B$POT_EST[B$TYPE=="LINE"],outline=F)
 boxplot(B$POT_NOM[B$TYPE=="CT"],  B$POT_EST[B$TYPE=="CT"],outline=F)
 
 boxplot(B$POT_NOM[B$TYPE=="CT"]/B$POT_EST[B$TYPE=="CT"])
