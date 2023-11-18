@@ -36,6 +36,7 @@ L <- paste(folder, L, sep = "")
 RESULT_FILE <- "ResultadosNuevosCT2.csv"
 
 
+
 ResultadosModelos <- tibble(
   ID = character(),
   Hora = numeric(),
@@ -70,7 +71,8 @@ svmHP <- list( # Posibles valores para tunear SVM
 )
 
 
-predict_models <- function(csv_file){
+predict_models <- function(csv_file, RESULT_FILE_MODEL){
+  
   
   csv_actual <- fread(csv_file)
   
@@ -123,38 +125,40 @@ predict_models <- function(csv_file){
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
         actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
 
-        # MEDIA
-
-        predicted <- predict(mean(trainSet))
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
-
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
-
-       
-        
-        ResultadosModelos <- ResultadosModelos %>% add_row(
-          ID = ID,
-          Hora = hora,
-          TipoDia = "Laborable",
-          Real = as.numeric(actual),
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "Media"
-        )
-
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        if(grepl("Media", RESULT_FILE_MODEL)) {
+          # MEDIA
+          RESULT_FILE_MODEL <- paste0(RESULT_FILE, "_", modelo, ".csv")
+          predicted <- predict(mean(trainSet))
+          predicted <- predicted$mean
+          predicted <- coredata(predicted)[1]
+          
+          aux  <- actual != 0
+          smape <- smape(actual, predicted)
+          rmse <- rmse(actual, predicted)
+          mase <- mase(actual, predicted)
+          if (!is.finite(mase)) { mase <- NA}
+          mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+          
+          
+          
+          ResultadosModelos <- ResultadosModelos %>% add_row(
+            ID = ID,
+            Hora = hora,
+            TipoDia = "Laborable",
+            Real = as.numeric(actual),
+            Predicted = predicted,
+            sMAPE = smape,
+            RMSE = rmse,
+            MASE = mase,
+            MAPE = mape,
+            Modelo = "Media"
+          )
+          
+          fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
+        }
 
         # NAIVE
-
+        if(grepl("Naive", RESULT_FILE_MODEL)) {
         predicted <- predict(naive(trainSet))
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
@@ -179,10 +183,11 @@ predict_models <- function(csv_file){
           Modelo = "Naive"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
         # ARIMA
-
+        if(grepl("Arima", RESULT_FILE_MODEL)) {
         predicted <- forecast(auto.arima(trainSet), h = F_DAYS)
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
@@ -207,9 +212,12 @@ predict_models <- function(csv_file){
           Modelo = "Arima"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
-
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
+      
+        }
+        
         # ETS
+        if(grepl("ETS", RESULT_FILE_MODEL)) {
         trainSetTsETS <- trainSetTs$kWh
         predicted <- forecast(ets(trainSetTsETS), h = F_DAYS)
         predicted <- predicted$mean
@@ -235,10 +243,11 @@ predict_models <- function(csv_file){
           Modelo = "ETS"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
         # NN
-
+        if(grepl("NN", RESULT_FILE_MODEL)) {
         predicted <- forecast(nnetar(trainSetTs$kWh), h = F_DAYS)
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
@@ -263,10 +272,13 @@ predict_models <- function(csv_file){
           Modelo = "NN"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
+        
         # SVM. HACER PRUEBAS PARA VER SI VA BIEN
 
+        if(grepl("SVM", RESULT_FILE_MODEL)) {
         lagged <- merge(trainSet, shift(trainSet, -7))
         SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
         PREDICT <- data.frame(past = as.numeric(window(trainSet,
@@ -297,9 +309,10 @@ predict_models <- function(csv_file){
           Modelo = "SVM"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
       }
 
+      }
 
       # AHORA LO MISMO PERO CON FINDE
 
@@ -319,6 +332,7 @@ predict_models <- function(csv_file){
 
         # MEDIA
 
+        if(grepl("Media", RESULT_FILE_MODEL)) {
         predicted <- predict(mean(trainSet))
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
@@ -343,10 +357,12 @@ predict_models <- function(csv_file){
           Modelo = "Media"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
         # NAIVE
 
+        if(grepl("Naive", RESULT_FILE_MODEL)) {
         predicted <- predict(naive(trainSet))
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
@@ -371,10 +387,12 @@ predict_models <- function(csv_file){
           Modelo = "Naive"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
         # ARIMA
-
+ 
+        if(grepl("Arima", RESULT_FILE_MODEL)) {
         predicted <- forecast(auto.arima(trainSet), h = F_DAYS)
         predicted <- predicted$mean
         predicted <- coredata(predicted)[1]
@@ -399,10 +417,12 @@ predict_models <- function(csv_file){
           Modelo = "Arima"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
         # ETS
-
+        
+        if(grepl("ETS", RESULT_FILE_MODEL)) {
         trainSetTsETS <- trainSetTs$kWh
         predicted <- forecast(ets(trainSetTsETS), h = F_DAYS)
         predicted <- predicted$mean
@@ -428,9 +448,11 @@ predict_models <- function(csv_file){
           Modelo = "ETS"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
         # NN
+        if(grepl("NN", RESULT_FILE_MODEL)) {
 
         predicted <- forecast(nnetar(trainSetTs$kWh), h = F_DAYS)
         predicted <- predicted$mean
@@ -456,10 +478,12 @@ predict_models <- function(csv_file){
           Modelo = "NN"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
         # SVM. HACER PRUEBAS PARA VER SI VA BIEN
 
+        if(grepl("SVM", RESULT_FILE_MODEL)) {
         lagged <- merge(trainSet, shift(trainSet, -7))
         SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
         PREDICT <- data.frame(past = as.numeric(window(trainSet,
@@ -490,11 +514,14 @@ predict_models <- function(csv_file){
           Modelo = "SVM"
         )
 
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
 
+        }
       }
       #SNAIVE SOLO HACE FALTA UNA VEZ
     
+      if(grepl("sNaive", RESULT_FILE_MODEL)) {
+        
       datos_SN <- datos_hora %>% unique()
       
       for (dia in dias_semana){
@@ -537,8 +564,9 @@ predict_models <- function(csv_file){
             MAPE = mape,
             Modelo = "SNaive"
           )
-          fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+          fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = FALSE, append = TRUE)
           
+        }
         }
       }
     }
@@ -552,6 +580,40 @@ registerDoParallel(cl)
 
 foreach(csv_file = CT, 
         .packages = librerias) %dopar% predict_models(csv_file)
+
+modelos = c("Media", "Naive", "Arima", "ETS", "NN", "SVM", "SNaive")
+#asi para crear un csv por modelo
+foreach(modelo = modelos ) %do% {
+  RESULT_FILE_MODEL <- paste0("ResultadosNuevosCT2_", modelo, ".csv")
+  
+  ResultadosModelos <- tibble(
+    ID = character(),
+    Hora = numeric(),
+    TipoDia = character(),
+    Real = numeric(),
+    Predicted = numeric(),
+    sMAPE = numeric(),
+    RMSE = numeric(),
+    MASE = numeric(),
+    MAPE = numeric(),
+    Modelo = character()
+  )
+  
+  fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = TRUE)
+  
+  num_cores <- 4
+  cl <- makeCluster(num_cores)
+  registerDoParallel(cl)
+  
+  foreach(csv_file = CT, .packages = librerias) %dopar% predict_models(csv_file, RESULT_FILE_MODEL)
+}
+
+stopCluster(cl)
+
+fichero <- "ResultadosNuevosCT2_Media.csv"
+if (grepl("Media", fichero)) {
+  print("funciona")
+}
 
 
 
