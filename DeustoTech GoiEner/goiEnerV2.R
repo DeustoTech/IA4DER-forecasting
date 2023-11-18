@@ -71,7 +71,7 @@ svmHP <- list( # Posibles valores para tunear SVM
 )
 
 
-predict_models <- function(csv_file, RESULT_FILE_MODEL){
+predict_models <- function(csv_file, RESULT_FILE_MODEL, modelo){
   
   
   csv_actual <- fread(csv_file)
@@ -125,9 +125,9 @@ predict_models <- function(csv_file, RESULT_FILE_MODEL){
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
         actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
 
-        if(grepl("Media", RESULT_FILE_MODEL)) {
+        if(grepl("Media", modelo)) {
           # MEDIA
-          RESULT_FILE_MODEL <- paste0(RESULT_FILE, "_", modelo, ".csv")
+          # RESULT_FILE_MODEL <- paste0(RESULT_FILE, "_", modelo, ".csv")
           predicted <- predict(mean(trainSet))
           predicted <- predicted$mean
           predicted <- coredata(predicted)[1]
@@ -584,7 +584,9 @@ foreach(csv_file = CT,
 modelos = c("Media", "Naive", "Arima", "ETS", "NN", "SVM", "SNaive")
 #asi para crear un csv por modelo
 foreach(modelo = modelos ) %do% {
-  RESULT_FILE_MODEL <- paste0("ResultadosNuevosCT2_", modelo, ".csv")
+  
+  # !!!!!!!!!!!!!!!!!!! CAMBIAR LA CARPETA Y EL NOMBRE EN FUNCIÓN DE LOS ARCHIVOS !!!!!!!!!!
+  RESULT_FILE_MODEL <- paste0("Resultados/CUPS/ResultadosCUPS_",modelo,".csv") 
   
   ResultadosModelos <- tibble(
     ID = character(),
@@ -601,11 +603,11 @@ foreach(modelo = modelos ) %do% {
   
   fwrite(ResultadosModelos, file = RESULT_FILE_MODEL, col.names = TRUE)
   
-  num_cores <- 4
-  cl <- makeCluster(num_cores)
-  registerDoParallel(cl)
+  # num_cores <- 4
+  # cl <- makeCluster(num_cores)
+  # registerDoParallel(cl)
   
-  foreach(csv_file = CT, .packages = librerias) %dopar% predict_models(csv_file, RESULT_FILE_MODEL)
+  foreach(csv_file = N, .packages = librerias) %dopar% predict_models(csv_file, RESULT_FILE_MODEL, modelo)
 }
 
 stopCluster(cl)
