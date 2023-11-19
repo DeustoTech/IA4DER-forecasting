@@ -612,10 +612,8 @@ foreach(modelo = modelos ) %do% {
 
 stopCluster(cl)
 
-fichero <- "ResultadosNuevosCT2_Media.csv"
-if (grepl("Media", fichero)) {
-  print("funciona")
-}
+
+
 
 
 
