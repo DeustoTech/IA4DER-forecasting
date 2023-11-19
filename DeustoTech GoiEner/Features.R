@@ -154,6 +154,7 @@ B <- foreach(NAME = N,
                POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
                ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
                
+             
                summaryMedia <-  filter(summaryMedia_CUPS, ID ==  ID1)
                summaryNaive <- filter(summaryNaive_CUPS, ID ==  ID1)
                summarysNaive <- filter(summarysNaive_CUPS, ID ==  ID1)
@@ -210,31 +211,33 @@ B <- foreach(NAME = N,
                  # coger todos los errores de ese tipo para ese modelo
                  # y la media? o la mediana? alguno supongo
                  
-                #  
-                 mapeMedia_mediana = summaryMedia$Median_MAPE,
-                 mapeNaive_mediana = summaryNaive$Median_MAPE,
-                 mapeSN_mediana = summarysNaive$Median_MAPE,
-                 mapeArima_mediana = summaryArima$Median_MAPE,
-                 mapeETS_mediana = summaryETS$Median_MAPE,
-                 #mapeSVM_mediana = summarySVM$Median_MAPE,
-                 mapeNN_mediana = summaryNN$Median_MAPE,
-
-                 mapeMedia_q1 = summaryMedia$Q1_MAPE,
-                 mapeNaive_q1 = summaryNaive$Q1_MAPE,
-                 mapeSN_q1 = summarysNaive$Q1_MAPE,
-                 mapeArima_q1 = summaryArima$Q1_MAPE,
-                 mapeETS_q1 = summaryETS$Q1_MAPE,
-                # mapeSVM_q1 = summarySVM$Q1_MAPE,
-                 mapeNN_q1 = summaryNN$Q1_MAPE ,
-
-
-                 mapeMedia_q3 = summaryMedia$Q3_MAPE,
-                 mapeNaive_q3 = summaryNaive$Q3_MAPE,
-                 mapeSN_q3 = summarysNaive$Q3_MAPE,
-                 mapeArima_q3 = summaryArima$Q3_MAPE,
-                 mapeETS_q3 = summaryETS$Q3_MAPE,
-                 #mapeSVM_q3 = summarySVM$Q3_MAPE,
-                 mapeNN_q3 = summaryNN$Q3_MAPE
+                 
+                 # Si no hay summary para ese ID, pone a NA
+                 
+                 mapeMedia_mediana = if (nrow(summaryMedia) == 0) NA else summaryMedia$Median_MAPE,
+                 mapeNaive_mediana = if (nrow(summaryNaive) == 0) NA else summaryNaive$Median_MAPE,
+                 mapeSN_mediana = if (nrow(summarysNaive) == 0) NA else summarysNaive$Median_MAPE,
+                 mapeArima_mediana = if (nrow(summaryArima) == 0) NA else summaryArima$Median_MAPE,
+                 mapeETS_mediana = if (nrow(summaryETS) == 0) NA else summaryETS$Median_MAPE,
+                 #mapeSVM_mediana = if (nrow(summarySVM) == 0) NA else summarySVM$Median_MAPE,
+                 mapeNN_mediana = if (nrow(summaryNN) == 0) NA else summaryNN$Median_MAPE,
+                 
+                 mapeMedia_q1 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q1_MAPE,
+                 mapeNaive_q1 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q1_MAPE,
+                 mapeSN_q1 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q1_MAPE,
+                 mapeArima_q1 = if (nrow(summaryArima) == 0) NA else summaryArima$Q1_MAPE,
+                 mapeETS_q1 = if (nrow(summaryETS) == 0) NA else summaryETS$Q1_MAPE,
+                 #mapeSVM_q1 = if (nrow(summarySVM) == 0) NA else summarySVM$Q1_MAPE,
+                 mapeNN_q1 = if (nrow(summaryNN) == 0) NA else summaryNN$Q1_MAPE,
+                 
+                 mapeMedia_q3 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q3_MAPE,
+                 mapeNaive_q3 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q3_MAPE,
+                 mapeSN_q3 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q3_MAPE,
+                 mapeArima_q3 = if (nrow(summaryArima) == 0) NA else summaryArima$Q3_MAPE,
+                 mapeETS_q3 = if (nrow(summaryETS) == 0) NA else summaryETS$Q3_MAPE,
+                 #mapeSVM_q3 = if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
+                 mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE
+                 
                  
                  
               
@@ -282,7 +285,7 @@ out <- get_seasonal_features_from_timeseries(prueba)
 
 # pruebas
 
-csv_actual <- fread(N[1])
+csv_actual <- fread(N[8000])
 
 if ("time" %in% colnames(csv_actual)) {
   # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
@@ -311,7 +314,7 @@ LENGTH <- length(a$kWh)
 
 QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
 
-nombre     <- tools::file_path_sans_ext(N[1])
+nombre     <- tools::file_path_sans_ext(N[8000])
 
 ID1 <-  sub("TransformersV2/", "", nombre)
 
@@ -320,6 +323,9 @@ metadatos <- filter(metadata_file, user ==  ID1)
 
 POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
 ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
+
+
+
 
 summaryMedia <- filter(summaryMedia_CUPS, ID == ID1 )
 summaryNaive <- summaryNaive_CUPS[summaryNaive_CUPS$ID == ID1, ]
@@ -375,11 +381,33 @@ aux <- data.frame(
   # y la media? o la mediana? alguno supongo
   
   # 
-  mapeMedia_mediana = summaryMedia$Median_MAPE,
-  mapeNaive_mediana = summaryNaive$Median_MAPE,
-  mapeSN_mediana = summarysNaive$Median_MAPE
-  # mapeArima_mediana = summaryArima$Median_MAPE,
-  # mapeETS_mediana = summaryETS$Median_MAPE
+
+  mapeMedia_mediana = if (nrow(summaryMedia) == 0) NA else summaryMedia$Median_MAPE,
+  mapeNaive_mediana = if (nrow(summaryNaive) == 0) NA else summaryNaive$Median_MAPE,
+  mapeSN_mediana = if (nrow(summarysNaive) == 0) NA else summarysNaive$Median_MAPE,
+  mapeArima_mediana = if (nrow(summaryArima) == 0) NA else summaryArima$Median_MAPE,
+  mapeETS_mediana = if (nrow(summaryETS) == 0) NA else summaryETS$Median_MAPE,
+  mapeNN_mediana = if (nrow(summaryNN) == 0) NA else summaryNN$Median_MAPE,
+  
+  mapeMedia_q1 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q1_MAPE,
+  mapeNaive_q1 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q1_MAPE,
+  mapeSN_q1 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q1_MAPE,
+  mapeArima_q1 = if (nrow(summaryArima) == 0) NA else summaryArima$Q1_MAPE,
+  mapeETS_q1 = if (nrow(summaryETS) == 0) NA else summaryETS$Q1_MAPE,
+  mapeNN_q1 = if (nrow(summaryNN) == 0) NA else summaryNN$Q1_MAPE,
+  
+  mapeMedia_q3 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q3_MAPE,
+  mapeNaive_q3 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q3_MAPE,
+  mapeSN_q3 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q3_MAPE,
+  mapeArima_q3 = if (nrow(summaryArima) == 0) NA else summaryArima$Q3_MAPE,
+  mapeETS_q3 = if (nrow(summaryETS) == 0) NA else summaryETS$Q3_MAPE,
+  mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE
+  
+  # mapeSVM_mediana = if (nrow(summarySVM) == 0) NA else summarySVM$Median_MAPE,
+  # mapeSVM_q1 = if (nrow(summarySVM) == 0) NA else summarySVM$Q1_MAPE,
+  # mapeSVM_q3= if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
+  # 
+  
   
 )
 
