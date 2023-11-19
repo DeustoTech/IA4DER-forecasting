@@ -70,7 +70,6 @@ svmHP <- list( # Posibles valores para tunear SVM
   gamma = 10^(-3:2)
 )
 
-
 predict_models <- function(csv_file, RESULT_FILE_MODEL, modelo){
   
   
@@ -581,7 +580,7 @@ registerDoParallel(cl)
 foreach(csv_file = CT, 
         .packages = librerias) %dopar% predict_models(csv_file)
 
-modelos = c("Media", "Naive", "Arima", "ETS", "NN", "SVM", "SNaive")
+modelos = c("SVM")
 #asi para crear un csv por modelo
 foreach(modelo = modelos ) %do% {
   
@@ -614,6 +613,181 @@ stopCluster(cl)
 
 
 
+
+
+RESULT_FILE <- "Resultados/CUPS/ResultadosCUPS_SVM.csv"
+
+
+
+ResultadosModelos <- tibble(
+  ID = character(),
+  Hora = numeric(),
+  TipoDia = character(),
+  Real = numeric(),
+  Predicted = numeric(),
+  sMAPE = numeric(),
+  RMSE = numeric(),
+  MASE = numeric(),
+  MAPE = numeric(),
+  Modelo = character(),
+)
+#lo pongo aqui por si tenemos que volver a usarlo
+#mape <- mape(actual[aux], predicted[aux])
+
+fwrite(ResultadosModelos, file = RESULT_FILE, col.names = T)  # SOLO SI SE QUIERE HACER UNO NUEVO
+
+
+predict_svm <- function(csv_file) {
+  
+  
+  
+  csv_actual <- fread(csv_file)
+  
+  nombre     <- tools::file_path_sans_ext(csv_file)
+  ID <-  sub("TransformersV2/", "", nombre)
+  
+  if ("time" %in% colnames(csv_actual)) {
+    # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
+    colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
+    csv_actual$imputed <- 0
+    csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
+  }
+  
+  
+  a <- csv_actual %>%
+    mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
+    mutate(TipoDia = ifelse(weekdays(timestamp) %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
+                            "Laborable", "Finde")) %>%  select(-imputed)
+  
+  LENGTH  <- length(csv_actual$kWh)
+  ZEROS   <- sum(csv_actual$kWh==0)/LENGTH
+  IMPUTED <- sum(csv_actual$imputed == 1)/LENGTH
+  
+  
+  
+  if ( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)){
+    
+    foreach(hora = horas, .packages = librerias) %dopar% {
+      
+      datos_hora <- a[hour(a$timestamp) == hora,]
+      datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
+      datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
+      
+      # PARTIMOS LA SERIE TEMPORAL N VECES: 60 DIAS ENTRENAMIENTO, 7 PREDICCION
+      
+      # primero con los laborables
+      iteracionesLab <- floor(nrow(datosLab) / (F_DAYS + T_DAYS))
+      iteracionesFinde <- floor(nrow(datosFinde) / (F_DAYS + T_DAYS))
+      
+      for (i in 1:iteracionesLab){
+        
+        train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
+        train_end <- train_start + T_DAYS - 1
+        test_start <- train_end + 1
+        test_end <- test_start + F_DAYS - 1
+        
+        trainSetTs <- datosLab[train_start : train_end]
+        testSetTs <- datosLab[test_start : test_end]
+        
+        trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
+        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
+        
+        # SVM. HACER PRUEBAS PARA VER SI VA BIEN
+       
+          lagged <- merge(trainSet, shift(trainSet, -7))
+          SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+          PREDICT <- data.frame(past = as.numeric(window(trainSet,
+                                                         start = index(trainSet)[length(trainSet - F_DAYS)])))
+          names(SVM_TRAINSET) <- c("actual", "past")
+          
+          SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+          
+          predicted <- predict(SVM$best.model, PREDICT)
+          aux  <- actual != 0
+          
+          smape <- smape(actual, predicted)
+          rmse <- rmse(actual, predicted)
+          mase <- mase(actual, predicted)
+          if (!is.finite(mase)) { mase <- NA}
+          mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+          
+          ResultadosModelos <- ResultadosModelos %>% add_row(
+            ID = ID,
+            Hora = hora,
+            TipoDia = "Laborable",
+            Real = as.numeric(actual),
+            Predicted = predicted,
+            sMAPE = smape,
+            RMSE = rmse,
+            MASE = mase,
+            MAPE = mape,
+            Modelo = "SVM"
+          )
+          
+          fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        
+        
+      }
+      
+      # AHORA LO MISMO PERO CON FINDE
+      
+      for (i in 1:iteracionesFinde){
+        
+        
+        train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
+        train_end <- train_start + T_DAYS - 1
+        test_start <- train_end + 1
+        test_end <- test_start + F_DAYS - 1
+        
+        trainSetTs <- datosLab[train_start : train_end]
+        testSetTs <- datosLab[test_start : test_end]
+        
+        trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
+        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
+
+      
+        # SVM. HACER PRUEBAS PARA VER SI VA BIEN
+        
+          lagged <- merge(trainSet, shift(trainSet, -7))
+          SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+          PREDICT <- data.frame(past = as.numeric(window(trainSet,
+                                                         start = index(trainSet)[length(trainSet - F_DAYS)])))
+          names(SVM_TRAINSET) <- c("actual", "past")
+          
+          SVM <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+          
+          predicted <- predict(SVM$best.model, PREDICT)
+          aux  <- actual != 0
+          
+          smape <- smape(actual, predicted)
+          rmse <- rmse(actual, predicted)
+          mase <- mase(actual, predicted)
+          if (!is.finite(mase)) { mase <- NA}
+          mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+          
+          ResultadosModelos <- ResultadosModelos %>% add_row(
+            ID = ID,
+            Hora = hora,
+            TipoDia = "Finde",
+            Real = as.numeric(actual),
+            Predicted = predicted,
+            sMAPE = smape,
+            RMSE = rmse,
+            MASE = mase,
+            MAPE = mape,
+            Modelo = "SVM"
+          )
+          
+          fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+          
+        
+      }
+    }
+  }
+  
+}
+
+foreach(csv_file = N, .packages = librerias) %dopar% predict_svm(csv_file)
 
 
 
