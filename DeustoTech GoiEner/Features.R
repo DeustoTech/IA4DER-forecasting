@@ -33,6 +33,15 @@ CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
 
+summaryMedia_CUPS <- fread("Resultados/CUPS/SummaryMedia.csv")
+summaryNaive_CUPS <- fread("Resultados/CUPS/SummaryNaive.csv")
+summarysNaive_CUPS <- fread("Resultados/CUPS/SummarySNaive.csv")
+summaryArima_CUPS <- fread("Resultados/CUPS/SummaryArima.csv")
+summaryETS_CUPS <- fread("Resultados/CUPS/SummaryETS.csv")
+summaryNN_CUPS <- fread("Resultados/CUPS/SummaryNN.csv")
+summarySVM_CUPS <- fread("Resultados/CUPS/SummarySVM.csv")
+
+
 # Agregar el prefijo 'folder' a las rutas en N, CT y L
 N <- paste(folder, N, sep = "")
 CT <- paste(folder, CT, sep = "")
@@ -120,17 +129,25 @@ B <- foreach(NAME = N,
                QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
                
                nombre     <- tools::file_path_sans_ext(NAME)
-               ID <-  sub("TransformersV2/", "", nombre)
+               ID1 <-  sub("TransformersV2/TransformersV2/", "", nombre)
                # ID <- tools::file_path_sans_ext(ID)
                
                
-               metadatos <- metadata_file[metadata_file$user == ID, ]
+               metadatos <- filter(metadata_file, user ==  ID1)
                
                POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
                ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
                
+               summaryMedia <-  filter(summaryMedia_CUPS, ID ==  ID1)
+               summaryNaive <- filter(summaryNaive_CUPS, ID ==  ID1)
+               summarysNaive <- filter(summarysNaive_CUPS, ID ==  ID1)
+               summaryArima <- filter(summaryArima_CUPS, ID ==  ID1)
+               summaryETS <- filter(summaryETS_CUPS, ID ==  ID1)
+               summaryNN <- filter(summaryNN_CUPS, ID ==  ID1)
+               #summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
+               
                aux <- data.frame(
-                 ID=     ID,
+                 ID=     ID1,
                  LENGTH= LENGTH,
                  ZERO=   sum(a$kWh==0)/LENGTH,
                  IMPUTED=sum(a$issue)/LENGTH,
@@ -177,30 +194,31 @@ B <- foreach(NAME = N,
                  # coger todos los errores de ese tipo para ese modelo
                  # y la media? o la mediana? alguno supongo
                  
-                 mapeMedia_mediana = ,
-                 mapeNaive_mediana = ,
-                 mapeSN_mediana = ,
-                 mapeArima_mediana = ,
-                 mapeETS_mediana = ,
-                 mapeSVM_mediana = ,
-                 mapeNN_mediana = ,
                  
-                 mapeMedia_q1 = ,
-                 mapeNaive_q1 = ,
-                 mapeSN_q1 = ,
-                 mapeArima_q1 = ,
-                 mapeETS_q1 = ,
-                 mapeSVM_q1 = ,
-                 mapeNN_q1 = ,
+                 mapeMedia_mediana = summaryMedia$Median_MAPE,
+                 mapeNaive_mediana = summaryNaive$Median_MAPE,
+                 mapeSN_mediana = summarysNaive$Median_MAPE,
+                 mapeArima_mediana = summaryArima$Median_MAPE,
+                 mapeETS_mediana = summaryETS$Median_MAPE,
+                 #mapeSVM_mediana = summarySVM$Median_MAPE,
+                 mapeNN_mediana = summaryNN$Median_MAPE,
+                 
+                 mapeMedia_q1 = summaryMedia$Q1_MAPE,
+                 mapeNaive_q1 = summaryNaive$Q1_MAPE,
+                 mapeSN_q1 = summarysNaive$Q1_MAPE,
+                 mapeArima_q1 = summaryArima$Q1_MAPE,
+                 mapeETS_q1 = summaryETS$Q1_MAPE,
+                # mapeSVM_q1 = summarySVM$Q1_MAPE,
+                 mapeNN_q1 = summaryNN$Q1_MAPE ,
                  
                  
-                 mapeMedia_q3 = ,
-                 mapeNaive_q3 = ,
-                 mapeSN_q3 = ,
-                 mapeArima_q3 = ,
-                 mapeETS_q3 = ,
-                 mapeSVM_q3 = ,
-                 mapeNN_q3 = ,
+                 mapeMedia_q3 = summaryMedia$Q3_MAPE,
+                 mapeNaive_q3 = summaryNaive$Q3_MAPE,
+                 mapeSN_q3 = summarysNaive$Q3_MAPE,
+                 mapeArima_q3 = summaryArima$Q3_MAPE,
+                 mapeETS_q3 = summaryETS$Q3_MAPE,
+                 #mapeSVM_q3 = summarySVM$Q3_MAPE,
+                 mapeNN_q3 = summaryNN$Q3_MAPE,
                  
                  
               
@@ -234,208 +252,6 @@ ecdf(B$MAX/B$POT_NOM)(0.8)
 
 histogram(B$POT_NOM[B$POT_NOM <= 10])
 
-
-aggr_data <- stats::aggregate(
-  x   = as.numeric(tseries),
-  by  = list(date_time = sum_factor),
-  FUN = sum
-)
-
-get_seasonal_features_from_timeseries <- function(csv_actual, maxmin = FALSE) {
-  
-  tseries <- fread(csv_actual)
-  # Initialize results list
-  o <- list()
-  # DEFINITION OF FUNCTION TO AVOID NaN WHEN VECTOR LENGTH IS 1
-  sd_ <- function(x) ifelse(length(x)==1, 0, stats::sd(x))
-  # Initial date
-  ini_date <- 
-  # Date sequence
-  samples_per_day <- attr(tseries, "msts")[1]
-  date_by <- as.difftime(24 / samples_per_day, units = "hours")
-  t <- seq(from = ini_date, length.out = length(tseries), by = date_by)
-  # Variable names
-  name <- c(
-    as.name("hour_1"),           #  1
-    as.name("hour_4"),           #  2
-    as.name("hour_6"),           #  3
-    as.name("day"),              #  4
-    as.name("weekday"),          #  5
-    as.name("month"),            #  6
-    as.name("season"),           #  7
-    as.name("hour4_season"),     #  8
-    as.name("td2.0_p6"),         #  9 
-    as.name("td2.0_p7"),         # 10
-    as.name("td2.0_p6_season"),  # 11
-    as.name("td2.0_p7_season"),  # 12
-    as.name("td2.0_p3"),         # 13
-    as.name("td2.0_p3_ym"),      # 14 
-    as.name("weekday_drm"),      # 15 >> drm = day-referenced mean
-    as.name("month_drm"),        # 16 
-    as.name("season_drm"),       # 17
-    as.name("hour4_season_drm"), # 18
-    as.name("new_feature_prueba")# 19
-  )
-  # Loop for the 8 different bins
-  for (bb in 1:19) {
-    # Get the bins to compute the sum
-    sum_factor <- get_bins(t, bb)
-    # Aggregate data (sum) according to the bins
-    aggr_data <- stats::aggregate(
-      x   = as.numeric(tseries),
-      by  = list(date_time = sum_factor),
-      FUN = sum
-    )
-    # There's no need to check the completeness of the bins. Just remove first
-    # and last bins by default. In case there's a unique bin when computing
-    # means, standard deviation is set to 0. This may only happen with
-    # meteorological seasons
-    if (bb %in% 1:8) {
-      aggr_data <- aggr_data[c(-1, -nrow(aggr_data)), ]
-    }
-    # Get the new bins to compute the mean
-    # Hours
-    if (bb == 1 | bb == 2 | bb == 3) {
-      sum_factor <- 
-        as.factor(lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC")))
-    }
-    # Days
-    if (bb == 4 | bb == 5) {
-      sum_factor <- 
-        as.factor(lubridate::wday(as.POSIXct(aggr_data[,1], tz="UTC")))
-    }
-    # Months
-    if (bb == 6 | bb == 7) {
-      sum_factor <- 
-        as.factor(lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC")))
-    }
-    # Hours & seasons
-    if (bb == 8) {
-      sum_factor <- as.factor(
-        lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC")) + 
-          lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC")) * 100
-      )
-    }
-    # 2.0TD with 6 periods
-    if (bb == 9) {
-      sum_factor <- 
-        as.factor(lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC")))
-    }
-    # 2.0TD with 7 periods
-    if (bb == 10) {
-      sum_factor <- lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC"))
-      # Weekend detection
-      idx <- which(lubridate::wday(as.POSIXct(aggr_data[,1], tz="UTC")) == 7)
-      sum_factor[idx] <- 25
-      sum_factor <- as.factor(sum_factor)
-    }
-    # 2.0TD with 6 periods per season (24 bins)
-    if (bb == 11) {
-      sum_factor <- lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC"))
-      # Season detection
-      idx <- (lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC")) %/% 3) %% 4 + 1
-      sum_factor <- as.factor(100 * idx + sum_factor)
-    }
-    # 2.0TD with 7 periods per season (28 bins)
-    if (bb == 12) {
-      sum_factor <- lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC"))
-      # Weekend detection
-      idx <- which(lubridate::wday(as.POSIXct(aggr_data[,1], tz="UTC")) == 7)
-      sum_factor[idx] <- 25
-      idx <- (lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC")) %/% 3) %% 4 + 1
-      sum_factor <- as.factor(100 * idx + sum_factor)
-    }
-    # 2.0TD with 6 periods
-    if (bb == 13) {
-      sum_factor <- lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC"))
-      sum_factor[sum_factor ==  0] <- 3
-      sum_factor[sum_factor ==  8] <- 2
-      sum_factor[sum_factor == 10] <- 1
-      sum_factor <- as.factor(sum_factor)
-    }
-    # 2.0TD year x month x period (28 bins)
-    if (bb == 14) {
-      sum_factor <- lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC"))
-      # Weekend detection (P3)
-      idx <- which(lubridate::wday(as.POSIXct(aggr_data[,1], tz="UTC")) == 7)
-      sum_factor[idx] <- 3
-      sum_factor[sum_factor == 0] <- 3
-      # P2
-      sum_factor[sum_factor %in% c(8, 14, 22)] <- 2
-      # P1 
-      sum_factor[sum_factor %in% c(10, 18)] <- 1
-      idx <- lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC"))
-      sum_factor <- 10 * idx + sum_factor
-      idx <- lubridate::year(as.POSIXct(aggr_data[,1], tz="UTC")) - 2000
-      sum_factor <- as.factor(1000 * idx + sum_factor)
-    }
-    # Day-referenced mean: weekends/workdays 
-    if (bb == 15) {
-      sum_factor <- lubridate::wday(as.POSIXct(aggr_data[,1], tz="UTC"))
-      sum_factor[sum_factor %in% c(1,7)] <- 7
-      sum_factor[sum_factor %in% c(2:6)] <- 1
-      sum_factor <- as.factor(sum_factor)
-    }
-    # Day-referenced mean: month 
-    if (bb == 16) {
-      sum_factor <- lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC"))
-      sum_factor <- as.factor(sum_factor)
-    }
-    # Day-referenced mean: season 
-    if (bb == 17) {
-      sum_factor <-
-        (lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC")) %/% 3) %% 4 + 1
-      sum_factor <- as.factor(sum_factor)
-    }
-    # Day-referenced mean: 4-hour period & season
-    if (bb == 18) {
-      sum_factor_1 <- lubridate::hour(as.POSIXct(aggr_data[,1], tz="UTC"))
-      sum_factor_2 <- 
-        (lubridate::month(as.POSIXct(aggr_data[,1], tz="UTC")) %/% 3) %% 4 + 1
-      sum_factor <- as.factor(100 * sum_factor_2 + sum_factor_1)
-    }
-    if (bb == 19) {
-      #aqui deberiamos de añadir algo para nuestra nueva feature
-    }
-    # Aggregate data (mean) according to the bins
-    o[[name[[bb]]]]$"mean" <- stats::aggregate(
-      x   = aggr_data$x,
-      by  = list(bin = sum_factor),
-      FUN = mean
-    )
-    # Aggregate data (sd) according to the bins
-    o[[name[[bb]]]]$"sd" <- stats::aggregate(
-      x   = aggr_data$x,
-      by  = list(bin = sum_factor),
-      FUN = sd_
-    )
-    # Aggregate data (sum) according to the bins
-    o[[name[[bb]]]]$"sum" <- stats::aggregate(
-      x   = aggr_data$x,
-      by  = list(bin = sum_factor),
-      FUN = sum
-    )
-    if (maxmin) {
-      # Aggregate data (max) according to the bins
-      o[[name[[bb]]]]$"max" <- stats::aggregate(
-        x   = aggr_data$x,
-        by  = list(bin = sum_factor),
-        FUN = max
-      )
-      # Aggregate data (min) according to the bins
-      o[[name[[bb]]]]$"min" <- stats::aggregate(
-        x   = aggr_data$x,
-        by  = list(bin = sum_factor),
-        FUN = min
-      )
-    }
-  }
-  return(o)
-}
-
-
-foreach(csv_file = csv_files, 
-        .packages = librerias) %dopar% get_seasonal_features_from_timeseries(csv_file)
 
 
 # PRUEBAS 
@@ -481,19 +297,27 @@ QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
 
 nombre     <- tools::file_path_sans_ext(N[1])
 
-ID <-  sub("TransformersV2/", "", nombre)
+ID1 <-  sub("TransformersV2/TransformersV2/", "", nombre)
 
 
-metadatos <- metadata_file[metadata_file$user == ID, ]
+metadatos <- filter(metadata_file, user ==  ID)
 
 POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
 ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
 
+summaryMedia <- filter(summaryMedia_CUPS, ID == ID1 )
+summaryNaive <- summaryNaive_CUPS[summaryNaive_CUPS$ID == ID1, ]
+summarysNaive <- summarysNaive_CUPS[summarysNaive_CUPS$ID == ID1, ]
+summaryArima <- summaryArima_CUPS[summaryArima_CUPS$ID == ID1, ]
+summaryETS <- summaryETS_CUPS[summaryETS_CUPS$ID == ID1, ]
+summaryNN <- summaryNN_CUPS[summaryNN_CUPS$ID == ID1, ]
+
+
 aux <- data.frame(
-  ID=     ID,
+  ID=     ID1,
   LENGTH= LENGTH,
-  ZERO=   sum(a$kWh==0)/LENGTH,
-  IMPUTED=sum(a$issue)/LENGTH,
+  ZERO=   ifelse(LENGTH == 0, NA, sum(a$kWh == 0)/LENGTH),
+  IMPUTED=ifelse(LENGTH == 0, NA, sum(a$issue == 0)/LENGTH),
   AVG=    mean(a$kWh,na.rm=T),
   SD=     sd(a$kWh,na.rm=T),
   MIN=    QQ[1],
@@ -521,7 +345,25 @@ aux <- data.frame(
   P_T_SOLAR_PICO = T_SOLAR_PICO,
   P_T_SOLAR_LLANO = T_SOLAR_LLANO,
   P_T_SOLAR_SPICO = T_SOLAR_SPICO,
-  P_T_SOLAR_SLLANO = T_SOLAR_SLLANO
+  P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
+  
+  zip_code = metadatos$zip_code,
+  cnae = metadatos$cnae,
+  municipality = metadatos$municipality,
+  contracted_tariff = metadatos$contracted_tariff,
+  self_consumption_type = metadatos$self_consumption_type,
+  
+  # Errores de cada modelo. 
+  # Buscar esa serie temporal en el fichero de resultados, 
+  # coger todos los errores de ese tipo para ese modelo
+  # y la media? o la mediana? alguno supongo
+  
+  
+  mapeMedia_mediana = summaryMedia$Median_MAPE,
+  mapeNaive_mediana = summaryNaive$Median_MAPE,
+  mapeSN_mediana = summarysNaive$Median_MAPE,
+  mapeArima_mediana = summaryArima$Median_MAPE,
+  mapeETS_mediana = summaryETS$Median_MAPE
   
 )
 
