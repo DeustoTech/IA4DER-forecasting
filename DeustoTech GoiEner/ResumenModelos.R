@@ -15,29 +15,53 @@ foreach(lib = librerias) %do% {
 
 
 mediaCUPS <- fread("Resultados/CUPS/ResultadosCUPS_Media.csv")
+mediaCUPS$ID <- basename(mediaCUPS$ID)
 naiveCUPS <- fread("Resultados/CUPS/ResultadosCUPS_Naive.csv")
+naiveCUPS$ID <- basename(naiveCUPS$ID)
 sNaiveCUPS <- fread("Resultados/CUPS/ResultadosCUPS_SNaive.csv")
+sNaiveCUPS$ID <- basename(sNaiveCUPS$ID)
 arimaCUPS <- fread("Resultados/CUPS/ResultadosCUPS_Arima.csv")
+arimaCUPS$ID <- basename(arimaCUPS$ID)
 etsCUPS <- fread("Resultados/CUPS/ResultadosCUPS_ETS.csv")
+etsCUPS$ID <- basename(etsCUPS$ID)
 nnCUPS <- fread("Resultados/CUPS/ResultadosCUPS_NN.csv")
+nnCUPS$ID <- basename(nnCUPS$ID)
 svmCUPS <- fread("Resultados/CUPS/ResultadosCUPS_SVM.csv")
+svmCUPS$ID <- basename(svmCUPS$ID)
+
 
 
 mediaL <- fread("Resultados/L/ResultadosL_Media.csv")
+mediaL$ID <- basename(mediaL$ID)
 naiveL <- fread("Resultados/L/ResultadosL_Naive.csv")
+naiveL$ID <- basename(naiveL$ID)
 sNaiveL <- fread("Resultados/L/ResultadosL_SNaive.csv")
+sNaiveL$ID <- basename(sNaiveL$ID)
 arimaL <- fread("Resultados/L/ResultadosL_Arima.csv")
+arimaL$ID <- basename(arimaL$ID)
 etsL <- fread("Resultados/L/ResultadosL_ETS.csv")
+etsL$ID <- basename(etsL$ID)
 nnL <- fread("Resultados/L/ResultadosL_NN.csv")
+nnL$ID <- basename(nnL$ID)
 svmL <- fread("Resultados/L/ResultadosL_SVM.csv")
+svmL$ID <- basename(svmL$ID)
+
 
 mediaCT <- fread("Resultados/CT/ResultadosCT_Media.csv")
+mediaCT$ID <- basename(mediaCT$ID)
 naiveCT <- fread("Resultados/CT/ResultadosCT_Naive.csv")
+naiveCT$ID <- basename(naiveCT$ID)
 sNaiveCT <- fread("Resultados/CT/ResultadosCT_SNaive.csv")
+sNaiveCT$ID <- basename(sNaiveCT$ID)
 arimaCT <- fread("Resultados/CT/ResultadosCT_Arima.csv")
+arimaCT$ID <- basename(arimaCT$ID)
 etsCT <- fread("Resultados/CT/ResultadosCT_ETS.csv")
+etsCT$ID <- basename(etsCT$ID)
 nnCT <- fread("Resultados/CT/ResultadosCT_NN.csv")
+nnCT$ID <- basename(nnCT$ID)
 svmCT <- fread("Resultados/CT/ResultadosCT_SVM.csv")
+svmCT$ID <- basename(svmCT$ID)
+
 
 
 result_df <- mediaCUPS %>%

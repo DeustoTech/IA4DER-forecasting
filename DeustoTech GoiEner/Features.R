@@ -34,12 +34,27 @@ L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
 
 summaryMedia_CUPS <- fread("Resultados/CUPS/SummaryMedia.csv")
+summaryMedia_CUPS$ID <- basename(summaryMedia_CUPS$ID)
+
 summaryNaive_CUPS <- fread("Resultados/CUPS/SummaryNaive.csv")
-summarysNaive_CUPS <- fread("Resultados/CUPS/SummarySNaive.csv")
+summaryNaive_CUPS$ID <- basename(summaryNaive_CUPS$ID)
+
+summarysNaive_CUPS <- fread("Resultados/CUPS/SummarySNaive.csv") 
+summarysNaive_CUPS$ID <- basename(summarysNaive_CUPS$ID)
+
+
 summaryArima_CUPS <- fread("Resultados/CUPS/SummaryArima.csv")
+summaryArima_CUPS$ID <- basename(summaryArima_CUPS$ID)
+
 summaryETS_CUPS <- fread("Resultados/CUPS/SummaryETS.csv")
+summaryETS_CUPS$ID <- basename(summaryETS_CUPS$ID)
+
 summaryNN_CUPS <- fread("Resultados/CUPS/SummaryNN.csv")
+summaryNN_CUPS$ID <- basename(summaryNN_CUPS$ID)
+
 summarySVM_CUPS <- fread("Resultados/CUPS/SummarySVM.csv")
+summarySVM_CUPS$ID <- basename(summarySVM_CUPS$ID)
+
 
 
 # Agregar el prefijo 'folder' a las rutas en N, CT y L
@@ -129,7 +144,8 @@ B <- foreach(NAME = N,
                QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
                
                nombre     <- tools::file_path_sans_ext(NAME)
-               ID1 <-  sub("TransformersV2/TransformersV2/", "", nombre)
+               # ID1 <-  sub("TransformersV2/TransformersV2/", "", nombre)
+               ID1 <-  sub("TransformersV2/", "", nombre)
                # ID <- tools::file_path_sans_ext(ID)
                
                
@@ -144,8 +160,8 @@ B <- foreach(NAME = N,
                summaryArima <- filter(summaryArima_CUPS, ID ==  ID1)
                summaryETS <- filter(summaryETS_CUPS, ID ==  ID1)
                summaryNN <- filter(summaryNN_CUPS, ID ==  ID1)
-               #summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
-               
+               # summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
+
                aux <- data.frame(
                  ID=     ID1,
                  LENGTH= LENGTH,
@@ -194,7 +210,7 @@ B <- foreach(NAME = N,
                  # coger todos los errores de ese tipo para ese modelo
                  # y la media? o la mediana? alguno supongo
                  
-                 
+                #  
                  mapeMedia_mediana = summaryMedia$Median_MAPE,
                  mapeNaive_mediana = summaryNaive$Median_MAPE,
                  mapeSN_mediana = summarysNaive$Median_MAPE,
@@ -202,7 +218,7 @@ B <- foreach(NAME = N,
                  mapeETS_mediana = summaryETS$Median_MAPE,
                  #mapeSVM_mediana = summarySVM$Median_MAPE,
                  mapeNN_mediana = summaryNN$Median_MAPE,
-                 
+
                  mapeMedia_q1 = summaryMedia$Q1_MAPE,
                  mapeNaive_q1 = summaryNaive$Q1_MAPE,
                  mapeSN_q1 = summarysNaive$Q1_MAPE,
@@ -210,15 +226,15 @@ B <- foreach(NAME = N,
                  mapeETS_q1 = summaryETS$Q1_MAPE,
                 # mapeSVM_q1 = summarySVM$Q1_MAPE,
                  mapeNN_q1 = summaryNN$Q1_MAPE ,
-                 
-                 
+
+
                  mapeMedia_q3 = summaryMedia$Q3_MAPE,
                  mapeNaive_q3 = summaryNaive$Q3_MAPE,
                  mapeSN_q3 = summarysNaive$Q3_MAPE,
                  mapeArima_q3 = summaryArima$Q3_MAPE,
                  mapeETS_q3 = summaryETS$Q3_MAPE,
                  #mapeSVM_q3 = summarySVM$Q3_MAPE,
-                 mapeNN_q3 = summaryNN$Q3_MAPE,
+                 mapeNN_q3 = summaryNN$Q3_MAPE
                  
                  
               
@@ -227,7 +243,7 @@ B <- foreach(NAME = N,
           )
              }
 
-write.csv(B,file="features.csv",row.names = F)
+write.csv(B,file="featuresPrueba.csv",row.names = F)
 
 B <- read.csv("features.csv")
 
@@ -297,10 +313,10 @@ QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
 
 nombre     <- tools::file_path_sans_ext(N[1])
 
-ID1 <-  sub("TransformersV2/TransformersV2/", "", nombre)
+ID1 <-  sub("TransformersV2/", "", nombre)
 
 
-metadatos <- filter(metadata_file, user ==  ID)
+metadatos <- filter(metadata_file, user ==  ID1)
 
 POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
 ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
@@ -325,20 +341,20 @@ aux <- data.frame(
   MEDIAN= QQ[3],
   Q3=     QQ[4],
   MAX=    QQ[5],
-  
+
   POT_1 = metadatos$p1,
   POT_2 = metadatos$p2,
   POT_3 = metadatos$p3,
   POT_4 = metadatos$p4,
   POT_5 = metadatos$p5,
   POT_6 = metadatos$p6,
-  
+  # 
   MC25=   ECDF[1],
   MC50=   ECDF[2],
   MC80=   ECDF[3],
   MC90=   ECDF[4],
   MC95=   ECDF[5],
-  
+
   P_T2.0_VALLE = T2.0_VALLE,
   P_T2.0_LLANO = T2.0_LLANO,
   P_T2.0_PICO = T2.0_PICO,
@@ -346,24 +362,24 @@ aux <- data.frame(
   P_T_SOLAR_LLANO = T_SOLAR_LLANO,
   P_T_SOLAR_SPICO = T_SOLAR_SPICO,
   P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
-  
+  # 
   zip_code = metadatos$zip_code,
   cnae = metadatos$cnae,
   municipality = metadatos$municipality,
   contracted_tariff = metadatos$contracted_tariff,
   self_consumption_type = metadatos$self_consumption_type,
-  
+  # 
   # Errores de cada modelo. 
   # Buscar esa serie temporal en el fichero de resultados, 
   # coger todos los errores de ese tipo para ese modelo
   # y la media? o la mediana? alguno supongo
   
-  
+  # 
   mapeMedia_mediana = summaryMedia$Median_MAPE,
   mapeNaive_mediana = summaryNaive$Median_MAPE,
-  mapeSN_mediana = summarysNaive$Median_MAPE,
-  mapeArima_mediana = summaryArima$Median_MAPE,
-  mapeETS_mediana = summaryETS$Median_MAPE
+  mapeSN_mediana = summarysNaive$Median_MAPE
+  # mapeArima_mediana = summaryArima$Median_MAPE,
+  # mapeETS_mediana = summaryETS$Median_MAPE
   
 )
 
