@@ -249,7 +249,7 @@ B <- foreach(NAME = N,
                                    T2.0_LLANO * L_p2,
                  
                  P3_VALLE_PRECIO = T2.0_VALLE * TD_p3 +
-                                  T2.0_VALLE * CS_p3 + 
+                                  T2.0_VALLE * xCS_p3 + 
                                   T2.0_VALLE * (CG_p3 / 1000) + 
                                   T2.0_VALLE * L_p3
               
