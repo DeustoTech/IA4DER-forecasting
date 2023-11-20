@@ -244,7 +244,7 @@ Feats <- foreach(NAME = N,
                                    T2.0_PICO * L_p1,
                  
                  P2_LLANO_PRECIO = T2.0_LLANO * TD_p2 +
-                                   T2.0_LLANO * CS_p - 
+                                   T2.0_LLANO * CS_p2 - 
                                    T2.0_LLANO * (CG_p2 / 1000) + 
                                    T2.0_LLANO * L_p2,
                  
@@ -259,7 +259,7 @@ Feats <- foreach(NAME = N,
 write.csv(Feats,file="featuresNuevos.csv",row.names = F)
 
 B <- read.csv("featuresNuevos.csv")
-
+head(B)
 
 boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
         B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO,outline=F )
@@ -280,6 +280,68 @@ plot(ecdf(B$MAX/B$POT_NOM))
 ecdf(B$MAX/B$POT_NOM)(0.8)
 
 histogram(B$POT_NOM[B$POT_NOM <= 10])
+
+boxplot(B$P1_PICO_PRECIO, B$P2_LLANO_PRECIO, B$P3_VALLE_PRECIO, 
+        names = c("P1 PICO", "P2 LLANO", "P3 VALLE"),
+        col = c("lightblue", "lightgreen", "lightcoral"), main = "Boxplot de las columnas",
+        xlab = "Columnas", ylab = "Valor", ylim = c(min(B), quantile(B, 0.75)) )
+
+df_longPrecio <- gather(B, key = "Columna", value = "Valor", P1_PICO_PRECIO, P2_LLANO_PRECIO, P3_VALLE_PRECIO)
+
+# Crea un boxplot combinado con ggplot2
+ggplot(df_longPrecio, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot de los Precios por periodo", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_longPrecio$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("lightblue", "lightgreen", "lightcoral"))
+
+df_longMediana <- gather(B, key = "Columna", value = "Valor", 
+                         mapeMedia_mediana, 
+                         mapeNaive_mediana,
+                         mapeSN_mediana,
+                         mapeArima_mediana,
+                         mapeETS_mediana, 
+                         mapeNN_mediana,
+                         mapeSVM_mediana, na.rm = TRUE)
+
+# Crea un boxplot combinado con ggplot2
+ggplot(df_longMediana, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot de MAPE mediana por modelos", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_longMediana$Valor, 0.90)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1"))
+
+df_longQ1 <- gather(B, key = "Columna", value = "Valor", 
+                         mapeMedia_q1, 
+                         mapeNaive_q1,
+                         mapeSN_q1,
+                         mapeArima_q1,
+                         mapeETS_q1, 
+                         mapeNN_q1,
+                         mapeSVM_q1, na.rm = TRUE)
+
+# Crea un boxplot combinado con ggplot2
+ggplot(df_longQ1, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot de MAPE Q1 por modelos", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_longQ1$Valor, 0.90)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1"))
+
+df_longQ3 <- gather(B, key = "Columna", value = "Valor", 
+                    mapeMedia_q3, 
+                    mapeNaive_q3,
+                    mapeSN_q3,
+                    mapeArima_q3,
+                    mapeETS_q3, 
+                    mapeNN_q3,
+                    mapeSVM_q3, na.rm = TRUE)
+
+# Crea un boxplot combinado con ggplot2
+ggplot(df_longQ3, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot de MAPE Q3 por modelos", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_longQ3$Valor, 0.90)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1"))
 
 
 
