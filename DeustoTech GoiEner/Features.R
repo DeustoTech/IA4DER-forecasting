@@ -109,7 +109,7 @@ L_p3 <- 0.185471
 
 
 
-B <- foreach(NAME = N,
+Feats <- foreach(NAME = N,
              .combine = rbind,
              .errorhandling = "remove", .options.future = list(packages = librerias)) %dofuture% { 
                
@@ -159,7 +159,7 @@ B <- foreach(NAME = N,
                summaryArima <- filter(summaryArima_CUPS, ID ==  ID1)
                summaryETS <- filter(summaryETS_CUPS, ID ==  ID1)
                summaryNN <- filter(summaryNN_CUPS, ID ==  ID1)
-               # summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
+               summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
 
                
                aux <- data.frame(
@@ -218,7 +218,7 @@ B <- foreach(NAME = N,
                  mapeSN_mediana = if (nrow(summarysNaive) == 0) NA else summarysNaive$Median_MAPE,
                  mapeArima_mediana = if (nrow(summaryArima) == 0) NA else summaryArima$Median_MAPE,
                  mapeETS_mediana = if (nrow(summaryETS) == 0) NA else summaryETS$Median_MAPE,
-                 #mapeSVM_mediana = if (nrow(summarySVM) == 0) NA else summarySVM$Median_MAPE,
+                 mapeSVM_mediana = if (nrow(summarySVM) == 0) NA else summarySVM$Median_MAPE,
                  mapeNN_mediana = if (nrow(summaryNN) == 0) NA else summaryNN$Median_MAPE,
                  
                  mapeMedia_q1 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q1_MAPE,
@@ -226,7 +226,7 @@ B <- foreach(NAME = N,
                  mapeSN_q1 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q1_MAPE,
                  mapeArima_q1 = if (nrow(summaryArima) == 0) NA else summaryArima$Q1_MAPE,
                  mapeETS_q1 = if (nrow(summaryETS) == 0) NA else summaryETS$Q1_MAPE,
-                 #mapeSVM_q1 = if (nrow(summarySVM) == 0) NA else summarySVM$Q1_MAPE,
+                 mapeSVM_q1 = if (nrow(summarySVM) == 0) NA else summarySVM$Q1_MAPE,
                  mapeNN_q1 = if (nrow(summaryNN) == 0) NA else summaryNN$Q1_MAPE,
                  
                  mapeMedia_q3 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q3_MAPE,
@@ -234,31 +234,31 @@ B <- foreach(NAME = N,
                  mapeSN_q3 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q3_MAPE,
                  mapeArima_q3 = if (nrow(summaryArima) == 0) NA else summaryArima$Q3_MAPE,
                  mapeETS_q3 = if (nrow(summaryETS) == 0) NA else summaryETS$Q3_MAPE,
-                 #mapeSVM_q3 = if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
+                 mapeSVM_q3 = if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
                  mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE,
                  
                  
                  P1_PICO_PRECIO = T2.0_PICO * TD_p1 +
-                                   T2.0_PICO * CS_p1 + 
+                                   T2.0_PICO * CS_p1 - 
                                    T2.0_PICO * (CG_p1 / 1000) + 
                                    T2.0_PICO * L_p1,
                  
                  P2_LLANO_PRECIO = T2.0_LLANO * TD_p2 +
-                                   T2.0_LLANO * CS_p2 + 
+                                   T2.0_LLANO * CS_p - 
                                    T2.0_LLANO * (CG_p2 / 1000) + 
                                    T2.0_LLANO * L_p2,
                  
                  P3_VALLE_PRECIO = T2.0_VALLE * TD_p3 +
-                                  T2.0_VALLE * xCS_p3 + 
+                                  T2.0_VALLE * CS_p3 - 
                                   T2.0_VALLE * (CG_p3 / 1000) + 
                                   T2.0_VALLE * L_p3
               
           )
              }
 
-write.csv(B,file="featuresPrueba.csv",row.names = F)
+write.csv(Feats,file="featuresNuevos.csv",row.names = F)
 
-B <- read.csv("features.csv")
+B <- read.csv("featuresNuevos.csv")
 
 
 boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
