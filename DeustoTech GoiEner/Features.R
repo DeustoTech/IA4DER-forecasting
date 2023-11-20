@@ -136,9 +136,7 @@ B <- foreach(NAME = N,
                T_SOLAR_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
                T_SOLAR_SPICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
                T_SOLAR_SLLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
-               
-               
-               
+                 
                LENGTH <- length(a$kWh)
                
                QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
@@ -163,6 +161,7 @@ B <- foreach(NAME = N,
                summaryNN <- filter(summaryNN_CUPS, ID ==  ID1)
                # summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
 
+               
                aux <- data.frame(
                  ID=     ID1,
                  LENGTH= LENGTH,
@@ -236,13 +235,24 @@ B <- foreach(NAME = N,
                  mapeArima_q3 = if (nrow(summaryArima) == 0) NA else summaryArima$Q3_MAPE,
                  mapeETS_q3 = if (nrow(summaryETS) == 0) NA else summaryETS$Q3_MAPE,
                  #mapeSVM_q3 = if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
-                 mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE
+                 mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE,
                  
                  
+                 P1_PICO_PRECIO = T2.0_PICO * TD_p1 +
+                                   T2.0_PICO * CS_p1 + 
+                                   T2.0_PICO * (CG_p1 / 1000) + 
+                                   T2.0_PICO * L_p1,
                  
+                 P2_LLANO_PRECIO = T2.0_LLANO * TD_p2 +
+                                   T2.0_LLANO * CS_p2 + 
+                                   T2.0_LLANO * (CG_p2 / 1000) + 
+                                   T2.0_LLANO * L_p2,
+                 
+                 P3_VALLE_PRECIO = T2.0_VALLE * TD_p3 +
+                                  T2.0_VALLE * CS_p3 + 
+                                  T2.0_VALLE * (CG_p3 / 1000) + 
+                                  T2.0_VALLE * L_p3
               
-                 
-                 # Meter los precios. No se como
           )
              }
 
