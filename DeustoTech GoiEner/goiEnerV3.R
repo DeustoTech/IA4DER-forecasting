@@ -41,12 +41,34 @@ ResultadosModelos <- tibble(
   Hora = numeric(),
   TipoDia = character(),
   Real = numeric(),
-  Predicted = numeric(),
-  sMAPE = numeric(),
-  RMSE = numeric(),
-  MASE = numeric(),
-  MAPE = numeric(),
-  Modelo = character()
+  
+  Media_pred = numeric(),
+  Naive_pred = numeric(),
+  SNaive_pred = numeric,
+  Arima_pred = numeric(),
+  ETS_pred = numeric(),
+  NN_pred = numeric(),
+  SMV_pred = numeric(),
+  Ensenmble_pred = numeric(),
+  
+  Media_mape = numeric(),
+  Naive_mape = numeric(),
+  SNaive_mape = numeric,
+  Arima_mape = numeric(),
+  ETS_mape = numeric(),
+  NN_mape = numeric(),
+  SMV_mape = numeric(),
+  Ensenmble_mape = numeric(),
+  
+  Media_rmse = numeric(),
+  Naive_rmse = numeric(),
+  SNaive_rmse = numeric,
+  Arima_rmse = numeric(),
+  ETS_rmse = numeric(),
+  NN_rmse = numeric(),
+  SMV_rmse = numeric(),
+  Ensenmble_rmse = numeric()
+  
 )
 #lo pongo aqui por si tenemos que volver a usarlo
 #mape <- mape(actual[aux], predicted[aux])
