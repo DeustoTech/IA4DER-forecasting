@@ -60,14 +60,6 @@ ResultadosModelos <- tibble(
   SMV_mape = numeric(),
   Ensenmble_mape = numeric(),
   
-  Media_rmse = numeric(),
-  Naive_rmse = numeric(),
-  SNaive_rmse = numeric,
-  Arima_rmse = numeric(),
-  ETS_rmse = numeric(),
-  NN_rmse = numeric(),
-  SMV_rmse = numeric(),
-  Ensenmble_rmse = numeric()
   
 )
 #lo pongo aqui por si tenemos que volver a usarlo
@@ -141,34 +133,205 @@ predict_models <- function(csv_file){
         
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
         actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
+        aux  <- actual != 0
         
         # MEDIA
         
-        predicted <- predict(mean(trainSet))
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
+        media <- predict(mean(trainSet, h = 7))
+        media <- media$mean
+        media <- coredata(media)
         
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          media_dia <- rep(media[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_media[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - media_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
         
+        # NAIVE
         
+        naive <- predict(naive(trainSet, h = 7))
+        naive <- naive$mean
+        naive <- coredata(naive)
+      
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          naive_dia <- rep(naive[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_naive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - naive_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # SNAIVE
+        
+        snaive <- predict(snaive(trainSet, h = 7))
+        snaive <- snaive$mean
+        snaive <- coredata(snaive)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          snaive_dia <- rep(snaive[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_snaive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - snaive_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # ARIMA
+        
+        arima <- forecast(auto.arima(trainSet), h = 7)
+        arima <- arima$mean
+        arima <- coredata(arima)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          arima_dia <- rep(arima[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_arima[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - arima_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # ETS
+        
+        ets <- forecast(ets(trainSet), h = 7)
+        ets <- ets$mean
+        ets <- coredata(ets)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          ets_dia <- rep(ets[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_ets[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - ets_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # NN
+        
+        nn <- forecast(nnetar(trainSet), h = 7)
+        nn <- nn$mean
+        nn <- coredata(nn)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          nn_dia <- rep(nn[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_nn[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - nn_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # SVM
+        
+        # HAY QUE MIRAR COMO ADAPTARLO 
+        
+        lagged <- merge(trainSet, shift(trainSet, -7))
+        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+        PREDICT <- data.frame(past = as.numeric(window(trainSet,
+                                                       start = index(trainSet)[length(trainSet - F_DAYS)])))
+        names(SVM_TRAINSET) <- c("actual", "past")
+        
+        SVM_MODEL <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+        
+        svm <- predict(SVM$best.model, SVM_MODEL)
+      
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          svm_dia <- rep(svm[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - svm_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # ENSEMBLE
+        
+        ensemble <- c()
+        
+        for (k in 1:F_DAYS){
+          ensemble[k] <- median(media[k], naive[k], snaive[k], arima[k], ets[k], nn[k], svm[k])
+          
+          
+          
+          dia_start <- test_start + k - 1
+          dia_end <- test_start + k - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          ensemble_dia <- rep(svm[k], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_ensemble[k] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - ensemble_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        
+        }
+
+        for (j in 1:F_DAYS){
         
         ResultadosModelos <- ResultadosModelos %>% add_row(
           ID = ID,
           Hora = hora,
           TipoDia = "Laborable",
-          Real = as.numeric(actual),
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "Media"
+          Real = actual[j],
+          
+          Media_pred = media[j],
+          Naive_pred = naive[j],
+          SNaive_pred = snaive[j],
+          Arima_pred = arima[j],
+          ETS_pred = ets[j],
+          NN_pred = nn[j],
+          SMV_pred = svm[j],
+          Ensenmble_pred = ensemble[j],
+          
+          Media_mape = mape_media[j],
+          Naive_mape = mape_naive[j],
+          SNaive_mape = mape_snaive[j],
+          Arima_mape = mape_arima[j],
+          ETS_mape = mape_ets[j],
+          NN_mape = mape_nn[j],
+          SMV_mape = mape_svm[j],
+          Ensenmble_mape = mape_ensemble[j],
         )
+        }
         
         fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
         
@@ -176,7 +339,6 @@ predict_models <- function(csv_file){
       # AHORA LO MISMO PERO CON FINDE
       
       for (i in 1:iteracionesFinde){
-        
         
         train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
         train_end <- train_start + T_DAYS - 1
@@ -188,34 +350,205 @@ predict_models <- function(csv_file){
         
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
         actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
+        aux <- actual != 0
         
         # MEDIA
         
-        predicted <- predict(mean(trainSet))
-        predicted <- predicted$mean
-        predicted <- coredata(predicted)[1]
+        media <- predict(mean(trainSet, h = 7))
+        media <- media$mean
+        media <- coredata(media)
         
-        aux  <- actual != 0
-        smape <- smape(actual, predicted)
-        rmse <- rmse(actual, predicted)
-        mase <- mase(actual, predicted)
-        if (!is.finite(mase)) { mase <- NA}
-        mape <- 100*median(ifelse(sum(aux)!=0,abs(actual[aux]-predicted[aux])/actual[aux],NA))
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          media_dia <- rep(media[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_media[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - media_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
         
-        ResultadosModelos <- ResultadosModelos %>% add_row(
-          ID = ID,
-          Hora = hora,
-          TipoDia = "Finde",
-          Real = as.numeric(actual),
-          Predicted = predicted,
-          sMAPE = smape,
-          RMSE = rmse,
-          MASE = mase,
-          MAPE = mape,
-          Modelo = "Media"
-        )
+        # NAIVE
         
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        naive <- predict(naive(trainSet, h = 7))
+        naive <- naive$mean
+        naive <- coredata(naive)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          naive_dia <- rep(naive[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_naive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - naive_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # SNAIVE
+        
+        snaive <- predict(snaive(trainSet, h = 7))
+        snaive <- snaive$mean
+        snaive <- coredata(snaive)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          snaive_dia <- rep(snaive[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_snaive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - snaive_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # ARIMA
+        
+        arima <- forecast(auto.arima(trainSet), h = 7)
+        arima <- arima$mean
+        arima <- coredata(arima)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          arima_dia <- rep(arima[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_arima[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - arima_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # ETS
+        
+        ets <- forecast(ets(trainSet), h = 7)
+        ets <- ets$mean
+        ets <- coredata(ets)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          ets_dia <- rep(ets[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_ets[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - ets_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # NN
+        
+        nn <- forecast(nnetar(trainSet), h = 7)
+        nn <- nn$mean
+        nn <- coredata(nn)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          nn_dia <- rep(nn[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_nn[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - nn_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # SVM
+        
+        # HAY QUE MIRAR COMO ADAPTARLO 
+        
+        lagged <- merge(trainSet, shift(trainSet, -7))
+        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+        PREDICT <- data.frame(past = as.numeric(window(trainSet,
+                                                       start = index(trainSet)[length(trainSet - F_DAYS)])))
+        names(SVM_TRAINSET) <- c("actual", "past")
+        
+        SVM_MODEL <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+        
+        svm <- predict(SVM$best.model, SVM_MODEL)
+        
+        for (j in 1:F_DAYS) {
+          # Calcular el rango de días para el i-ésimo día
+          dia_start <- test_start + j - 1
+          dia_end <- test_start + j - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          svm_dia <- rep(svm[j], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - svm_dia[aux_dia]) / actual_dia[aux_dia], NA))
+        }
+        
+        # ENSEMBLE
+        
+        ensemble <- c()
+        
+        for (k in 1:F_DAYS){
+          ensemble[k] <- median(media[k], naive[k], snaive[k], arima[k], ets[k], nn[k], svm[k])
+          
+          
+          
+          dia_start <- test_start + k - 1
+          dia_end <- test_start + k - 1
+          
+          # Extraer los datos para el i-ésimo día
+          actual_dia <- actual[dia_start:dia_end]
+          ensemble_dia <- rep(svm[k], length(actual_dia))
+          
+          # Calcular el MAPE para el i-ésimo día
+          aux_dia <- actual_dia != 0
+          mape_ensemble[k] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual_dia[aux_dia] - ensemble_dia[aux_dia]) / actual_dia[aux_dia], NA))
+          
+        }
+        
+        for (j in 1:F_DAYS){
+          
+          ResultadosModelos <- ResultadosModelos %>% add_row(
+            ID = ID,
+            Hora = hora,
+            TipoDia = "Finde",
+            Real = actual[j],
+            
+            Media_pred = media[j],
+            Naive_pred = naive[j],
+            SNaive_pred = snaive[j],
+            Arima_pred = arima[j],
+            ETS_pred = ets[j],
+            NN_pred = nn[j],
+            SMV_pred = svm[j],
+            Ensenmble_pred = ensemble[j],
+            
+            Media_mape = mape_media[j],
+            Naive_mape = mape_naive[j],
+            SNaive_mape = mape_snaive[j],
+            Arima_mape = mape_arima[j],
+            ETS_mape = mape_ets[j],
+            NN_mape = mape_nn[j],
+            SMV_mape = mape_svm[j],
+            Ensenmble_mape = mape_ensemble[j],
+          )
+        }
         
       }
     }
