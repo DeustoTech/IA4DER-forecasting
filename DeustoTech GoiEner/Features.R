@@ -84,7 +84,7 @@ horas <- data.frame(
   )
 )
 MC  <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
-
+#p
 # Precios de electricidad
 
 # TD : Peajes €/kWh
