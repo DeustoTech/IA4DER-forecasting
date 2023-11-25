@@ -151,13 +151,16 @@ Feats <- foreach(NAME = N2,
                
                features_semana <- laborable %>%
                  group_by(season, day_period) %>%
-                 summarise(kWhTotal = sum(kWh)) %>%
-                 pivot_wider(names_from = c(season, day_period), values_from = kWhTotal)
+                 summarise(kWhTotal = sum(kWh),
+                           kWhMax = max(kWh)) %>%
+                 pivot_wider(names_from = c(season, day_period), values_from = c(kWhTotal, kWhMax))
                
                features_fin_de_semana <- finde %>%
                  group_by(season) %>%
-                 summarise(kWhTotal = sum(kWh)) %>%
-                 pivot_wider(names_from = season, values_from = kWhTotal)
+                 summarise(kWhTotal = sum(kWh),
+                           kWhMax = max(kWh))%>%
+                 pivot_wider(names_from = season, values_from = c(kWhTotal, kWhMax))
+               
                
                colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
                
