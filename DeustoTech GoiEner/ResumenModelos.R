@@ -13,6 +13,58 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
+CUPS <- fread("Predicciones.csv")
+CUPS$ID <- basename(CUPS$ID)
+
+
+
+result_df <- CUPS %>%
+  group_by(CUPS$ID) %>%
+  summarise(
+    
+    
+    
+    Median_MAPE_media = median(Media_mape, na.rm = TRUE),
+    Q1_MAPE_media = quantile(Media_mape, 0.25, na.rm = TRUE),
+    Q3_MAPE_media = quantile(Media_mape, 0.75, na.rm = TRUE),
+    
+    Median_MAPE_naive = median(Naive_mape, na.rm = TRUE),
+    Q1_MAPE_naive = quantile(Naive_mape, 0.25, na.rm = TRUE),
+    Q3_MAPE_naive = quantile(Naive_mape, 0.75, na.rm = TRUE),
+    
+    Median_MAPE_snaive = median(SNaive_mape, na.rm = TRUE),
+    Q1_MAPE_snaive = quantile(SNaive_mape, 0.25, na.rm = TRUE),
+    Q3_MAPE_snaive = quantile(SNaive_mape, 0.75, na.rm = TRUE),
+    
+    Median_MAPE_arima = median(Arima_mape, na.rm = TRUE),
+    Q1_MAPE_arima = quantile(Arima_mape, 0.25, na.rm = TRUE),
+    Q3_MAPE_arima = quantile(Arima_mape, 0.75, na.rm = TRUE),
+    
+    Median_MAPE_ets = median(ETS_mape, na.rm = TRUE),
+    Q1_MAPE_ets = quantile(ETS_mape, 0.25, na.rm = TRUE),
+    Q3_MAPE_ets = quantile(ETS_mape, 0.75, na.rm = TRUE),
+    
+    Median_MAPE_nn = median(NN_mape, na.rm = TRUE),
+    Q1_MAPE_nn = quantile(NN_mape, 0.25, na.rm = TRUE),
+    Q3_MAPE_nn = quantile(NN_mape, 0.75, na.rm = TRUE),
+    
+    Median_MAPE_svm = median(SMV_pred, na.rm = TRUE),
+    Q1_MAPE_svm = quantile(SMV_pred, 0.25, na.rm = TRUE),
+    Q3_MAPE_svm = quantile(SMV_pred, 0.75, na.rm = TRUE),
+    
+    Median_MAPE_ensemble = median(Ensemble_mape, na.rm = TRUE),
+    Q1_MAPE_ensemble = quantile(Ensemble_mape, 0.25, na.rm = TRUE),
+    Q3_MAPE_ensemble = quantile(Ensemble_mape, 0.75, na.rm = TRUE)
+    
+   
+    
+    
+  )
+
+fwrite(result_df, file = "Resultados/CUPS/SummaryPreds.csv", col.names = T, row.names = F)
+
+
+
 
 mediaCUPS <- fread("Resultados/CUPS/ResultadosCUPS_Media.csv")
 mediaCUPS$ID <- basename(mediaCUPS$ID)
@@ -83,3 +135,9 @@ result_df <- mediaCUPS %>%
   )
 
 fwrite(result_df, file = "Resultados/CUPS/SummaryMedia.csv", col.names = T, row.names = F)
+
+
+
+
+
+
