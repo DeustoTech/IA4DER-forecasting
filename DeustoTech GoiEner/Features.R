@@ -110,9 +110,8 @@ L_p1 <- 0.204321
 L_p2 <- 0.200549
 L_p3 <- 0.185471
 
-N2 <- N[1:10]
 
-Feats <- foreach(NAME = N2,
+Feats <- foreach(NAME = N,
              .combine = rbind,
              .errorhandling = "remove", .options.future = list(packages = librerias)) %dofuture% { 
                
