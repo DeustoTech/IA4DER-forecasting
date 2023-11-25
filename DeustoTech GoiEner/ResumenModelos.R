@@ -19,7 +19,7 @@ CUPS$ID <- basename(CUPS$ID)
 
 
 result_df <- CUPS %>%
-  group_by(CUPS$ID) %>%
+  group_by(ID = CUPS$ID) %>%
   summarise(
     
     
