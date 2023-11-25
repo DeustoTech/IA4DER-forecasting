@@ -55,7 +55,8 @@ summaryNN_CUPS$ID <- basename(summaryNN_CUPS$ID)
 summarySVM_CUPS <- fread("Resultados/CUPS/SummarySVM.csv")
 summarySVM_CUPS$ID <- basename(summarySVM_CUPS$ID)
 
-
+#summaryEnsemble_CUPS <- fread("Resultados/CUPS/SummaryEnsemble.csv")
+#summaryEnsemble_CUPS$ID <- basename(summaryEnsemble_CUPS$ID)
 
 # Agregar el prefijo 'folder' a las rutas en N, CT y L
 N <- paste(folder, N, sep = "")
@@ -107,9 +108,9 @@ L_p1 <- 0.204321
 L_p2 <- 0.200549
 L_p3 <- 0.185471
 
+N2 <- N[1:10]
 
-
-Feats <- foreach(NAME = N,
+Feats <- foreach(NAME = N2,
              .combine = rbind,
              .errorhandling = "remove", .options.future = list(packages = librerias)) %dofuture% { 
                
@@ -127,6 +128,40 @@ Feats <- foreach(NAME = N,
                a <- csv_actual %>%
                  mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
                  mutate(Hora = hour(timestamp))
+               
+               a$week_day <- wday(a$timestamp)
+               
+               a$season <- case_when(
+                 month(a$timestamp) %in% c(12, 1, 2) ~ "winter",
+                 month(a$timestamp) %in% c(3, 4, 5) ~ "spring",
+                 month(a$timestamp) %in% c(6, 7, 8) ~ "summer",
+                 month(a$timestamp) %in% c(9, 10, 11) ~ "autum"
+               )
+               
+               a$day_period <- cut(
+                 hour(a$timestamp),
+                 breaks = c(0, 4, 8, 12, 16, 20, 24),
+                 labels = c("0-4", "5-8", "9-12", "13-16", "17-20", "21-24"),
+                 include.lowest = TRUE
+               )
+              
+               
+               laborable <- a %>% filter(week_day %in% c(1, 2, 3, 4, 5))
+               finde <- a %>% filter(week_day %in% c(6, 7))
+               
+               features_semana <- laborable %>%
+                 group_by(season, day_period) %>%
+                 summarise(kWhTotal = sum(kWh),
+                           kWhMax = max(kWh)) %>%
+                 pivot_wider(names_from = c(season, day_period), values_from = c(kWhTotal, kWhMax))
+               
+               features_fin_de_semana <- finde %>%
+                 group_by(season) %>%
+                 summarise(kWhTotal = sum(kWh),
+                           kWhMax = max(kWh))%>%
+                 pivot_wider(names_from = season, values_from = c(kWhTotal, kWhMax))
+               
+               colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
                
                T2.0_VALLE <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
                T2.0_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
@@ -160,6 +195,7 @@ Feats <- foreach(NAME = N,
                summaryETS <- filter(summaryETS_CUPS, ID ==  ID1)
                summaryNN <- filter(summaryNN_CUPS, ID ==  ID1)
                summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
+               #summaryEnsemble <- filter(summaryEnsemble_CUPS, ID ==  ID1)
 
                
                aux <- data.frame(
@@ -220,7 +256,8 @@ Feats <- foreach(NAME = N,
                  mapeETS_mediana = if (nrow(summaryETS) == 0) NA else summaryETS$Median_MAPE,
                  mapeSVM_mediana = if (nrow(summarySVM) == 0) NA else summarySVM$Median_MAPE,
                  mapeNN_mediana = if (nrow(summaryNN) == 0) NA else summaryNN$Median_MAPE,
-                 
+                 #mapeEnsemble_mediana = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Median_MAPE,
+                   
                  mapeMedia_q1 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q1_MAPE,
                  mapeNaive_q1 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q1_MAPE,
                  mapeSN_q1 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q1_MAPE,
@@ -228,6 +265,7 @@ Feats <- foreach(NAME = N,
                  mapeETS_q1 = if (nrow(summaryETS) == 0) NA else summaryETS$Q1_MAPE,
                  mapeSVM_q1 = if (nrow(summarySVM) == 0) NA else summarySVM$Q1_MAPE,
                  mapeNN_q1 = if (nrow(summaryNN) == 0) NA else summaryNN$Q1_MAPE,
+                 #mapeEnsemble_q1 = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Q1_MAPE,
                  
                  mapeMedia_q3 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q3_MAPE,
                  mapeNaive_q3 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q3_MAPE,
@@ -236,24 +274,26 @@ Feats <- foreach(NAME = N,
                  mapeETS_q3 = if (nrow(summaryETS) == 0) NA else summaryETS$Q3_MAPE,
                  mapeSVM_q3 = if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
                  mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE,
+                 #mapeEnsemble_q3 = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Q3_MAPE,
                  
-                 
+                 #quitar la resta no? 
                  P1_PICO_PRECIO = T2.0_PICO * TD_p1 +
-                                   T2.0_PICO * CS_p1 - 
-                                   T2.0_PICO * (CG_p1 / 1000) + 
+                                   T2.0_PICO * CS_p1 + 
                                    T2.0_PICO * L_p1,
                  
                  P2_LLANO_PRECIO = T2.0_LLANO * TD_p2 +
-                                   T2.0_LLANO * CS_p2 - 
-                                   T2.0_LLANO * (CG_p2 / 1000) + 
+                                   T2.0_LLANO * CS_p2 + 
                                    T2.0_LLANO * L_p2,
                  
                  P3_VALLE_PRECIO = T2.0_VALLE * TD_p3 +
-                                  T2.0_VALLE * CS_p3 - 
-                                  T2.0_VALLE * (CG_p3 / 1000) + 
+                                  T2.0_VALLE * CS_p3 + 
                                   T2.0_VALLE * L_p3
+                 
+                 
               
           )
+          
+               aux <- cbind(aux, features_semana, features_fin_de_semana)
              }
 
 write.csv(Feats,file="featuresNuevos.csv",row.names = F)
@@ -371,6 +411,40 @@ a <- csv_actual %>%
   mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
   mutate(Hora = hour(timestamp))
 
+
+a$week_day <- wday(a$timestamp)
+
+a$season <- case_when(
+  month(a$timestamp) %in% c(12, 1, 2) ~ "winter",
+  month(a$timestamp) %in% c(3, 4, 5) ~ "spring",
+  month(a$timestamp) %in% c(6, 7, 8) ~ "summer",
+  month(a$timestamp) %in% c(9, 10, 11) ~ "autum"
+)
+
+a$day_period <- cut(
+  hour(a$timestamp),
+  breaks = c(0, 4, 8, 12, 16, 20, 24),
+  labels = c("0-4", "5-8", "9-12", "13-16", "17-20", "21-24"),
+  include.lowest = TRUE
+)
+
+laborable <- a %>% filter(week_day %in% c(1, 2, 3, 4, 5))
+finde <- a %>% filter(week_day %in% c(6, 7))
+
+features_semana <- laborable %>%
+  group_by(season, day_period) %>%
+  summarise(kWhTotal = sum(kWh)) %>%
+  pivot_wider(names_from = c(season, day_period), values_from = kWhTotal)
+
+features_fin_de_semana <- finde %>%
+  group_by(season) %>%
+  summarise(kWhTotal = sum(kWh)) %>%
+  pivot_wider(names_from = season, values_from = kWhTotal)
+
+colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
+
+
+
 T2.0_VALLE <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
 T2.0_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
 T2.0_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
@@ -483,5 +557,6 @@ aux <- data.frame(
   
 )
 
+aux <- cbind(aux, features_semana, features_fin_de_semana)
 
 
