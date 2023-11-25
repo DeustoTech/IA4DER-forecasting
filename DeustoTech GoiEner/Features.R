@@ -160,6 +160,7 @@ Feats <- foreach(NAME = N2,
                  summarise(kWhTotal = sum(kWh),
                            kWhMax = max(kWh))%>%
                  pivot_wider(names_from = season, values_from = c(kWhTotal, kWhMax))
+              
                
                colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
                
