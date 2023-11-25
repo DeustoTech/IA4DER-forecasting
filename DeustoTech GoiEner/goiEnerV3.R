@@ -377,7 +377,7 @@ predict_models <- function(csv_file){
         
         svm <- predict(modelo_svm$best.model, newdata = PREDICT)
         
-        
+        #funciona
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
