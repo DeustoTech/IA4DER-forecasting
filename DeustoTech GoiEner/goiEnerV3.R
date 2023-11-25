@@ -33,7 +33,7 @@ CT <- paste(folder, CT, sep = "")
 L <- paste(folder, L, sep = "")
 
 
-RESULT_FILE <- "ResultadosHiperNuevos.csv"
+RESULT_FILE <- "Predicciones.csv"
 
 
 ResultadosModelos <- tibble(
@@ -109,7 +109,7 @@ predict_models <- function(csv_file){
   
   if ( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)){
     
-    foreach(hora = horas, .packages = librerias) %dopar% {
+    for (hora in horas){
       
       datos_hora <- a[hour(a$timestamp) == hora,]
       datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
@@ -132,8 +132,7 @@ predict_models <- function(csv_file){
         mape_svm <- c()
         mape_ensemble <- c()
         
-        
-        
+      
         train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
         train_end <- train_start + T_DAYS - 1
         test_start <- train_end + 1
@@ -243,39 +242,73 @@ predict_models <- function(csv_file){
         }
         
         
-        for (j in 1:F_DAYS){
-        print("llego")
-    
-          
-        ResultadosModelos <- ResultadosModelos %>% add_row(
-          ID = ID,
-          Hora = hora,
-          TipoDia = "Laborable",
-          Real = actual[j],
-          
-          Media_pred = media[j],
-          Naive_pred = naive[j],
-          SNaive_pred = snaive[j],
-          Arima_pred = arima[j],
-          ETS_pred = ets[j],
-          NN_pred = nn[j],
-          SMV_pred = svm[j],
-          Ensemble_pred = ensemble[j],
-          
-          Media_mape = mape_media[j],
-          Naive_mape = mape_naive[j],
-          SNaive_mape = mape_snaive[j],
-          Arima_mape = mape_arima[j],
-          ETS_mape = mape_ets[j],
-          NN_mape = mape_nn[j],
-          SMV_mape = mape_svm[j],
-          Ensemble_mape = mape_ensemble[j]
-        ) 
-        print("actualizado")
-        }
-       
+        # for (j in 1:F_DAYS){
+        # print("llego")
+        # print(hora)
+        # 
+        # ResultadosModelos <- ResultadosModelos %>% add_row(
+        #   ID = ID,
+        #   Hora = hora,
+        #   TipoDia = "Laborable",
+        #   Real = actual[j],
+        #   
+        #   Media_pred = media[j],
+        #   Naive_pred = naive[j],
+        #   SNaive_pred = snaive[j],
+        #   Arima_pred = arima[j],
+        #   ETS_pred = ets[j],
+        #   NN_pred = nn[j],
+        #   SMV_pred = svm[j],
+        #   Ensemble_pred = ensemble[j],
+        #   
+        #   Media_mape = mape_media[j],
+        #   Naive_mape = mape_naive[j],
+        #   SNaive_mape = mape_snaive[j],
+        #   Arima_mape = mape_arima[j],
+        #   ETS_mape = mape_ets[j],
+        #   NN_mape = mape_nn[j],
+        #   SMV_mape = mape_svm[j],
+        #   Ensemble_mape = mape_ensemble[j]
+        # ) 
+        # print("actualizado")
+        # }
+        # 
+        # 
+        # fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
         
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        for (j in 1:F_DAYS) {
+          # ... (resto del código)
+          
+          # Escribir directamente en el archivo CSV usando fwrite
+          fwrite(
+            data.table(
+              ID = ID,
+              Hora = hora,
+              TipoDia = "Laborable",
+              Real = actual[j],
+              Media_pred = media[j],
+              Naive_pred = naive[j],
+              SNaive_pred = snaive[j],
+              Arima_pred = arima[j],
+              ETS_pred = ets[j],
+              NN_pred = nn[j],
+              SMV_pred = svm[j],
+              Ensemble_pred = ensemble[j],
+              Media_mape = mape_media[j],
+              Naive_mape = mape_naive[j],
+              SNaive_mape = mape_snaive[j],
+              Arima_mape = mape_arima[j],
+              ETS_mape = mape_ets[j],
+              NN_mape = mape_nn[j],
+              SMV_mape = mape_svm[j],
+              Ensemble_mape = mape_ensemble[j]
+            ),
+            file = RESULT_FILE,
+            append = TRUE,
+            col.names = !file.exists(RESULT_FILE)  # Agregar encabezados solo si el archivo no existe
+          )
+        }
+        
       }
         
       # AHORA LO MISMO PERO CON FINDE
@@ -399,34 +432,67 @@ predict_models <- function(csv_file){
           mape_ensemble[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - ensemble[aux_dia]) / actual[aux_dia], NA))
         }
         
-        for (j in 1:F_DAYS){
+        # for (j in 1:F_DAYS){
+        #   
+        #   ResultadosModelos <- ResultadosModelos %>% add_row(
+        #     ID = ID,
+        #     Hora = hora,
+        #     TipoDia = "Finde",
+        #     Real = actual[j],
+        #     
+        #     Media_pred = media[j],
+        #     Naive_pred = naive[j],
+        #     SNaive_pred = snaive[j],
+        #     Arima_pred = arima[j],
+        #     ETS_pred = ets[j],
+        #     NN_pred = nn[j],
+        #     SMV_pred = svm[j],
+        #     Ensemble_pred  = ensemble[j],
+        #     
+        #     Media_mape = mape_media[j],
+        #     Naive_mape = mape_naive[j],
+        #     SNaive_mape = mape_snaive[j],
+        #     Arima_mape = mape_arima[j],
+        #     ETS_mape = mape_ets[j],
+        #     NN_mape = mape_nn[j],
+        #     SMV_mape = mape_svm[j],
+        #     Ensemble_mape  = mape_ensemble[j]
+        #   )
+        # }
+        # fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        for (j in 1:F_DAYS) {
+          # ... (resto del código)
           
-          ResultadosModelos <- ResultadosModelos %>% add_row(
-            ID = ID,
-            Hora = hora,
-            TipoDia = "Finde",
-            Real = actual[j],
-            
-            Media_pred = media[j],
-            Naive_pred = naive[j],
-            SNaive_pred = snaive[j],
-            Arima_pred = arima[j],
-            ETS_pred = ets[j],
-            NN_pred = nn[j],
-            SMV_pred = svm[j],
-            Ensemble_pred  = ensemble[j],
-            
-            Media_mape = mape_media[j],
-            Naive_mape = mape_naive[j],
-            SNaive_mape = mape_snaive[j],
-            Arima_mape = mape_arima[j],
-            ETS_mape = mape_ets[j],
-            NN_mape = mape_nn[j],
-            SMV_mape = mape_svm[j],
-            Ensemble_mape  = mape_ensemble[j]
+          # Escribir directamente en el archivo CSV usando fwrite
+          fwrite(
+            data.table(
+              ID = ID,
+              Hora = hora,
+              TipoDia = "Finde",
+              Real = actual[j],
+              Media_pred = media[j],
+              Naive_pred = naive[j],
+              SNaive_pred = snaive[j],
+              Arima_pred = arima[j],
+              ETS_pred = ets[j],
+              NN_pred = nn[j],
+              SMV_pred = svm[j],
+              Ensemble_pred = ensemble[j],
+              Media_mape = mape_media[j],
+              Naive_mape = mape_naive[j],
+              SNaive_mape = mape_snaive[j],
+              Arima_mape = mape_arima[j],
+              ETS_mape = mape_ets[j],
+              NN_mape = mape_nn[j],
+              SMV_mape = mape_svm[j],
+              Ensemble_mape = mape_ensemble[j]
+            ),
+            file = RESULT_FILE,
+            append = TRUE,
+            col.names = !file.exists(RESULT_FILE)  # Agregar encabezados solo si el archivo no existe
           )
         }
-        fwrite(ResultadosModelos, file = RESULT_FILE, col.names = FALSE, append = TRUE)
+        
         
         
       }
