@@ -123,6 +123,24 @@ predict_models <- function(csv_file){
       
       for (i in 1:iteracionesLab){
         
+        media <- c()
+        naive <- c()
+        snaive <- c()
+        arima <- c()
+        ets <- c()
+        nn <- c()
+        svm <- c()
+        ensemble <- c()
+        
+        mape_media <- c()
+        mape_naive <- c()
+        mape_snaive <- c()
+        mape_arima <- c()
+        mape_ets <- c()
+        mape_nn <- c()
+        mape_svm <- c()
+        mape_ensemble <- c()
+        
         train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
         train_end <- train_start + T_DAYS - 1
         test_start <- train_end + 1
@@ -141,7 +159,6 @@ predict_models <- function(csv_file){
         media <- media$mean
         media <- coredata(media)
         
-        mape_media <- c()
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_media[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - media[aux_dia]) / actual[aux_dia], NA))
@@ -154,7 +171,6 @@ predict_models <- function(csv_file){
         naive <- naive$mean
         naive <- coredata(naive)
       
-        mape_naive <- c()
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_naive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - naive[aux_dia]) / actual[aux_dia], NA))
@@ -165,8 +181,7 @@ predict_models <- function(csv_file){
         snaive <- predict(snaive(trainSet, h = 7))
         snaive <- snaive$mean
         snaive <- coredata(snaive)
-        
-        mape_snaive <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_snaive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - snaive[aux_dia]) / actual[aux_dia], NA))
@@ -177,8 +192,7 @@ predict_models <- function(csv_file){
         arima <- forecast(auto.arima(trainSet), h = 7)
         arima <- arima$mean
         arima <- coredata(arima)
-        
-        mape_arima <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_arima[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - arima[aux_dia]) / actual[aux_dia], NA))
@@ -189,8 +203,7 @@ predict_models <- function(csv_file){
         ets <- forecast(ets(trainSet), h = 7)
         ets <- ets$mean
         ets <- coredata(ets)
-        
-        mape_ets <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_ets[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - ets[aux_dia]) / actual[aux_dia], NA))
@@ -202,8 +215,7 @@ predict_models <- function(csv_file){
         nn <- forecast(nnetar(trainSet), h = 7)
         nn <- nn$mean
         nn <- coredata(nn)
-        
-        mape_nn <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_nn[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - nn[aux_dia]) / actual[aux_dia], NA))
@@ -222,8 +234,7 @@ predict_models <- function(csv_file){
         SVM_MODEL <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
         
         svm <- predict(SVM$best.model, newdata = PREDICT)
-      
-        mape_svm <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
@@ -231,8 +242,6 @@ predict_models <- function(csv_file){
         
         # ENSEMBLE
         
-        ensemble <- c()
-        mape_ensemble <- c()
         for (j in 1:F_DAYS){
           
           ensemble[j] <- median(media[j], naive[j], snaive[j], arima[j], ets[j], nn[j], svm[j])
@@ -276,6 +285,24 @@ predict_models <- function(csv_file){
       
       for (i in 1:iteracionesFinde){
         
+        media <- c()
+        naive <- c()
+        snaive <- c()
+        arima <- c()
+        ets <- c()
+        nn <- c()
+        svm <- c()
+        ensemble <- c()
+        
+        mape_media <- c()
+        mape_naive <- c()
+        mape_snaive <- c()
+        mape_arima <- c()
+        mape_ets <- c()
+        mape_nn <- c()
+        mape_svm <- c()
+        mape_ensemble <- c()
+        
         train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
         train_end <- train_start + T_DAYS - 1
         test_start <- train_end + 1
@@ -293,7 +320,7 @@ predict_models <- function(csv_file){
         media <- predict(mean(trainSet, h = 7))
         media <- media$mean
         media <- coredata(media)
-        mape_media <- c()
+        
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_media[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - media[aux_dia]) / actual[aux_dia], NA))
@@ -305,7 +332,7 @@ predict_models <- function(csv_file){
         naive <- predict(naive(trainSet, h = 7))
         naive <- naive$mean
         naive <- coredata(naive)
-        mape_naive <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_naive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - naive[aux_dia]) / actual[aux_dia], NA))
@@ -316,7 +343,7 @@ predict_models <- function(csv_file){
         snaive <- predict(snaive(trainSet, h = 7))
         snaive <- snaive$mean
         snaive <- coredata(snaive)
-        mape_snaive <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_snaive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - snaive[aux_dia]) / actual[aux_dia], NA))
@@ -327,7 +354,7 @@ predict_models <- function(csv_file){
         arima <- forecast(auto.arima(trainSet), h = 7)
         arima <- arima$mean
         arima <- coredata(arima)
-        mape_arima <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_arima[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - arima[aux_dia]) / actual[aux_dia], NA))
@@ -338,7 +365,7 @@ predict_models <- function(csv_file){
         ets <- forecast(ets(trainSet), h = 7)
         ets <- ets$mean
         ets <- coredata(ets)
-        mape_ets <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_ets[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - ets[aux_dia]) / actual[aux_dia], NA))
@@ -350,7 +377,7 @@ predict_models <- function(csv_file){
         nn <- forecast(nnetar(trainSet), h = 7)
         nn <- nn$mean
         nn <- coredata(nn)
-        mape_nn <- c()
+
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_nn[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - nn[aux_dia]) / actual[aux_dia], NA))
@@ -372,7 +399,6 @@ predict_models <- function(csv_file){
         svm <- predict(SVM_MODEL$best.model, newdata = PREDICT)
         svm <- rep(svm, times = 7)
         
-        mape_svm <- c()
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
@@ -380,8 +406,6 @@ predict_models <- function(csv_file){
         
         # ENSEMBLE
         
-        ensemble <- c()
-        mape_ensemble <- c()
         for (j in 1:F_DAYS){
           
           ensemble[j] <- median(media[j], naive[j], snaive[j], arima[j], ets[j], nn[j], svm[j])
@@ -588,7 +612,7 @@ for (i in 1:iteracionesLab){
   }
   
   # SNAIVE
-  snaive_model <- forecast(snaive(trainSet, h = 7))# no funciona, mirar
+  snaive_model <- forecast(forecast::snaive(trainSet, h = 7))# no funciona, mirar
   snaive <- snaive_model$mean 
   snaive <- coredata(snaive)
   
@@ -645,7 +669,7 @@ for (i in 1:iteracionesLab){
      svm_model <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
      
      svm <- predict(svm_model$best.model, newdata = PREDICT, h = 7)
-    
+     svm <- rep(svm, times = 7)
    
    for (j in 1:F_DAYS){
      aux_dia = aux[j]
@@ -698,22 +722,6 @@ for (i in 1:iteracionesLab){
   }
 }
 
-naive(trainSet, h = 7)
+snaive(trainSet, h = 7)
 
 
-
-lagged <- merge(trainSet, shift(trainSet, -7))
-print(lagged)
-SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
-PREDICT <- data.frame(past = as.numeric(window(trainSet,
-                                                    start = index(trainSet)[length(trainSet - F_DAYS)])))
-names(SVM_TRAINSET) <- c("actual", "past")
-
-modelo_svm <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-
-svm <- predict(modelo_svm$best.model, newdata = PREDICT)
-
-for (j in 1:F_DAYS){
-  aux_dia = aux[j]
-  mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
-}
