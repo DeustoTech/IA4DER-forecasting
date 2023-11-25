@@ -32,6 +32,8 @@ N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
+summaryPreds_CUPS <- fread("Resultados/CUPS/SummaryPreds.csv")
+summaryPreds_CUPS$ID <- basename(summaryPreds$ID)
 
 summaryMedia_CUPS <- fread("Resultados/CUPS/SummaryMedia.csv")
 summaryMedia_CUPS$ID <- basename(summaryMedia_CUPS$ID)
@@ -189,14 +191,16 @@ Feats <- foreach(NAME = N2,
                ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
                
              
-               summaryMedia <-  filter(summaryMedia_CUPS, ID ==  ID1)
-               summaryNaive <- filter(summaryNaive_CUPS, ID ==  ID1)
-               summarysNaive <- filter(summarysNaive_CUPS, ID ==  ID1)
-               summaryArima <- filter(summaryArima_CUPS, ID ==  ID1)
-               summaryETS <- filter(summaryETS_CUPS, ID ==  ID1)
-               summaryNN <- filter(summaryNN_CUPS, ID ==  ID1)
-               summarySVM <- summarySVM_CUPS[summarySVM_CUPS$ID == ID, ]
-               #summaryEnsemble <- filter(summaryEnsemble_CUPS, ID ==  ID1)
+               summaryPreds <- filter(summaryPreds_CUPS, ID == ID1)
+               
+               summaryMedia <-  summaryPreds %>% select(ID, Median_MAPE_media, Q1_MAPE_media, Q3_MAPE_media)
+               summaryNaive <- summaryPreds %>% select(ID, Median_MAPE_naive,Q1_MAPE_naive,Q3_MAPE_naive)
+               summarysNaive <- summaryPreds %>% select(ID, Median_MAPE_snaive,Q1_MAPE_snaive,Q3_MAPE_snaive)
+               summaryArima <- summaryPreds %>% select(ID, Median_MAPE_arima,Q1_MAPE_arima,Q3_MAPE_arima)
+               summaryETS <- summaryPreds %>% select(ID, Median_MAPE_ets,Q1_MAPE_ets,Q3_MAPE_ets)
+               summaryNN <- summaryPreds %>% select(ID, Median_MAPE_nn,Q1_MAPE_nn,Q3_MAPE_nn)
+               summarySVM <- summaryPreds %>% select(ID, Median_MAPE_svm,Q1_MAPE_svm,Q3_MAPE_svm)
+               summaryEnsemble <- summaryPreds %>% select(ID, Median_MAPE_ensemble,Q1_MAPE_ensemble,Q3_MAPE_ensemble)
 
                
                aux <- data.frame(
