@@ -144,9 +144,10 @@ Feats <- foreach(NAME = N2,
                  labels = c("0-4", "5-8", "9-12", "13-16", "17-20", "21-24"),
                  include.lowest = TRUE
                )
+              
                
-               laborable <- a %>% filter(week_day %in% c("Mon", "Tue", "Wed", "Thu", "Fri"))
-               finde <- a %>% filter(week_day %in% c("Sat", "Sun"))
+               laborable <- a %>% filter(week_day %in% c(1, 2, 3, 4, 5))
+               finde <- a %>% filter(week_day %in% c(6, 7))
                
                features_semana <- laborable %>%
                  group_by(season, day_period) %>%
@@ -289,22 +290,13 @@ Feats <- foreach(NAME = N2,
                  
               
           )
-               print(aux)
-               for (col_name in names(features_semana)) {
-                 aux[[col_name]] <- features_semana[[col_name]]
-               }
-               print(aux)
-               
-               for (col_name in names(features_fin_de_semana)) {
-                 aux[[col_name]] <- features_fin_de_semana[[col_name]]
-               }
-               print(aux)
-               #aux <- cbind(aux, features_semana, features_fin_de_semana)
+          
+               aux <- cbind(aux, features_semana, features_fin_de_semana)
              }
 
-write.csv(Feats,file="featuresNuevos2.csv",row.names = F)
+write.csv(Feats,file="featuresNuevos.csv",row.names = F)
 
-B <- read.csv("featuresNuevos2.csv")
+B <- read.csv("featuresNuevos.csv")
 head(B)
 
 boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
@@ -563,5 +555,6 @@ aux <- data.frame(
   
 )
 
+aux <- cbind(aux, features_semana, features_fin_de_semana)
 
 
