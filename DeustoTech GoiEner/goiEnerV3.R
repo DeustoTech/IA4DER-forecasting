@@ -211,19 +211,16 @@ predict_models <- function(csv_file){
         
         # SVM
         
-        # HAY QUE MIRAR COMO ADAPTARLO 
-        
-        lagged <- merge(trainSet, shift(trainSet, -7))
+        lagged <- merge(trainSet, shift(trainSet, -F_DAYS))
         SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
-        PREDICT <- data.frame(past = as.numeric(window(trainSet,
-                                                       start = index(trainSet)[length(trainSet - F_DAYS)])))
+        PREDICT <- data.frame(past = as.numeric(tail(trainSet, F_DAYS)))
         names(SVM_TRAINSET) <- c("actual", "past")
         
-        SVM_MODEL <- tune(svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+        modelo_svm <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
         
-        svm <- predict(SVM$best.model, newdata = PREDICT)
-      
+        svm <- predict(modelo_svm$best.model, newdata = PREDICT)
         mape_svm <- c()
+        
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
@@ -358,26 +355,22 @@ predict_models <- function(csv_file){
         
         # SVM
         
-        # HAY QUE MIRAR COMO ADAPTARLO 
-        
-        lagged <- merge(trainSet, shift(trainSet, -7))
+
+        lagged <- merge(trainSet, shift(trainSet, -F_DAYS))
         SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
-        PREDICT <- data.frame(past = as.numeric(window(trainSet,
-                                                       start = index(trainSet)[length(trainSet - F_DAYS)])))
+        PREDICT <- data.frame(past = as.numeric(tail(trainSet, F_DAYS)))
         names(SVM_TRAINSET) <- c("actual", "past")
         
-        SVM_MODEL <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+        modelo_svm <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
         
-        #svm <- predict(SVM$best.model, SVM_MODEL)
-        svm <- predict(SVM_MODEL$best.model, newdata = PREDICT)
-        svm <- rep(svm, times = 7)
-        
+        svm <- predict(modelo_svm$best.model, newdata = PREDICT)
         mape_svm <- c()
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
         }
         
+      
         # ENSEMBLE
         
         ensemble <- c()
@@ -636,21 +629,19 @@ for (i in 1:iteracionesLab){
   
   # HAY QUE MIRAR COMO ADAPTARLO 
    
-     lagged <- merge(trainSet, shift(trainSet, -7))
-     SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
-     PREDICT <- data.frame(past = as.numeric(window(trainSet,
-                                                    start = index(trainSet)[length(trainSet - F_DAYS)])))
-     names(SVM_TRAINSET) <- c("actual", "past")
-
-     svm_model <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-     
-     svm <- predict(svm_model$best.model, newdata = PREDICT, h = 7)
+    lagged <- merge(trainSet, shift(trainSet, -F_DAYS))
+    SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+    PREDICT <- data.frame(past = as.numeric(tail(trainSet, F_DAYS)))
+    names(SVM_TRAINSET) <- c("actual", "past")
     
-   
-   for (j in 1:F_DAYS){
-     aux_dia = aux[j]
-     mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
-   }
+    modelo_svm <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+    
+    svm <- predict(modelo_svm$best.model, newdata = PREDICT)
+    
+    for (j in 1:F_DAYS){
+      aux_dia = aux[j]
+      mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
+    }
   
   # ENSEMBLE
 
@@ -702,11 +693,9 @@ naive(trainSet, h = 7)
 
 
 
-lagged <- merge(trainSet, shift(trainSet, -7))
-print(lagged)
+lagged <- merge(trainSet, shift(trainSet, -F_DAYS))
 SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
-PREDICT <- data.frame(past = as.numeric(window(trainSet,
-                                                    start = index(trainSet)[length(trainSet - F_DAYS)])))
+PREDICT <- data.frame(past = as.numeric(tail(trainSet, F_DAYS)))
 names(SVM_TRAINSET) <- c("actual", "past")
 
 modelo_svm <- tune(e1071::svm, actual ~ past, data = SVM_TRAINSET, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
