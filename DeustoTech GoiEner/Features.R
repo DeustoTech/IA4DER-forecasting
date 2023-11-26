@@ -33,7 +33,7 @@ CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
 summaryPreds_CUPS <- fread("Resultados/CUPS/SummaryPreds.csv")
-summaryPreds_CUPS$ID <- basename(summaryPreds$ID)
+summaryPreds_CUPS$ID <- basename(summaryPreds_CUPS$ID)
 
 summaryMedia_CUPS <- fread("Resultados/CUPS/SummaryMedia.csv")
 summaryMedia_CUPS$ID <- basename(summaryMedia_CUPS$ID)
@@ -300,9 +300,10 @@ Feats <- foreach(NAME = N,
                aux <- cbind(aux, features_semana, features_fin_de_semana)
              }
 
-write.csv(Feats,file="featuresNuevos.csv",row.names = F)
+write.csv(Feats,file="featuresPredicciones.csv",row.names = F)
 
-B <- read.csv("featuresNuevos.csv")
+B <- read.csv("featuresPredicciones.csv")
+colnames(B)
 head(B)
 
 boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
