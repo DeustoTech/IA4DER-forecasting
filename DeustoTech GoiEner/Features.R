@@ -260,7 +260,7 @@ Feats <- foreach(NAME = N,
                  mapeETS_mediana = if (nrow(summaryETS) == 0) NA else summaryETS$Median_MAPE,
                  mapeSVM_mediana = if (nrow(summarySVM) == 0) NA else summarySVM$Median_MAPE,
                  mapeNN_mediana = if (nrow(summaryNN) == 0) NA else summaryNN$Median_MAPE,
-                 #mapeEnsemble_mediana = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Median_MAPE,
+                 mapeEnsemble_mediana = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Median_MAPE,
                    
                  mapeMedia_q1 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q1_MAPE,
                  mapeNaive_q1 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q1_MAPE,
@@ -269,7 +269,7 @@ Feats <- foreach(NAME = N,
                  mapeETS_q1 = if (nrow(summaryETS) == 0) NA else summaryETS$Q1_MAPE,
                  mapeSVM_q1 = if (nrow(summarySVM) == 0) NA else summarySVM$Q1_MAPE,
                  mapeNN_q1 = if (nrow(summaryNN) == 0) NA else summaryNN$Q1_MAPE,
-                 #mapeEnsemble_q1 = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Q1_MAPE,
+                 mapeEnsemble_q1 = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Q1_MAPE,
                  
                  mapeMedia_q3 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q3_MAPE,
                  mapeNaive_q3 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q3_MAPE,
@@ -278,7 +278,7 @@ Feats <- foreach(NAME = N,
                  mapeETS_q3 = if (nrow(summaryETS) == 0) NA else summaryETS$Q3_MAPE,
                  mapeSVM_q3 = if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
                  mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE,
-                 #mapeEnsemble_q3 = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Q3_MAPE,
+                 mapeEnsemble_q3 = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Q3_MAPE,
                  
                  #quitar la resta no? 
                  P1_PICO_PRECIO = T2.0_PICO * TD_p1 +
@@ -347,7 +347,8 @@ df_longMediana <- gather(B, key = "Columna", value = "Valor",
                          mapeArima_mediana,
                          mapeETS_mediana, 
                          mapeNN_mediana,
-                         mapeSVM_mediana, na.rm = TRUE)
+                         mapeSVM_mediana,
+                         mape_ensemble,na.rm = TRUE)
 
 # Crea un boxplot combinado con ggplot2
 ggplot(df_longMediana, aes(x = Columna, y = Valor, fill = Columna)) +
@@ -388,6 +389,93 @@ ggplot(df_longQ3, aes(x = Columna, y = Valor, fill = Columna)) +
   ylim(0, quantile(df_longQ3$Valor, 0.90)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1"))
 
+########## GRAFICOS CON LAS AGGREGATIONS ############
+
+df_invierno <- gather(B, key = "Columna", value = "Valor", 
+                      kWhTotal_winter_0.4, 
+                      kWhTotal_winter_5.8,
+                      kWhTotal_winter_9.12,
+                      kWhTotal_winter_13.16,
+                      kWhTotal_winter_17.20, 
+                      kWhTotal_winter_21.24, na.rm = TRUE)
+
+ggplot(df_invierno, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo total por rango de horas en Invierno", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_invierno$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
+df_invierno_max <- gather(B, key = "Columna", value = "Valor", 
+                      kWhMax_winter_0.4, 
+                      kWhMax_winter_5.8,
+                      kWhMax_winter_9.12,
+                      kWhMax_winter_13.16,
+                      kWhMax_winter_17.20, 
+                      kWhMax_winter_21.24, na.rm = TRUE)
+
+ggplot(df_invierno_max, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo maximo por rango de horas en Invierno", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_invierno_max$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
+
+
+df_verano <- gather(B, key = "Columna", value = "Valor", 
+                      kWhTotal_summer_0.4, 
+                      kWhTotal_summer_5.8,
+                      kWhTotal_summer_9.12,
+                      kWhTotal_summer_13.16,
+                      kWhTotal_summer_17.20, 
+                      kWhTotal_summer_21.24, na.rm = TRUE)
+
+ggplot(df_verano, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo total por rango de horas en verano", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_verano$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
+
+df_primavera <- gather(B, key = "Columna", value = "Valor", 
+                    kWhTotal_spring_0.4, 
+                    kWhTotal_spring_5.8,
+                    kWhTotal_spring_9.12,
+                    kWhTotal_spring_13.16,
+                    kWhTotal_spring_17.20, 
+                    kWhTotal_spring_21.24, na.rm = TRUE)
+
+ggplot(df_primavera, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo total por rango de horas en primavera", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_primavera$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
+df_otono <- gather(B, key = "Columna", value = "Valor", 
+                       kWhTotal_autum_0.4, 
+                       kWhTotal_autum_5.8,
+                       kWhTotal_autum_9.12,
+                       kWhTotal_autum_13.16,
+                       kWhTotal_autum_17.20, 
+                       kWhTotal_autum_21.24, na.rm = TRUE)
+
+ggplot(df_otono, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo total por rango de horas en otoño", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_otono$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
+
+df_finde <- gather(B, key = "Columna", value = "Valor", 
+                   kWhTotal_winter_finde, 
+                   kWhTotal_spring_finde,
+                   kWhTotal_summer_finde,
+                   kWhTotal_autum_finde, na.rm = TRUE)
+
+ggplot(df_finde, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo total del fin de semana por estacion", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_finde$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574"))
 
 
 # PRUEBAS 
