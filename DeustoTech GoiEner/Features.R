@@ -331,6 +331,8 @@ boxplot(B$P1_PICO_PRECIO, B$P2_LLANO_PRECIO, B$P3_VALLE_PRECIO,
         col = c("lightblue", "lightgreen", "lightcoral"), main = "Boxplot de las columnas",
         xlab = "Columnas", ylab = "Valor", ylim = c(min(B), quantile(B, 0.75)) )
 
+
+#nuevos
 df_longPrecio <- gather(B, key = "Columna", value = "Valor", P1_PICO_PRECIO, P2_LLANO_PRECIO, P3_VALLE_PRECIO)
 
 # Crea un boxplot combinado con ggplot2
@@ -340,6 +342,27 @@ ggplot(df_longPrecio, aes(x = Columna, y = Valor, fill = Columna)) +
   ylim(0, quantile(df_longPrecio$Valor, 0.75)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("lightblue", "lightgreen", "lightcoral"))
 
+###
+preds <- fread("Predicciones.csv")
+colnames(preds)
+
+df_mediana <- gather(preds, key = "Columna", value = "Valor",
+                     Media_mape,
+                     Naive_mape,
+                     SNaive_mape,
+                     Arima_mape,
+                     ETS_mape, 
+                     NN_mape,
+                     SMV_mape,
+                     Ensemble_mape, na.rm = TRUE)
+
+ggplot(df_mediana, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot de MAPE mediana por modelos", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_mediana$Valor, 0.85)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1", "#D54E8E"))
+
+
 df_longMediana <- gather(B, key = "Columna", value = "Valor", 
                          mapeMedia_mediana, 
                          mapeNaive_mediana,
@@ -348,14 +371,15 @@ df_longMediana <- gather(B, key = "Columna", value = "Valor",
                          mapeETS_mediana, 
                          mapeNN_mediana,
                          mapeSVM_mediana,
-                         mape_ensemble,na.rm = TRUE)
+                         mapeEnsemble_mediana,na.rm = TRUE)
 
 # Crea un boxplot combinado con ggplot2
 ggplot(df_longMediana, aes(x = Columna, y = Valor, fill = Columna)) +
   geom_boxplot() +
   labs(title = "Boxplot de MAPE mediana por modelos", x = "Columnas", y = "Valor") +
   ylim(0, quantile(df_longMediana$Valor, 0.90)) +  # Establece el límite superior del eje y
-  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1"))
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1", "#D54E8E"))
+
 
 df_longQ1 <- gather(B, key = "Columna", value = "Valor", 
                          mapeMedia_q1, 
@@ -364,14 +388,15 @@ df_longQ1 <- gather(B, key = "Columna", value = "Valor",
                          mapeArima_q1,
                          mapeETS_q1, 
                          mapeNN_q1,
-                         mapeSVM_q1, na.rm = TRUE)
+                         mapeSVM_q1,
+                         mapeEnsemble_q1, na.rm = TRUE)
 
 # Crea un boxplot combinado con ggplot2
 ggplot(df_longQ1, aes(x = Columna, y = Valor, fill = Columna)) +
   geom_boxplot() +
   labs(title = "Boxplot de MAPE Q1 por modelos", x = "Columnas", y = "Valor") +
   ylim(0, quantile(df_longQ1$Valor, 0.90)) +  # Establece el límite superior del eje y
-  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1"))
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1", "#D54E8E"))
 
 df_longQ3 <- gather(B, key = "Columna", value = "Valor", 
                     mapeMedia_q3, 
@@ -380,6 +405,7 @@ df_longQ3 <- gather(B, key = "Columna", value = "Valor",
                     mapeArima_q3,
                     mapeETS_q3, 
                     mapeNN_q3,
+                    mapeEnsemble_q3,
                     mapeSVM_q3, na.rm = TRUE)
 
 # Crea un boxplot combinado con ggplot2
@@ -387,7 +413,9 @@ ggplot(df_longQ3, aes(x = Columna, y = Valor, fill = Columna)) +
   geom_boxplot() +
   labs(title = "Boxplot de MAPE Q3 por modelos", x = "Columnas", y = "Valor") +
   ylim(0, quantile(df_longQ3$Valor, 0.90)) +  # Establece el límite superior del eje y
-  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1"))
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7", "#FF91C1", "#D54E8E"))
+
+
 
 ########## GRAFICOS CON LAS AGGREGATIONS ############
 
@@ -435,6 +463,20 @@ ggplot(df_verano, aes(x = Columna, y = Valor, fill = Columna)) +
   ylim(0, quantile(df_verano$Valor, 0.75)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
 
+df_verano_max <- gather(B, key = "Columna", value = "Valor", 
+                          kWhMax_summer_0.4, 
+                          kWhMax_summer_5.8,
+                          kWhMax_summer_9.12,
+                          kWhMax_summer_13.16,
+                          kWhMax_summer_17.20, 
+                          kWhMax_summer_21.24, na.rm = TRUE)
+
+ggplot(df_verano_max, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo maximo por rango de horas en verano", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_verano_max$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
 
 df_primavera <- gather(B, key = "Columna", value = "Valor", 
                     kWhTotal_spring_0.4, 
@@ -450,6 +492,21 @@ ggplot(df_primavera, aes(x = Columna, y = Valor, fill = Columna)) +
   ylim(0, quantile(df_primavera$Valor, 0.75)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
 
+df_primavera_max <- gather(B, key = "Columna", value = "Valor", 
+                        kWhMax_spring_0.4, 
+                        kWhMax_spring_5.8,
+                        kWhMax_spring_9.12,
+                        kWhMax_spring_13.16,
+                        kWhMax_spring_17.20, 
+                        kWhMax_spring_21.24, na.rm = TRUE)
+
+ggplot(df_primavera_max, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo maximo por rango de horas en primavera", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_primavera_max$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
+
 df_otono <- gather(B, key = "Columna", value = "Valor", 
                        kWhTotal_autum_0.4, 
                        kWhTotal_autum_5.8,
@@ -464,6 +521,20 @@ ggplot(df_otono, aes(x = Columna, y = Valor, fill = Columna)) +
   ylim(0, quantile(df_otono$Valor, 0.75)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
 
+df_otono_max <- gather(B, key = "Columna", value = "Valor", 
+                           kWhMax_autum_0.4, 
+                           kWhMax_autum_5.8,
+                           kWhMax_autum_9.12,
+                           kWhMax_autum_13.16,
+                           kWhMax_autum_17.20, 
+                           kWhMax_autum_21.24, na.rm = TRUE)
+
+ggplot(df_otono_max, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo maximo por rango de horas en otoño", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_otono_max$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574","#B38FE2", "#91FFF7"))
+
 
 df_finde <- gather(B, key = "Columna", value = "Valor", 
                    kWhTotal_winter_finde, 
@@ -476,6 +547,19 @@ ggplot(df_finde, aes(x = Columna, y = Valor, fill = Columna)) +
   labs(title = "Boxplot del consumo total del fin de semana por estacion", x = "Columnas", y = "Valor") +
   ylim(0, quantile(df_finde$Valor, 0.75)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574"))
+
+df_finde_max <- gather(B, key = "Columna", value = "Valor", 
+                   kWhMax_winter_finde, 
+                   kWhMax_spring_finde,
+                   kWhMax_summer_finde,
+                   kWhMax_autum_finde, na.rm = TRUE)
+
+ggplot(df_finde_max, aes(x = Columna, y = Valor, fill = Columna)) +
+  geom_boxplot() +
+  labs(title = "Boxplot del consumo maximo del fin de semana por estacion", x = "Columnas", y = "Valor") +
+  ylim(0, quantile(df_finde_max$Valor, 0.75)) +  # Establece el límite superior del eje y
+  scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574"))
+
 
 
 # PRUEBAS 
