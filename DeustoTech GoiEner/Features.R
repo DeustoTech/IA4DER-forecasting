@@ -110,6 +110,8 @@ L_p1 <- 0.204321
 L_p2 <- 0.200549
 L_p3 <- 0.185471
 
+model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensemble")
+
 
 Feats <- foreach(NAME = N,
              .combine = rbind,
@@ -248,7 +250,6 @@ Feats <- foreach(NAME = N,
                  # Errores de cada modelo. 
                  # Buscar esa serie temporal en el fichero de resultados, 
                  # coger todos los errores de ese tipo para ese modelo
-                 # y la media? o la mediana? alguno supongo
                  
                  
                  # Si no hay summary para ese ID, pone a NA
@@ -280,7 +281,6 @@ Feats <- foreach(NAME = N,
                  mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE,
                  mapeEnsemble_q3 = if (nrow(summaryEnsemble) == 0) NA else summaryEnsemble$Q3_MAPE,
                  
-                 #quitar la resta no? 
                  P1_PICO_PRECIO = T2.0_PICO * TD_p1 +
                                    T2.0_PICO * CS_p1 + 
                                    T2.0_PICO * L_p1,
@@ -294,10 +294,28 @@ Feats <- foreach(NAME = N,
                                   T2.0_VALLE * L_p3
                  
                  
-              
-          )
-          
-               aux <- cbind(aux, features_semana, features_fin_de_semana)
+                           )
+               
+               median_values <- c(
+                 aux$mapeMedia_mediana,
+                 aux$mapeNaive_mediana,
+                 aux$mapeSN_mediana,
+                 aux$mapeArima_mediana,
+                 aux$mapeETS_mediana,
+                 aux$mapeSVM_mediana,
+                 aux$mapeNN_mediana,
+                 aux$mapeEnsemble_mediana
+               )
+               
+
+               min_index <- which.min(median_values)
+               if (length(min_index) == 0) {
+                 best_model <- NA
+               } else {
+                 best_model <- model_names[min_index]
+               }
+
+               aux <- cbind(aux, best_model, features_semana, features_fin_de_semana)
              }
 
 write.csv(Feats,file="featuresPredicciones.csv",row.names = F)
