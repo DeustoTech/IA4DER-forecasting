@@ -34,7 +34,7 @@ CLEAN_ID <- function(X)
 
 #mp   <- fread("mp.csv")
 cp   <- fread("cp.csv",               select = c("ID_LINEA_BT","DIA_LECTURA","SUM_VAL_AI"))
-col1 <- fread("collaborator1.csv",    select = c("G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
+col1 <- fread("collaborator1.csv",    select = c("G3E_FID_CGP","G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
 col2 <- fread("collaborator2_cp.csv", select = c("G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
 LIM  <- fread("features.csv",         select = c("ID","POT_NOM","POT_EST"))
 
@@ -57,13 +57,17 @@ B <- foreach(NAME = unique(cp$ID_LINEA_BT),.combine=rbind) %do% {
   r  <- cp[    cp$ID_LINEA_BT == NAME,]
   r  <- r[order(r$DIA_LECTURA),]
 
+
+  aux <- numeric(F_DAYS*24)
+  for (x in unique(p1$G3E_FID_CGP))
+    aux <- aux + p1[p1$G3E_FID_CGP == x,"VAL_AI"][1:(F_DAYS*24)][[1]]
+
+  p1 <- aux
+  p2 <- p2$VAL_AI[1:(F_DAYS*24)]
+  r  <- r$SUM_VAL_AI[1:(F_DAYS*24)]
+
   POT_NOM <- LIM$POT_NOM[LIM$ID == CLEAN_ID(NAME)]
   POT_EST <- LIM$POT_EST[LIM$ID == CLEAN_ID(NAME)]
-
-  p1 <- p1$VAL_AI[1:(F_DAYS*24)]
-  p2 <- p2$VAL_AI[1:(F_DAYS*24)]
-
-  r  <- r$SUM_VAL_AI[1:(F_DAYS*24)]
 
 #   plot(p[1:(24*7*7+1),"VAL_AI"])
 #   plot(r$SUM_VAL_AI[1:(7*24)])
