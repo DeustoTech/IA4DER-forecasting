@@ -46,6 +46,7 @@ if (SAMPLE < length(TR)) { ALL  <- union(ALL,sample(TR,SAMPLE))
 LIM  <- fread("features.csv")
 
 # ALL  <- Sys.glob(paths="post_cooked/*/*")
+ALL <- Sys.glob(paths="post_cooked/LBT/*")
 
 for (TY in TYPES)
 {

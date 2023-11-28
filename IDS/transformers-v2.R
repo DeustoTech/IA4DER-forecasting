@@ -2,6 +2,7 @@ library(data.table)
 library(zoo)
 library(forecast)
 library(doFuture)
+library(stringr)
 
 plan(multisession)
 
@@ -50,6 +51,11 @@ CGP <- CLEAN_ID(unique(ROSETA$COD_SIC_SIGRID))
 LBT <- CLEAN_ID(unique(ROSETA$ID_PADRE_LINEA_BT))
 CT  <- CLEAN_ID(unique(ROSETA$ID_PADRE_CUADRO_BT))
 TR  <- CLEAN_ID(unique(ROSETA$ID_PADRE_POS_TRAFO))
+
+ROSETA$COD_SIC_SIGRID      <- CLEAN_ID(ROSETA$COD_SIC_SIGRID    )
+ROSETA$ID_PADRE_LINEA_BT   <- CLEAN_ID(ROSETA$ID_PADRE_LINEA_BT )
+ROSETA$ID_PADRE_CUADRO_BT  <- CLEAN_ID(ROSETA$ID_PADRE_CUADRO_BT)
+ROSETA$ID_PADRE_POS_TRAFO  <- CLEAN_ID(ROSETA$ID_PADRE_POS_TRAFO)
 
 z <- foreach(i = TR) %dofuture% {
   CUPS <- ROSETA$CUPS[ROSETA$ID_PADRE_POS_TRAFO == i]

@@ -49,14 +49,13 @@ LIM  <- fread("features.csv",         select = c("ID","POT_NOM","POT_EST"))
 # length(intersect(CLEAN_ID(unique(col1$G3E_FID_CGP)),
 #                  tools::file_path_sans_ext(basename(CGP))))
 
-B <- foreach(NAME = unique(cp$ID_LINEA_BT),.combine=rbind) %do% {
+B <- foreach(NAME = unique(cp$ID_LINEA_BT),.combine=rbind) %dofuture% {
 
   p1 <- col1[col1$G3E_FID_LBT == NAME,]
   p2 <- col2[col2$G3E_FID_LBT == NAME,]
 
   r  <- cp[    cp$ID_LINEA_BT == NAME,]
   r  <- r[order(r$DIA_LECTURA),]
-
 
   aux <- numeric(F_DAYS*24)
   for (x in unique(p1$G3E_FID_CGP))
@@ -104,25 +103,25 @@ B <- foreach(NAME = unique(cp$ID_LINEA_BT),.combine=rbind) %do% {
 #   MCA   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
 #   MCB   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
 #
-  out1   <- data.frame(id=  NAME1,
-                       mape=MAPE1,
-                       rmse=RMSE1,
-#                      mase=MASE1,
-                       time=TIME1,
-                       risk25=RISKA1[1],
-                       risk50=RISKA1[2],
-                       risk80=RISKA1[3],
-                       risk90=RISKA1[4],
-                       risk95=RISKA1[5])
-  out2   <- data.frame(id=  NAME2,
-                       mape=MAPE2,
-                       rmse=RMSE2,
-#                      mase=MASE2,
-                       time=TIME2,
-                       risk25=RISKA2[1],
-                       risk50=RISKA2[2],
-                       risk80=RISKA2[3],
-                       risk90=RISKA2[4],
-                       risk95=RISKA2[5])
+  out1   <- data.frame(id=  NAME,
+                       mape1=MAPE1,
+                       rmse1=RMSE1,
+#                      mase1=MASE1,
+                       time1=TIME1,
+                       risk125=RISKA1[1],
+                       risk150=RISKA1[2],
+                       risk180=RISKA1[3],
+                       risk190=RISKA1[4],
+                       risk195=RISKA1[5])
+  out2   <- data.frame(id=  NAME,
+                       mape2=MAPE2,
+                       rmse2=RMSE2,
+#                      mase2=MASE2,
+                       time2=TIME2,
+                       risk225=RISKA2[1],
+                       risk250=RISKA2[2],
+                       risk280=RISKA2[3],
+                       risk290=RISKA2[4],
+                       risk295=RISKA2[5])
   cbind(out1,out2)
 }
