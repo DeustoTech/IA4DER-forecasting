@@ -37,6 +37,8 @@ ROSETA <- merge(ROSETA,linea, by.x="ID_PADRE_LINEA_BT", by.y="G3E_FID")
 ROSETA <- merge(ROSETA,cuadro,by.x="ID_PADRE_CUADRO_BT",by.y="G3E_FID")
 ROSETA <- merge(ROSETA,trafo, by.x="ID_PADRE_POS_TRAFO",by.y="ID_PADRE_POS_TRAFO")
 
+
+
 cgp$ID_CAJA                  <- CLEAN_ID(cgp$ID_CAJA)
 ROSETA$ID_USUARIO_INST_PADRE <- CLEAN_ID(ROSETA$ID_USUARIO_INST_PADRE)
 cups$COD_SIC_SIGRID          <- CLEAN_ID(cups$COD_SIC_SIGRID)
