@@ -26,15 +26,22 @@ MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
 MCTARGET    <- MCNAMES[1]
 
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
-TYPES       <- c("CUPS","LINE","CT")
+TYPES       <- c("CUPS","CGP","LBT","CT","TR")
 
 CUPS <- Sys.glob(paths="post_cooked/CUPS/*")
-LINE <- Sys.glob(paths="post_cooked/LINE/*")
+CGP  <- Sys.glob(paths="post_cooked/CGP/*")
+LBT  <- Sys.glob(paths="post_cooked/LBT/*")
 CT   <- Sys.glob(paths="post_cooked/CT/*")
-ALL  <- union(sample(CUPS,SAMPLE),sample(LINE,SAMPLE))
+TR   <- Sys.glob(paths="post_cooked/TR/*")
+
+ALL  <- union(sample(CUPS,SAMPLE),sample(CGP,SAMPLE))
+ALL  <- union(ALL,sample(LBT,SAMPLE))
 
 if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
-} else                   { ALL  <- union(ALL,CT) } 
+} else                   { ALL  <- union(ALL,CT) }
+
+if (SAMPLE < length(TR)) { ALL  <- union(ALL,sample(TR,SAMPLE))
+} else                   { ALL  <- union(ALL,TR) }
 
 LIM  <- fread("features.csv")
 

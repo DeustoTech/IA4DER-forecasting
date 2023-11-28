@@ -19,8 +19,8 @@ ARROW2DF <- function(SOURCE)
 
 CLEAN_ID <- function(X)
 {
-  X <- str_replace(X,fixed("+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g=="),fixed(""))
-  X <- str_replace(X,fixed("/"),fixed("\\"))
+  X <- str_replace(X,fixed("33TCP+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g=="),fixed(""))
+  X <- str_replace_all(X,fixed("/"),fixed("\\"))
   return(X)
 }
 

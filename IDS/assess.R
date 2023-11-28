@@ -19,10 +19,10 @@ ARROW2DF <- function(SOURCE)
 
 CLEAN_ID <- function(X)
 {
-  X <- str_replace(X,fixed("+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g=="),fixed(""))
-  X <- str_replace(X,fixed("/"),fixed("\\"))
+  X <- str_replace(X,fixed("33TCP+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g=="),fixed(""))
+  X <- str_replace_all(X,fixed("/"),fixed("\\"))
   return(X)
-} 
+}
 
 # cp    <- ARROW2DF("./inputdata/datos_test/anm_ids01_test_aggct_cp_lec_horaria")
 # mp    <- ARROW2DF("./inputdata/datos_test/anm_ids01_test_aggct_mp_lec_horaria")
@@ -32,10 +32,11 @@ CLEAN_ID <- function(X)
 # fwrite(mp,"mp.csv")
 # fwrite(col1,"collaborator1.csv")
 
-cp   <- fread("cp.csv", select = c("ID_LINEA_BT","DIA_LECTURA","SUM_VAL_AI"))
 #mp   <- fread("mp.csv")
-col1 <- fread("collaborator1.csv", select = c("G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
-LIM  <- fread("features.csv", select = c("ID","POT_NOM","POT_EST"))
+cp   <- fread("cp.csv",               select = c("ID_LINEA_BT","DIA_LECTURA","SUM_VAL_AI"))
+col1 <- fread("collaborator1.csv",    select = c("G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
+col2 <- fread("collaborator2_cp.csv", select = c("G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
+LIM  <- fread("features.csv",         select = c("ID","POT_NOM","POT_EST"))
 
 # length(intersect(unique(col1$G3E_FID_CT), unique(cp$ID_USUARIO)))
 # length(intersect(unique(col1$G3E_FID_LBT),unique(cp$ID_USUARIO)))
@@ -45,17 +46,24 @@ LIM  <- fread("features.csv", select = c("ID","POT_NOM","POT_EST"))
 # length(intersect(unique(col1$G3E_FID_LBT),unique(cp$ID_LINEA_BT))) # <----
 # length(intersect(unique(col1$G3E_FID_CGP),unique(cp$ID_LINEA_BT)))
 
-B <- foreach(NAME = unique(cp$ID_LINEA_BT),.combine=rbind) %dofuture% {
+# length(intersect(CLEAN_ID(unique(col1$G3E_FID_CGP)),
+#                  tools::file_path_sans_ext(basename(CGP))))
 
-  p <- col1[col1$G3E_FID_LBT == NAME,]
-  r <- cp[    cp$ID_LINEA_BT == NAME,]
-  r <- r[order(r$DIA_LECTURA),]
-  
+B <- foreach(NAME = unique(cp$ID_LINEA_BT),.combine=rbind) %do% {
+
+  p1 <- col1[col1$G3E_FID_LBT == NAME,]
+  p2 <- col2[col2$G3E_FID_LBT == NAME,]
+
+  r  <- cp[    cp$ID_LINEA_BT == NAME,]
+  r  <- r[order(r$DIA_LECTURA),]
+
   POT_NOM <- LIM$POT_NOM[LIM$ID == CLEAN_ID(NAME)]
   POT_EST <- LIM$POT_EST[LIM$ID == CLEAN_ID(NAME)]
 
-  p <- p$VAL_AI[1:(F_DAYS*24)]
-  r <- r$SUM_VAL_AI[1:(F_DAYS*24)]
+  p1 <- p1$VAL_AI[1:(F_DAYS*24)]
+  p2 <- p2$VAL_AI[1:(F_DAYS*24)]
+
+  r  <- r$SUM_VAL_AI[1:(F_DAYS*24)]
 
 #   plot(p[1:(24*7*7+1),"VAL_AI"])
 #   plot(r$SUM_VAL_AI[1:(7*24)])
@@ -67,31 +75,50 @@ B <- foreach(NAME = unique(cp$ID_LINEA_BT),.combine=rbind) %dofuture% {
   auxtime <- numeric(F_DAYS)
   for (D in 1:F_DAYS)
     auxtime[D] <- which.max(r[(24*D-23):(24*D)]) -1
-  
-  MAPE  <- 100*median(ifelse(sum(aux)!=0,abs(r[aux]-p[aux])/r[aux],NA),na.rm=T)
-  RMSE  <- sqrt(median((r-p)^2,na.rm=T))
-#  MASE  <- median(abs(r-p))/auxmase
 
-  aux_f <- numeric(F_DAYS)
+  MAPE1  <- 100*median(ifelse(sum(aux)!=0,abs(r[aux]-p1[aux])/r[aux],NA),na.rm=T)
+  MAPE2  <- 100*median(ifelse(sum(aux)!=0,abs(r[aux]-p2[aux])/r[aux],NA),na.rm=T)
+  RMSE1  <- sqrt(median((r-p1)^2,na.rm=T))
+  RMSE2  <- sqrt(median((r-p2)^2,na.rm=T))
+#  MASE1  <- median(abs(r-p1))/auxmase
+#  MASE2  <- median(abs(r-p2))/auxmase
+
+  aux_p1 <- aux_p2 <- numeric(F_DAYS)
   for (D in 1:F_DAYS)
-    aux_f[D] <- ifelse(!anyNA(p[(24*D-23):(24*D)]),which.max(p[(24*D-23):(24*D)])-1,NA)
-  TIME  <- median(abs(auxtime-aux_f),na.rm=T)
-  
-  RISKA <- (max(r) < POT_NOM*MC) == (max(p) < POT_NOM*MC)
+  {
+    aux_p1[D] <- ifelse(!anyNA(p1[(24*D-23):(24*D)]),which.max(p1[(24*D-23):(24*D)])-1,NA)
+    aux_p2[D] <- ifelse(!anyNA(p2[(24*D-23):(24*D)]),which.max(p2[(24*D-23):(24*D)])-1,NA)
+  }
+  TIME1  <- median(abs(auxtime-aux_p1),na.rm=T)
+  TIME2  <- median(abs(auxtime-aux_p2),na.rm=T)
+
+  RISKA1 <- (max(r) < POT_NOM*MC) == (max(p1) < POT_NOM*MC)
+  RISKA2 <- (max(r) < POT_NOM*MC) == (max(p2) < POT_NOM*MC)
 #   RISKB <- (max(r) < POT_EST*MC) == (max(p) < POT_EST*MC)
-#   
+#
 #   QQF   <- ecdf(p)
 #   MCA   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
 #   MCB   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
-#   
-  out   <- data.frame(id=  NAME,
-                      mape=MAPE,
-                      rmse=RMSE,
-#                      mase=MASE,
-                      time=TIME,
-                      risk25=RISKA[1],
-                      risk50=RISKA[2],
-                      risk80=RISKA[3],
-                      risk90=RISKA[4],
-                      risk95=RISKA[5])
+#
+  out1   <- data.frame(id=  NAME1,
+                       mape=MAPE1,
+                       rmse=RMSE1,
+#                      mase=MASE1,
+                       time=TIME1,
+                       risk25=RISKA1[1],
+                       risk50=RISKA1[2],
+                       risk80=RISKA1[3],
+                       risk90=RISKA1[4],
+                       risk95=RISKA1[5])
+  out2   <- data.frame(id=  NAME2,
+                       mape=MAPE2,
+                       rmse=RMSE2,
+#                      mase=MASE2,
+                       time=TIME2,
+                       risk25=RISKA2[1],
+                       risk50=RISKA2[2],
+                       risk80=RISKA2[3],
+                       risk90=RISKA2[4],
+                       risk95=RISKA2[5])
+  cbind(out1,out2)
 }
