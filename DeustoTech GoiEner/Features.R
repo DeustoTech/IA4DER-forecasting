@@ -581,16 +581,22 @@ ggplot(df_finde_max, aes(x = Columna, y = Valor, fill = Columna)) +
 
 ## modelo de regresion
 
+target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
+             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
 
-columns <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana",
-             "kWhTotal_autum_0.4", "kWhTotal_autum_5.8","kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
+features <- c("kWhTotal_autum_0.4", "kWhTotal_autum_5.8","kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
              "kWhTotal_autum_17.20", "kWhTotal_autum_21.24", "kWhTotal_spring_0.4", "kWhTotal_spring_5.8",
              "kWhTotal_spring_9.12", "kWhTotal_spring_13.16", "kWhTotal_spring_17.20", "kWhTotal_spring_21.24",
              "kWhTotal_summer_0.4", "kWhTotal_summer_5.8", "kWhTotal_summer_9.12", "kWhTotal_summer_13.16", 
              "kWhTotal_summer_17.20", "kWhTotal_summer_21.24", "kWhTotal_winter_0.4", "kWhTotal_winter_5.8",
              "kWhTotal_winter_9.12", "kWhTotal_winter_13.16", "kWhTotal_winter_17.20", "kWhTotal_winter_21.24",
              "kWhTotal_autum_finde", "kWhTotal_spring_finde", "kWhTotal_summer_finde", "kWhTotal_winter_finde")
+
+# Ahora tenemos que hacer un trainset, testset y modelos para predecir cada mape
+
+# Media
+
+columns <- append(features, target[1])
 
 newData <- B[columns]
 
@@ -602,34 +608,117 @@ testSet <- newData[-trainIndex, ]
 grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
 control_svm <- trainControl(method = "cv", number = 5)
 
-#media
-
 modelo_svm_media <- svm(mapeMedia_mediana ~ ., data = trainSet)
 media_pred_svm <- predict(modelo_svm_media, newdata = testSet)
 
 #naive
+
+columns <- append(features, target[2])
+
+newData <- B[columns]
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(newData), index * nrow(newData))
+trainSet <- newData[trainIndex, ]
+testSet <- newData[-trainIndex, ]
+grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
+control_svm <- trainControl(method = "cv", number = 5)
+
 modelo_svm_naive <- svm(mapeNaive_mediana ~ ., data = trainSet)
 naive_pred_svm <- predict(modelo_svm_naive, newdata = testSet)
 
 #seasonal naive
+columns <- append(features, target[3])
+
+newData <- B[columns]
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(newData), index * nrow(newData))
+trainSet <- newData[trainIndex, ]
+testSet <- newData[-trainIndex, ]
+grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
+control_svm <- trainControl(method = "cv", number = 5)
 modelo_svm_snaive <- svm(mapeSN_mediana ~ ., data = trainSet)
 snaive_pred_svm <- predict(modelo_svm_snaive, newdata = testSet)
 
 #arima
+columns <- append(features, target[4])
+
+newData <- B[columns]
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(newData), index * nrow(newData))
+trainSet <- newData[trainIndex, ]
+testSet <- newData[-trainIndex, ]
+grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
+control_svm <- trainControl(method = "cv", number = 5)
 modelo_svm_arima <- svm(mapeArima_mediana ~ ., data = trainSet)
 arima_pred_svm <- predict(modelo_svm_arima, newdata = testSet)
 
 #ets
+columns <- append(features, target[5])
+
+newData <- B[columns]
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(newData), index * nrow(newData))
+trainSet <- newData[trainIndex, ]
+testSet <- newData[-trainIndex, ]
+grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
+control_svm <- trainControl(method = "cv", number = 5)
 modelo_svm_ets <- svm(mapeETS_mediana ~ ., data = trainSet)
 ets_pred_svm <- predict(modelo_svm_ets, newdata = testSet)
 
 #nn
+columns <- append(features, target[6])
+
+newData <- B[columns]
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(newData), index * nrow(newData))
+trainSet <- newData[trainIndex, ]
+testSet <- newData[-trainIndex, ]
+grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
+control_svm <- trainControl(method = "cv", number = 5)
 modelo_svm_nn <- svm(mapeNN_mediana ~ ., data = trainSet)
 nn_pred_svm <- predict(modelo_svm_nn, newdata = testSet)
 
 #svm
+columns <- append(features, target[7])
+
+newData <- B[columns]
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(newData), index * nrow(newData))
+trainSet <- newData[trainIndex, ]
+testSet <- newData[-trainIndex, ]
+grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
+control_svm <- trainControl(method = "cv", number = 5)
 modelo_svm_svm <- svm(mapeSVM_mediana ~ ., data = trainSet)
 svm_pred_svm <- predict(modelo_svm_svm, newdata = testSet)
+
+# Ensemble
+
+columns <- append(features, target[8])
+
+newData <- B[columns]
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(newData), index * nrow(newData))
+trainSet <- newData[trainIndex, ]
+testSet <- newData[-trainIndex, ]
+grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
+control_svm <- trainControl(method = "cv", number = 5)
+modelo_svm_ensemble <- svm(mapeEnsemble_mediana ~ ., data = trainSet)
+svm_pred_svm <- predict(modelo_svm_ensemble, newdata = testSet)
+
 
 
 
