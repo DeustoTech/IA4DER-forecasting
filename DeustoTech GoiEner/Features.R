@@ -320,7 +320,7 @@ Feats <- foreach(NAME = N,
 
 write.csv(Feats,file="featuresPredicciones1.csv",row.names = F)
 
-B <- read.csv("featuresPredicciones1.csv")
+B <- read.csv("featuresPredicciones.csv")
 colnames(B)
 head(B)
 
@@ -578,6 +578,27 @@ ggplot(df_finde_max, aes(x = Columna, y = Valor, fill = Columna)) +
   ylim(0, quantile(df_finde_max$Valor, 0.75)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574"))
 
+
+## modelo de regresion
+
+set.seed(123)
+index <- 0.8
+trainIndex <- sample(1:nrow(B), index * nrow(B))
+
+trainSet <- B[trainIndex, ]
+testSet <- B[-trainIndex, ]
+
+consumo <- c("kWhTotal_autum_0.4", "kWhTotal_autum_5.8","kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
+             "kWhTotal_autum_17.20", "kWhTotal_autum_21.24", "kWhTotal_spring_0.4", "kWhTotal_spring_5.8",
+             "kWhTotal_spring_9.12", "kWhTotal_spring_13.16", "kWhTotal_spring_17.20", "kWhTotal_spring_21.24",
+             "kWhTotal_summer_0.4", "kWhTotal_summer_5.8", "kWhTotal_summer_9.12", "kWhTotal_summer_13.16", 
+             "kWhTotal_summer_17.20", "kWhTotal_summer_21.24", "kWhTotal_winter_0.4", "kWhTotal_winter_5.8",
+             "kWhTotal_winter_9.12", "kWhTotal_winter_13.16", "kWhTotal_winter_17.20", "kWhTotal_winter_21.24",
+             "kWhTotal_autum_finde", "kWhTotal_spring_finde", "kWhTotal_summer_finde", "kWhTotal_winter_finde")
+
+formula_svm <- as.formula(paste("mapeEnsemble_mediana ~", paste(consumo, collapse = "+")))
+svm_Media <- svm(formula_svm, data = trainSet)
+predicciones_svm <- predict(svm_Media, newdata = testSet)
 
 
 # PRUEBAS 
