@@ -318,9 +318,9 @@ Feats <- foreach(NAME = N,
                aux <- cbind(aux, best_model, features_semana, features_fin_de_semana)
              }
 
-write.csv(Feats,file="featuresPredicciones.csv",row.names = F)
+write.csv(Feats,file="featuresPredicciones1.csv",row.names = F)
 
-B <- read.csv("featuresPredicciones.csv")
+B <- read.csv("featuresPredicciones1.csv")
 colnames(B)
 head(B)
 
