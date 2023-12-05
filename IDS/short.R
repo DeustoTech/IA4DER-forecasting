@@ -16,7 +16,7 @@ library(arrow)
 plan(multisession)
 
 TEST        <- T     ### si estoy haciendo test
-SAMPLE      <- 2     ### number of elements to assess per each type
+SAMPLE      <- 200   ### number of elements to assess per each type
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75  ### length of the training period
 F_DAYS      <- 7     ### number of days to forecast for STLF
@@ -49,7 +49,7 @@ if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
 
 LIM  <- fread("features.csv")
 
-# ALL  <- Sys.glob(paths="post_cooked/*/*")
+# ALL <- Sys.glob(paths="post_cooked/*/*")
 # ALL <- Sys.glob(paths="post_cooked/CT/*")
 
 for (TY in TYPES)
