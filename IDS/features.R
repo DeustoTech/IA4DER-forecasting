@@ -29,14 +29,17 @@ cgp    <- ARROW2DF("./inputdata/data/anm_ids01_cgp")
 linea  <- ARROW2DF("./inputdata/data/anm_ids01_linea_bt")
 cuadro <- ARROW2DF("./inputdata/data/anm_ids01_cuadro_bt")
 pos    <- ARROW2DF("./inputdata/data/anm_ids01_pos_trafo")
-ct     <- ARROW2DF("./inputdata/data/anm_ids01_ct")
 trafo  <- ARROW2DF("./inputdata/data/anm_ids01_trafo")
+ct     <- ARROW2DF("./inputdata/data/anm_ids01_ct")
 
 ROSETA <- merge(cups,  cgp,   by.x="COD_SIC_SIGRID",    by.y="ID_CAJA")
 ROSETA <- merge(ROSETA,linea, by.x="ID_PADRE_LINEA_BT", by.y="G3E_FID")
 ROSETA <- merge(ROSETA,cuadro,by.x="ID_PADRE_CUADRO_BT",by.y="G3E_FID")
-ROSETA <- merge(ROSETA,trafo, by.x="ID_PADRE_POS_TRAFO",by.y="ID_PADRE_POS_TRAFO")
+ROSETA <- merge(ROSETA,pos,   by.x="ID_PADRE_POS_TRAFO",by.y="G3E_FID")
+ROSETA <- merge(ROSETA,trafo, by.x="ID_PADRE_POS_TRAFO",by.y="G3E_FID")
+ROSETA <- merge(ROSETA,ct,    by.x="ID_PADRE_CT",       by.y="G3E_FID")
 
+#ROSETA <- merge(ROSETA,trafo, by.x="ID_PADRE_POS_TRAFO",by.y="ID_PADRE_POS_TRAFO")
 
 
 cgp$ID_CAJA                  <- CLEAN_ID(cgp$ID_CAJA)

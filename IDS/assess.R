@@ -33,7 +33,7 @@ CLEAN_ID <- function(X)
 # fwrite(col1,"collaborator1.csv")
 
 #mp   <- fread("mp.csv")
-cp   <- fread("cp.csv",               select = c("ID_LINEA_BT","DIA_LECTURA","SUM_VAL_AI"))
+cp   <- fread("cp.csv",               select = c("ID_LINEA_BT","ID_USUARIO","DIA_LECTURA","SUM_VAL_AI"))
 col1 <- fread("collaborator1.csv",    select = c("G3E_FID_CGP","G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
 col2 <- fread("collaborator2_cp.csv", select = c("G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
 LIM  <- fread("features.csv",         select = c("ID","POT_NOM","POT_EST"))
