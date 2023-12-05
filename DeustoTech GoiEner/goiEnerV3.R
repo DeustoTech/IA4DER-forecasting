@@ -1,20 +1,20 @@
-install.packages("foreach")
-install.packages("doParallel")
+# install.packages("foreach")
+# install.packages("doParallel")
 library(foreach)
 library(doParallel)
 
-librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
-               "lattice", "forecast", "Metrics", "fable", 
-               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet') 
-
-# Instalar y cargar bibliotecas
-for (lib in librerias) {
-  if (!requireNamespace(lib, quietly = TRUE)) {
-    install.packages(lib, dependencies = TRUE)
-  }
-  library(lib, character.only = TRUE)
-}
+# librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
+#                "lattice", "forecast", "Metrics", "fable", 
+#                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
+#                'quantmod', 'caret', 'e1071', 'nnet') 
+# 
+# # Instalar y cargar bibliotecas
+# for (lib in librerias) {
+#   if (!requireNamespace(lib, quietly = TRUE)) {
+#     install.packages(lib, dependencies = TRUE)
+#   }
+#   library(lib, character.only = TRUE)
+# }
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
