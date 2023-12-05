@@ -1,8 +1,20 @@
 # install.packages("foreach")
 # install.packages("doParallel")
+# setwd("../DeustoTech GoiEner")
 library(foreach)
 library(doParallel)
 
+librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
+               "lattice", "forecast", "Metrics", "fable", 
+               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
+               'quantmod', 'caret', 'e1071', 'nnet')
+
+# Instalar las bibliotecas que no están instaladas
+for (lib in librerias) {
+  if (!requireNamespace(lib, quietly = TRUE)) {
+    install.packages(lib, dependencies = TRUE)
+  }
+}
 # librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
 #                "lattice", "forecast", "Metrics", "fable", 
 #                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
