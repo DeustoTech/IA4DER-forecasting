@@ -15,8 +15,7 @@ library(arrow)
 
 plan(multisession)
 
-TEST        <- T     ### si estoy haciendo test
-SAMPLE      <- 200   ### number of elements to assess per each type
+SAMPLE      <- 400   ### number of elements to assess per each type
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75  ### length of the training period
 F_DAYS      <- 7     ### number of days to forecast for STLF
@@ -28,12 +27,26 @@ MCTARGET    <- MCNAMES[1]
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT")
 
-CUPS <- Sys.glob(paths="post_cooked/CUPS/*")
-CGP  <- Sys.glob(paths="post_cooked/CGP/*")
-LBT  <- Sys.glob(paths="post_cooked/LBT/*")
-CUA  <- Sys.glob(paths="post_cooked/CUA/*")
-TR   <- Sys.glob(paths="post_cooked/TR/*")
-CT   <- Sys.glob(paths="post_cooked/CT/*")
+FCUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*"),"/")),nrow=4)[4,])
+FCGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*") ,"/")),nrow=4)[4,])
+FLBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*") ,"/")),nrow=4)[4,])
+FCUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*") ,"/")),nrow=4)[4,])
+FTR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")  ,"/")),nrow=4)[4,])
+FCT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")  ,"/")),nrow=4)[4,])
+
+ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*"),"/")),nrow=3)[3,])
+ECGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CGP/*") ,"/")),nrow=3)[3,])
+ELBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/LBT/*") ,"/")),nrow=3)[3,])
+ECUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUA/*") ,"/")),nrow=3)[3,])
+ETR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/TR/*")  ,"/")),nrow=3)[3,])
+ECT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CT/*")  ,"/")),nrow=3)[3,])
+
+CUPS   <- paste0("post_cooked/CUPS/",setdiff(ECUPS,FCUPS),".csv",sep="")
+CGP    <- paste0("post_cooked/CGP/", setdiff(ECGP,FCGP),  ".csv",sep="")
+LBT    <- paste0("post_cooked/LBT/", setdiff(ELBT,FLBT),  ".csv",sep="")
+CUA    <- paste0("post_cooked/CUA/", setdiff(ECUA,FCUA),  ".csv",sep="")
+TR     <- paste0("post_cooked/TR/",  setdiff(ETR ,FTR ),  ".csv",sep="")
+CT     <- paste0("post_cooked/CT/",  setdiff(ECT ,FCT ),  ".csv",sep="")
 
 ALL  <- union(sample(CUPS,SAMPLE),sample(CGP,SAMPLE))
 ALL  <- union(ALL,sample(LBT,SAMPLE))
@@ -87,7 +100,7 @@ B <- foreach(NAME = ALL,
   ### Cojo los datos reales para CT y LBT y acorto la serie en otro caso
   if (TYPE %in% c("CT","LBT"))
   {
-    real <- fread(paste0("test/",TYPE,"/",ID,".csv",sep=""))
+    real <- fread(paste0("stlf/test/",TYPE,"/",ID,".csv",sep=""))
     real <- zoo(real$SUM_VAL_AI/1000,order.by=real$DIA_LECTURA)
   } else {
     a    <- a[1:(length(a[[1]])-24*F_DAYS)]
@@ -151,7 +164,7 @@ B <- foreach(NAME = ALL,
     
     for(j in MODELS)
     {
-      MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(real[aux]-f[aux,j])/real[aux],NA),na.rm=T)
+      MAPE[1,j] <- 100*median(abs(real[aux]-f[aux,j])/real[aux],na.rm=T)
       RMSE[1,j] <- sqrt(median((real-f[,j])^2,na.rm=T))
       MASE[1,j] <- median(abs(real-f[,j]))/auxmase
     
@@ -221,10 +234,10 @@ for (TY in TYPES)
   EVAL("mape", TY)
   EVAL("rmse", TY)
   EVAL("time", TY)
-  EVAL("mca",  TY)
-  EVAL("mcb",  TY)
-  EVAL("riska",TY)
-  EVAL("riskb",TY)
+#   EVAL("mca",  TY)
+#   EVAL("mcb",  TY)
+#   EVAL("riska",TY)
+#   EVAL("riskb",TY)
   EVAL("mase", TY)
 }
 
@@ -237,20 +250,3 @@ R <- foreach(NAME = Sys.glob("stlf/*/*/summary.csv"),.combine=rbind) %dofuture% 
 }
 
 write.csv(R,file="stlf/summary.csv",row.names=F)
-
-
-#R <- fread("kpi.csv")
-# cat("cups","model","kpi","length","zeros","imputed","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
-#     cat(NAME,j,"mape",LENGTH,ZEROS,IMPUTED,mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T),quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
-#     cat(NAME,j,"rmse",LENGTH,ZEROS,IMPUTED,mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T),quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
-
-
-#
-#COUNTRY <- AGE <- GENDER <- numeric(length(names(F[,-c(1:3)])))
-#
-#for (i in names(F[,-c(1:3)]))
-#{
-#   GENDER[i]  <- t.test(as.formula(paste(as.name(i),"ID202",sep="~")),data=F)$p.value
-#   AGE[i]     <- t.test(as.formula(paste(as.name(i),"ID137",sep="~")),data=F)$p.value
-#   COUNTRY[i] <- t.test(as.formula(paste(as.name(i),"ID300",sep="~")),data=F)$p.value
-#}
