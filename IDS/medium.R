@@ -15,7 +15,7 @@ library(arrow)
 
 plan(multisession)
 
-SAMPLE      <- 20      ### number of elements to assess per each type
+SAMPLE      <- 200     ### number of elements to assess per each type
 COMPLETE    <- 0.10    ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75    ### length of the training period
 F_DAYS      <- 7*4*3   ### number of days to forecast for MTLF
