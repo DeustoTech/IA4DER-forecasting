@@ -15,7 +15,7 @@ library(arrow)
 
 plan(multisession)
 
-SAMPLE      <- 2       ### number of elements to assess per each type
+SAMPLE      <- 20      ### number of elements to assess per each type
 COMPLETE    <- 0.10    ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75    ### length of the training period
 F_DAYS      <- 7*4*3   ### number of days to forecast for MTLF
@@ -31,12 +31,12 @@ KPIS        <- c("min","max","sum")
 FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- character()
 if (length(Sys.glob(paths="mtlf/forecast/CUPS/sum/*")) != 0)
 {
-  FCUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CUPS/sum/*"),"/")),nrow=5)[5,])
-  FCGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CGP/sum/*") ,"/")),nrow=4)[4,])
-  FLBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/LBT/sum/*") ,"/")),nrow=4)[4,])
-  FCUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CUA/sum/*") ,"/")),nrow=4)[4,])
-  FTR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/TR/sum/*")  ,"/")),nrow=4)[4,])
-  FCT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CT/sum/*")  ,"/")),nrow=4)[4,])
+  FCUPS <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CUPS/sum/*"),"/")),nrow=5)[5,]),warning=function(w){},error=function(e){},finally={})
+  FCGP  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CGP/sum/*") ,"/")),nrow=5)[5,]),warning=function(w){},error=function(e){},finally={})
+  FLBT  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/LBT/sum/*") ,"/")),nrow=5)[5,]),warning=function(w){},error=function(e){},finally={})
+  FCUA  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CUA/sum/*") ,"/")),nrow=5)[5,]),warning=function(w){},error=function(e){},finally={})
+  FTR   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/TR/sum/*")  ,"/")),nrow=5)[5,]),warning=function(w){},error=function(e){},finally={})
+  FCT   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CT/sum/*")  ,"/")),nrow=5)[5,]),warning=function(w){},error=function(e){},finally={})
 }
 
 ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*"),"/")),nrow=3)[3,])
