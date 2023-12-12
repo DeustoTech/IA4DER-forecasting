@@ -40,11 +40,17 @@ dir.create("post_cooked/CUA",showWarnings = F, recursive = T)
 dir.create("post_cooked/LBT",showWarnings = F, recursive = T)
 dir.create("post_cooked/CGP",showWarnings = F, recursive = T)
 
-dir.create("test/CT",        showWarnings = F, recursive = T)
-dir.create("test/TR",        showWarnings = F, recursive = T)
-dir.create("test/CUA",       showWarnings = F, recursive = T)
-dir.create("test/LBT",       showWarnings = F, recursive = T)
-dir.create("test/CGP",       showWarnings = F, recursive = T)
+dir.create("stlf/test/CT",   showWarnings = F, recursive = T)
+dir.create("stlf/test/TR",   showWarnings = F, recursive = T)
+dir.create("stlf/test/CUA",  showWarnings = F, recursive = T)
+dir.create("stlf/test/LBT",  showWarnings = F, recursive = T)
+dir.create("stlf/test/CGP",  showWarnings = F, recursive = T)
+
+dir.create("mtlf/test/CT",   showWarnings = F, recursive = T)
+dir.create("mtlf/test/TR",   showWarnings = F, recursive = T)
+dir.create("mtlf/test/CUA",  showWarnings = F, recursive = T)
+dir.create("mtlf/test/LBT",  showWarnings = F, recursive = T)
+dir.create("mtlf/test/CGP",  showWarnings = F, recursive = T)
 
 #ROSETA <- fread("cups_per_lines_ct-v2.csv",header=T)
 ROSETA <- fread("roseta-v2.csv")
@@ -91,7 +97,7 @@ z <- foreach(i = CGP) %dofuture% {
   fwrite(a,file=paste("post_cooked/CGP/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
 
-############### TEST ###############
+############### TEST stlf ###############
 
 F_DAYS <- 7     ### number of days to forecast for STLF
 
@@ -105,23 +111,23 @@ cp$ID_USUARIO  <- CLEAN_ID(cp$ID_USUARIO)
 cp$DIA_LECTURA <- as.POSIXct(as.character(cp$DIA_LECTURA),format="%Y%m%d%H%M%S",tz="GMT")
 
 z <- foreach(i = LBT) %dofuture% {
-  FILE <- strsplit(i,"/")[[1]][3]
-  TYPE <- strsplit(i,"/")[[1]][2]
-  ID   <- tools::file_path_sans_ext(FILE)
+#   FILE <- strsplit(i,"/")[[1]][3]
+#   TYPE <- strsplit(i,"/")[[1]][2]
+#   ID   <- tools::file_path_sans_ext(FILE)
 
-  r  <- cp[    cp$ID_LINEA_BT == ID,]
+  r  <- cp[    cp$ID_LINEA_BT == i,]
   r  <- r[order(r$DIA_LECTURA),]
 
   fwrite(r[1:(F_DAYS*24),c("DIA_LECTURA","SUM_VAL_AI")],
-         file=paste0("test/LBT/",ID,".csv",sep=""),dateTimeAs="write.csv")
+         file=paste0("stlf/test/LBT/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
 
 z <- foreach(i = CT) %dofuture% {
-  FILE  <- strsplit(i,"/")[[1]][3]
-  TYPE  <- strsplit(i,"/")[[1]][2]
-  ID    <- tools::file_path_sans_ext(FILE)
+#   FILE  <- strsplit(i,"/")[[1]][3]
+#   TYPE  <- strsplit(i,"/")[[1]][2]
+#   ID    <- tools::file_path_sans_ext(FILE)
 
-  r     <- cp[cp$ID_USUARIO == ENG$ID_USUARIO[ENG$G3E_FID_CT == ID][1],]
+  r     <- cp[cp$ID_USUARIO == ENG$ID_USUARIO[ENG$G3E_FID_CT == i][1],]
   r     <- r[order(r$DIA_LECTURA),]
 
   aux   <- numeric(F_DAYS*24)
@@ -130,7 +136,56 @@ z <- foreach(i = CT) %dofuture% {
 
   fwrite(data.frame(DIA_LECTURA=unique(r$DIA_LECTURA)[1:(F_DAYS*24)],
                     SUM_VAL_AI=aux),
-         file=paste0("test/CT/",ID,".csv",sep=""),dateTimeAs="write.csv")
+         file=paste0("stlf/test/CT/",i,".csv",sep=""),dateTimeAs="write.csv")
+}
+
+############### TEST mtlf ###############
+
+F_DAYS <- 7*4*3     ### number of days to forecast for STLF
+
+ENG <- fread("enganches.csv")
+ENG$ID_USUARIO <- CLEAN_ID(ENG$ID_USUARIO)
+ENG$G3E_FID_CT <- CLEAN_ID(ENG$G3E_FID_CT)
+
+mp <- fread("mp.csv", select = c("ID_LINEA_BT","ID_USUARIO","DIA_LECTURA",
+                                 "SUM_VAL_AI","MAX_VAL_AI","MIN_VAL_AI"))
+mp$ID_LINEA_BT <- CLEAN_ID(mp$ID_LINEA_BT)
+mp$ID_USUARIO  <- CLEAN_ID(mp$ID_USUARIO)
+mp$DIA_LECTURA <- as.POSIXct(as.character(mp$DIA_LECTURA),format="%Y%m%d",tz="GMT")
+
+z <- foreach(i = LBT) %dofuture% {
+#   FILE <- strsplit(i,"/")[[1]][3]
+#   TYPE <- strsplit(i,"/")[[1]][2]
+#   ID   <- tools::file_path_sans_ext(FILE)
+
+  r  <- mp[    mp$ID_LINEA_BT == i,]
+  r  <- r[order(r$DIA_LECTURA),]
+
+  fwrite(r[1:(F_DAYS),c("DIA_LECTURA","SUM_VAL_AI","MAX_VAL_AI","MIN_VAL_AI")],
+         file=paste0("mtlf/test/LBT/",i,".csv",sep=""),dateTimeAs="write.csv")
+}
+
+z <- foreach(i = CT) %dofuture% {
+#   FILE  <- strsplit(i,"/")[[1]][3]
+#   TYPE  <- strsplit(i,"/")[[1]][2]
+#   ID    <- tools::file_path_sans_ext(FILE)
+
+  r  <- mp[mp$ID_USUARIO == ENG$ID_USUARIO[ENG$G3E_FID_CT == i][1],]
+  r  <- r[order(r$DIA_LECTURA),]
+
+  as <- aM <- am <- numeric(F_DAYS)
+  for (j in unique(r$ID_LINEA_BT))
+  {
+    as <- as + as.numeric(r[r$ID_LINEA_BT == j,"SUM_VAL_AI"][[1]][1:F_DAYS])
+    aM <- aM + as.numeric(r[r$ID_LINEA_BT == j,"MAX_VAL_AI"][[1]][1:F_DAYS])
+    am <- am + as.numeric(r[r$ID_LINEA_BT == j,"MIN_VAL_AI"][[1]][1:F_DAYS])
+  }
+
+  fwrite(data.frame(DIA_LECTURA=unique(r$DIA_LECTURA)[1:F_DAYS],
+                    SUM_VAL_AI=as,
+                    MAX_VAL_AI=aM,
+                    MIN_VAL_AI=am),
+         file=paste0("mtlf/test/CT/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
 
 

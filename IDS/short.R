@@ -27,12 +27,16 @@ MCTARGET    <- MCNAMES[1]
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT")
 
-FCUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*"),"/")),nrow=4)[4,])
-FCGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*") ,"/")),nrow=4)[4,])
-FLBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*") ,"/")),nrow=4)[4,])
-FCUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*") ,"/")),nrow=4)[4,])
-FTR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")  ,"/")),nrow=4)[4,])
-FCT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")  ,"/")),nrow=4)[4,])
+FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- character()
+if (length(Sys.glob(paths="tlf/forecast/CUPS/*")) != 0)
+{
+  FCUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*"),"/")),nrow=4)[4,])
+  FCGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*") ,"/")),nrow=4)[4,])
+  FLBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*") ,"/")),nrow=4)[4,])
+  FCUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*") ,"/")),nrow=4)[4,])
+  FTR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")  ,"/")),nrow=4)[4,])
+  FCT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")  ,"/")),nrow=4)[4,])
+}
 
 ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*"),"/")),nrow=3)[3,])
 ECGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CGP/*") ,"/")),nrow=3)[3,])
@@ -150,7 +154,7 @@ B <- foreach(NAME = ALL,
     tryCatch({f["ses"]   <- as.numeric(forecast(ES,h=24*F_DAYS)$mean)},   warning=function(w) {},error= function(e) {print(e)},finally = {})
     tryCatch({f["ann"]   <- as.numeric(forecast(NN,h=24*F_DAYS)$mean)},   warning=function(w) {},error= function(e) {print(e)},finally = {})
     tryCatch({f["svm"]   <- as.numeric(predict(SVM$best.model,PREDICT))}, warning=function(w) {},error= function(e) {print(e)},finally = {})
-    f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
+    f["ens"]             <- rowMedians(as.matrix(f),na.rm=T)
 
     write.csv(f, file=paste("stlf/forecast",TYPE,FILE,sep="/"), row.names=F)
 

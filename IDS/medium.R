@@ -1,7 +1,6 @@
 library(data.table)
 library(vtable)
 library(zoo)
-library(xts)
 library(forecast)
 library(neuralnet)
 library(e1071)
@@ -12,29 +11,59 @@ library(rcompanion)
 library(multcompView)
 library(boot)
 library(stringr)
+library(arrow)
 
 plan(multisession)
 
-TEST        <- T
-SAMPLE      <- 300     ### number of elements to assess per each type
+SAMPLE      <- 2       ### number of elements to assess per each type
 COMPLETE    <- 0.10    ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75    ### length of the training period
 F_DAYS      <- 7*4*3   ### number of days to forecast for MTLF
 MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
 MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
-MCTARGET    <- MCNAMES[2]
+MCTARGET    <- MCNAMES[1]
 
 MODELS      <- c("mean","rw","naive","lr","ann","svm","arima","ses","ens")
-TYPES       <- c("CUPS","LINE","CT")
+TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT")
 KPIS        <- c("min","max","sum")
 
-CUPS <- Sys.glob(paths="post_cooked/CUPS/*")
-LINE <- Sys.glob(paths="post_cooked/LINE/*")
-CT   <- Sys.glob(paths="post_cooked/CT/*")
-ALL  <- union(sample(CUPS,SAMPLE),sample(LINE,SAMPLE))
+######### Take the time serie already computed only by the SUM KPI (assume the others are already complete also)
+FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- character()
+if (length(Sys.glob(paths="mtlf/forecast/CUPS/sum/*")) != 0)
+{
+  FCUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CUPS/sum/*"),"/")),nrow=5)[5,])
+  FCGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CGP/sum/*") ,"/")),nrow=4)[4,])
+  FLBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/LBT/sum/*") ,"/")),nrow=4)[4,])
+  FCUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CUA/sum/*") ,"/")),nrow=4)[4,])
+  FTR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/TR/sum/*")  ,"/")),nrow=4)[4,])
+  FCT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="mtlf/forecast/CT/sum/*")  ,"/")),nrow=4)[4,])
+}
+
+ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*"),"/")),nrow=3)[3,])
+ECGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CGP/*") ,"/")),nrow=3)[3,])
+ELBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/LBT/*") ,"/")),nrow=3)[3,])
+ECUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUA/*") ,"/")),nrow=3)[3,])
+ETR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/TR/*")  ,"/")),nrow=3)[3,])
+ECT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CT/*")  ,"/")),nrow=3)[3,])
+
+CUPS   <- paste0("post_cooked/CUPS/",setdiff(ECUPS,FCUPS),".csv",sep="")
+CGP    <- paste0("post_cooked/CGP/", setdiff(ECGP,FCGP),  ".csv",sep="")
+LBT    <- paste0("post_cooked/LBT/", setdiff(ELBT,FLBT),  ".csv",sep="")
+CUA    <- paste0("post_cooked/CUA/", setdiff(ECUA,FCUA),  ".csv",sep="")
+TR     <- paste0("post_cooked/TR/",  setdiff(ETR ,FTR ),  ".csv",sep="")
+CT     <- paste0("post_cooked/CT/",  setdiff(ECT ,FCT ),  ".csv",sep="")
+
+ALL  <- union(sample(CUPS,SAMPLE),sample(CGP,SAMPLE))
+ALL  <- union(ALL,sample(LBT,SAMPLE))
+
+if (SAMPLE < length(CUA)){ ALL  <- union(ALL,sample(CUA,SAMPLE))
+                          } else                   { ALL  <- union(ALL,CUA) }
+
+if (SAMPLE < length(TR)) { ALL  <- union(ALL,sample(TR,SAMPLE))
+                          } else                   { ALL  <- union(ALL,TR) }
 
 if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
-} else                   { ALL  <- union(ALL,CT) } 
+                          } else                   { ALL  <- union(ALL,CT) }
 
 LIM  <- fread("features.csv")
 
@@ -53,6 +82,13 @@ for (TY in TYPES)
     dir.create(paste("mtlf/mase/",    TY,KP,sep="/"),showWarnings = F, recursive = T)
   }
 
+## R   train data (real)
+## TT  test data
+## KPI kpi to calculate (character)
+## FILE file name (not path) where to output (character)
+## TYPE type of the time serie (CT,TR,CUPS,etc.)
+## POT_NOM "nominal power" of the device that the time series measure
+## POT_EST "estimated nominal power" of the device that the time series measure
 FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
 {
   f     <- data.frame(matrix(ncol = length(MODELS), nrow = F_DAYS))
@@ -63,6 +99,7 @@ FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
   colnames(RISKA) <- colnames(RISKB) <- colnames(MCA)  <- colnames(MCB) <- MODELS
   rownames(RISKA) <- rownames(RISKB) <- rownames(MCA)  <- rownames(MCB) <- MCNAMES
   
+  f["real"]  <- TT
   f["mean"]  <- as.numeric(rep(mean(R),F_DAYS))
   f["rw"]    <- rep(as.numeric(window(R,start=index(R)[length(R)])),F_DAYS)
   f["naive"] <- as.numeric(window(R,    start=index(R)[length(R)-F_DAYS+1]))
@@ -82,7 +119,7 @@ FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
   tryCatch({f["ses"]   <- as.numeric(forecast(ES,h=F_DAYS)$mean)},     warning=function(w) {},error = function(e) {print(e)},finally = {})
   tryCatch({f["ann"]   <- as.numeric(forecast(NN,h=F_DAYS)$mean)},     warning=function(w) {},error = function(e) {print(e)},finally = {})
   tryCatch({f["svm"]   <- as.numeric(predict(SVM$best.model,PREDICT))},warning=function(w) {},error = function(e) {print(e)},finally = {})
-  f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
+  f["ens"]             <- rowMedians(as.matrix(f),na.rm=T)
 
   write.csv(f, file=paste("mtlf/forecast",TYPE,KPI,FILE,sep="/"), row.names=F)
 
@@ -91,7 +128,7 @@ FORECAST <- function(R,TT,KPI,FILE,TYPE,POT_NOM,POT_EST)
   auxmase <- median(abs(TT-f[,"naive"]))
   for (j in MODELS)
   {
-    MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(TT[aux]-f[aux,j])/TT[aux],NA),na.rm=T)
+    MAPE[1,j] <- 100*median(abs(TT[aux]-f[aux,j])/TT[aux],na.rm=T)
     RMSE[1,j] <- sqrt(median((TT-f[,j])^2,na.rm=T))
     MASE[1,j] <- median(abs(TT-f[,j]))/auxmase
 
@@ -118,7 +155,7 @@ B <- foreach(NAME = ALL,
 
   a <- fread(NAME)
   r <- zoo(a$kWh, order.by = a$time)
-  d <- merge(apply.daily(r,min),apply.daily(r,max),apply.daily(r,sum))
+  d <- merge(xts::apply.daily(r,min),xts::apply.daily(r,max),xts::apply.daily(r,sum))
   colnames(d) <- KPIS
 
   FILE <- strsplit(NAME,"/")[[1]][3]
@@ -128,14 +165,19 @@ B <- foreach(NAME = ALL,
   POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
   POT_EST <- LIM$POT_EST[LIM$ID == ID]
 
-  if (TEST) ####### ÑAPA hasta tener los datos finales acorto una semana la serie temporal
+  ### Cojo los datos reales para CT y LBT y acorto la serie en otro caso
+  if (TYPE %in% c("CT","LBT"))
   {
+    rr <- fread(paste0("mtlf/test/",TYPE,"/",ID,".csv",sep=""))
+    rs <- zoo(rr$SUM_VAL_AI/1000,order.by=rr$DIA_LECTURA)
+    rM <- zoo(rr$MAX_VAL_AI/1000,order.by=rr$DIA_LECTURA)
+    rm <- zoo(rr$MIN_VAL_AI/1000,order.by=rr$DIA_LECTURA)
+    rr <- merge(rm,rM,rs)
+    names(rr) <- KPIS
+  } else {
     a  <- a[1:(nrow(a)-F_DAYS*24)]
     rr <- window(d,start=index(d)[nrow(d)-F_DAYS+1])
     d  <- window(d,end=index(d)[nrow(d)-F_DAYS])
-  } else {
-    #real <- fread()
-    rr <- window(d,start=index(d)[nrow(d)-F_DAYS+1])
   }
 
   TRAIN_DAYS <- floor(TRAIN_LIMIT*nrow(d))    #### training days
@@ -194,10 +236,10 @@ for (TY in TYPES)
   {
     EVAL("mape", TY,KP)
     EVAL("rmse", TY,KP)
-    EVAL("mca",  TY,KP)
-    EVAL("mcb",  TY,KP)
-    EVAL("riska",TY,KP)
-    EVAL("riskb",TY,KP)
+#     EVAL("mca",  TY,KP)
+#     EVAL("mcb",  TY,KP)
+#     EVAL("riska",TY,KP)
+#     EVAL("riskb",TY,KP)
     EVAL("mase", TY,KP)
   }
 
