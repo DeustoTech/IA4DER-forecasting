@@ -30,12 +30,12 @@ TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT")
 FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- character()
 if (length(Sys.glob(paths="tlf/forecast/CUPS/*")) != 0)
 {
-  FCUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*"),"/")),nrow=4)[4,])
-  FCGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*") ,"/")),nrow=4)[4,])
-  FLBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*") ,"/")),nrow=4)[4,])
-  FCUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*") ,"/")),nrow=4)[4,])
-  FTR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")  ,"/")),nrow=4)[4,])
-  FCT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")  ,"/")),nrow=4)[4,])
+  FCUPS <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*"),"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FCGP  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FLBT  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FCUA  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FTR   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FCT   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
 }
 
 ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*"),"/")),nrow=3)[3,])
