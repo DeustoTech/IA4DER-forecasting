@@ -84,7 +84,7 @@ C <- foreach(i = CT,.combine=rbind) %do% {
   RMSE1  <- sqrt(median((r-p1)^2,na.rm=T))
   RMSE2  <- sqrt(median((r-p2)^2,na.rm=T))
 
-  cat(ID,MAPE1,RMSE1,TIME1,MAPE2,RMSE2,TIME2,"\n",file="stlf/assess-CT.csv",sep=",",append=T)
+  cat(ID,MAPE1,RMSE1,MAPE2,RMSE2,"\n",file="stlf/assess-CT.csv",sep=",",append=T)
 }
 
 aLBT <- read.csv("stlf/assess-LBT.csv")
