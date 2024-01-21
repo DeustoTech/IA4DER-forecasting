@@ -1,3 +1,4 @@
+## Instalar y cargar bibliotecas
 install.packages("foreach")
 install.packages("doParallel")
 library(foreach)
@@ -8,14 +9,14 @@ librerias <- c("ggplot2", "lattice", "caret", "fpp3",
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
                'quantmod', 'caret', 'e1071', 'nnet') 
 
-# Instalar y cargar bibliotecas
+
 for (lib in librerias) {
   if (!requireNamespace(lib, quietly = TRUE)) {
     install.packages(lib, dependencies = TRUE)
   }
   library(lib, character.only = TRUE)
 }
-# añadir las librerias nuevas en este vector
+### añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
@@ -27,27 +28,23 @@ foreach(lib = librerias) %do% {
 }
 
 
-#plan(multisession)
-
-
+### cargar documentos
 folder <- "TransformersV2/"
-# Lista de archivos CSV en la carpeta extraída
-csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
 
-# csv_files <- csv_files[201:length(csv_files)]
+## Lista de archivos CSV en la carpeta extraída
+csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
 
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 #CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 #L <- csv_files[grepl("-L\\.csv$", csv_files)]
 
-# Agregar el prefijo 'folder' a las rutas en N, CT y L
+### Agregar el prefijo 'folder' a las rutas en N, CT y L
 N <- paste(folder, N, sep = "")
 #CT <- paste(folder, CT, sep = "")
 #L <- paste(folder, L, sep = "")
 
-
+## crear documento para los resultados
 RESULT_FILE <- "ResultadosHiperNuevos.csv"
-
 
 ResultadosModelos <- tibble(
   ID = character(),
@@ -72,36 +69,35 @@ ResultadosModelos <- tibble(
   NN_mape = numeric(),
   SMV_mape = numeric(),
   Ensenmble_mape = numeric()
-  
-  
 )
-#lo pongo aqui por si tenemos que volver a usarlo
-#mape <- mape(actual[aux], predicted[aux])
 
-fwrite(ResultadosModelos, file = RESULT_FILE, col.names = T)  # SOLO SI SE QUIERE HACER UNO NUEVO
+fwrite(ResultadosModelos, file = RESULT_FILE, col.names = T)
 
+
+## definir variable necesarias para la funcion
 COMPLETE <- 0.10
 horas <- 0:23
 dias_semana <- c("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
-F_DAYS <- 7 # Días que vamos a predecir con SVM
-T_DAYS <- 60 # Días con los que vamos a entrenar en cada trozo
+F_DAYS <- 7 
+T_DAYS <- 60
 
-
-
-svmHP <- list( # Posibles valores para tunear SVM
+### Posibles valores para tunear SVM
+svmHP <- list( 
   cost = 10^(-4:4),
   gamma = 10^(-3:2)
 )
 
+# Funcion de predicciones
 predict_models <- function(csv_file){
   
+  #leer csv y limpiar
   csv_actual <- fread(csv_file)
   
   nombre     <- tools::file_path_sans_ext(csv_file)
   ID <-  sub("TransformersV2/", "", nombre)
   
+  #Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
   if ("time" %in% colnames(csv_actual)) {
-    # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
     colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
     csv_actual$imputed <- 0
     csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
@@ -113,12 +109,13 @@ predict_models <- function(csv_file){
     mutate(TipoDia = ifelse(weekdays(timestamp) %in% c("lunes", "martes", "miércoles", "jueves", "viernes"),
                             "Laborable", "Finde")) %>%  select(-imputed)
   
+  #extraer variables necesarias
   LENGTH  <- length(csv_actual$kWh)
   ZEROS   <- sum(csv_actual$kWh==0)/LENGTH
   IMPUTED <- sum(csv_actual$imputed == 1)/LENGTH
   
   
-  
+  #predicciones
   if ( (IMPUTED < COMPLETE) | (ZEROS < COMPLETE)){
     
     foreach(hora = horas, .packages = librerias) %dopar% {
@@ -127,9 +124,9 @@ predict_models <- function(csv_file){
       datosLab <- datos_hora %>% filter(TipoDia == "Laborable") %>% unique()
       datosFinde <- datos_hora %>% filter(TipoDia == "Finde") %>% unique()
       
-      # PARTIMOS LA SERIE TEMPORAL N VECES: 60 DIAS ENTRENAMIENTO, 7 PREDICCION
+      #PARTIMOS LA SERIE TEMPORAL N VECES: 60 DIAS ENTRENAMIENTO, 7 PREDICCION
       
-      # primero con los laborables
+      #primero con los laborables
       iteracionesLab <- floor(nrow(datosLab) / (F_DAYS + T_DAYS))
       iteracionesFinde <- floor(nrow(datosFinde) / (F_DAYS + T_DAYS))
       
@@ -154,10 +151,10 @@ predict_models <- function(csv_file){
         testSetTs <- datosLab[test_start : test_end]
         
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
-        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
+        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) 
         aux  <- actual != 0
         
-        # MEDIA
+        ### MEDIA
         
         media <- predict(mean(trainSet, h = F_DAYS))
         media <- media$mean
@@ -168,7 +165,7 @@ predict_models <- function(csv_file){
           mape_media[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - media[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # NAIVE
+        ### NAIVE
         
         naive <- predict(naive(trainSet, h = F_DAYS))
         naive <- naive$mean
@@ -179,15 +176,16 @@ predict_models <- function(csv_file){
           mape_naive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - naive[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # SNAIVE
+        ### SNAIVE
         
-        snaive <- as.numeric(tail(trainSet, F_DAYS)) # Repetir los valores de la ultima semana
+        #Repetir los valores de la ultima semana
+        snaive <- as.numeric(tail(trainSet, F_DAYS)) 
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_snaive[j] <- ifelse(sum(aux_dia) != 0, 100 * median(abs(actual[aux_dia] - snaive[aux_dia]) / actual[aux_dia], na.rm = TRUE), NA)
         }
         
-        # ARIMA
+        ### ARIMA
         
         arima <- forecast(auto.arima(trainSet), h = F_DAYS)
         arima <- arima$mean
@@ -199,7 +197,7 @@ predict_models <- function(csv_file){
           mape_arima[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - arima[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # ETS
+        ### ETS
         trainSetTsETS <- trainSetTs$kWh
         ets <- forecast(ets(trainSetTsETS), h = F_DAYS)
         ets <- ets$mean
@@ -212,7 +210,7 @@ predict_models <- function(csv_file){
         }
         
         
-        # NN
+        ### NN
         
         nn <- forecast(nnetar(trainSetTs$kWh), h = F_DAYS)
         nn <- nn$mean
@@ -224,10 +222,10 @@ predict_models <- function(csv_file){
           mape_nn[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - nn[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # SVM
+        ### SVM
         
         lagged <- merge(trainSet, shift(trainSet, -F_DAYS))
-        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) 
         PREDICT <- data.frame(past = as.numeric(tail(trainSet, F_DAYS)))
         names(SVM_TRAINSET) <- c("actual", "past")
         
@@ -241,7 +239,7 @@ predict_models <- function(csv_file){
           mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # ENSEMBLE
+        ### ENSEMBLE
         
         ensemble <- c()
         
@@ -254,9 +252,9 @@ predict_models <- function(csv_file){
         }
         
         for (j in 1:F_DAYS) {
-          # ... (resto del código)
+          #... (resto del código)
           
-          # Escribir directamente en el archivo CSV usando fwrite
+          #Escribir directamente en el archivo CSV usando fwrite
           fwrite(
             data.table(
               ID = ID,
@@ -282,12 +280,12 @@ predict_models <- function(csv_file){
             ),
             file = RESULT_FILE,
             append = TRUE,
-            col.names = !file.exists(RESULT_FILE)  # Agregar encabezados solo si el archivo no existe
+            col.names = !file.exists(RESULT_FILE)  #Agregar encabezados solo si el archivo no existe
           )
         }
         
       
-      # AHORA LO MISMO PERO CON FINDE
+      ### AHORA LO MISMO PERO CON FINDE
       
       for (i in 1:iteracionesFinde){
         
@@ -309,10 +307,10 @@ predict_models <- function(csv_file){
         testSetTs <- datosLab[test_start : test_end]
         
         trainSet <- zoo(trainSetTs$kWh, order.by = trainSetTs$timestamp)
-        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) # testSet
+        actual <- zoo(testSetTs$kWh, order.by = testSetTs$timestamp) 
         aux <- actual != 0
         
-        # MEDIA
+        ### MEDIA
         
         media <- predict(mean(trainSet, h = F_DAYS))
         media <- media$mean
@@ -323,7 +321,7 @@ predict_models <- function(csv_file){
           mape_media[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - media[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # NAIVE
+        ### NAIVE
         
         naive <- predict(naive(trainSet, h = F_DAYS))
         naive <- naive$mean
@@ -334,15 +332,15 @@ predict_models <- function(csv_file){
           mape_naive[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - naive[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # SNAIVE
+        ### SNAIVE
         
-        snaive <- as.numeric(tail(trainSet, F_DAYS)) # Repetir los valores de la ultima semana
+        snaive <- as.numeric(tail(trainSet, F_DAYS)) 
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_snaive[j] <- ifelse(sum(aux_dia) != 0, 100 * median(abs(actual[aux_dia] - snaive[aux_dia]) / actual[aux_dia], na.rm = TRUE), NA)
         }
         
-        # ARIMA
+        ### ARIMA
         
         arima <- forecast(auto.arima(trainSet), h = F_DAYS)
         arima <- arima$mean
@@ -354,7 +352,7 @@ predict_models <- function(csv_file){
           mape_arima[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - arima[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # ETS
+        ### ETS
         trainSetTsETS <- trainSetTs$kWh
         ets <- forecast(ets(trainSetTsETS), h = F_DAYS)
         ets <- ets$mean
@@ -367,7 +365,7 @@ predict_models <- function(csv_file){
         }
         
         
-        # NN
+        ### NN
         
         nn <- forecast(nnetar(trainSetTs$kWh), h = F_DAYS)
         nn <- nn$mean
@@ -379,10 +377,11 @@ predict_models <- function(csv_file){
           mape_nn[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - nn[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # SVM
+        ### SVM
         
         lagged <- merge(trainSet, shift(trainSet, -F_DAYS))
-        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1]) # Es el trainset. Coge los días marcado por T_DAYS
+        #Es el trainset. Coge los días marcado por T_DAYS 
+        SVM_TRAINSET <- window(lagged,start=index(trainSet)[length(trainSet) - T_DAYS + 1])
         PREDICT <- data.frame(past = as.numeric(tail(trainSet, F_DAYS)))
         names(SVM_TRAINSET) <- c("actual", "past")
         
@@ -390,13 +389,12 @@ predict_models <- function(csv_file){
         
         svm <- predict(modelo_svm$best.model, newdata = PREDICT)
         
-        #funciona
         for (j in 1:F_DAYS){
           aux_dia = aux[j]
           mape_svm[j] <- 100 * median(ifelse(sum(aux_dia) != 0, abs(actual[aux_dia] - svm[aux_dia]) / actual[aux_dia], NA))
         }
         
-        # ENSEMBLE
+        ### ENSEMBLE
         
         ensemble <- c()
         
@@ -409,9 +407,9 @@ predict_models <- function(csv_file){
         }
         
         for (j in 1:F_DAYS) {
-          # ... (resto del código)
+          #... (resto del código)
           
-          # Escribir directamente en el archivo CSV usando fwrite
+          #Escribir directamente en el archivo CSV usando fwrite
           fwrite(
             data.table(
               ID = ID,
@@ -437,7 +435,7 @@ predict_models <- function(csv_file){
             ),
             file = RESULT_FILE,
             append = TRUE,
-            col.names = !file.exists(RESULT_FILE)  # Agregar encabezados solo si el archivo no existe
+            col.names = !file.exists(RESULT_FILE)  #Agregar encabezados solo si el archivo no existe
           )
         }
         
@@ -446,8 +444,9 @@ predict_models <- function(csv_file){
       }
     }
   }
+  }
 }
-#num_cores <- 4  # Ajusta según la cantidad de núcleos de tu CPU
+  
 
 # Configurar el clúster paralelo
 #cl <- makeCluster(num_cores)
