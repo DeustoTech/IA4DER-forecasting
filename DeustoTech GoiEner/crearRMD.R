@@ -1,4 +1,4 @@
-Crear_Rmd<-function(Rscript,NombreRmd="goiEner.Rmd") {
+Crear_Rmd<-function(Rscript,NombreRmd="goiEnerV3.Rmd") {
   
   
   require(data.table)
