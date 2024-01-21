@@ -15,8 +15,7 @@ library(arrow)
 
 plan(multisession)
 
-TEST        <- T     ### si estoy haciendo test
-SAMPLE      <- 200   ### number of elements to assess per each type
+SAMPLE      <- 400   ### number of elements to assess per each type
 COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
 TRAIN_LIMIT <- 0.75  ### length of the training period
 F_DAYS      <- 7     ### number of days to forecast for STLF
@@ -26,27 +25,49 @@ MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
 MCTARGET    <- MCNAMES[1]
 
 MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
-TYPES       <- c("CUPS","CGP","LBT","CT","TR")
+TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT")
 
-CUPS <- Sys.glob(paths="post_cooked/CUPS/*")
-CGP  <- Sys.glob(paths="post_cooked/CGP/*")
-LBT  <- Sys.glob(paths="post_cooked/LBT/*")
-CT   <- Sys.glob(paths="post_cooked/CT/*")
-TR   <- Sys.glob(paths="post_cooked/TR/*")
+FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- character()
+if (length(Sys.glob(paths="tlf/forecast/CUPS/*")) != 0)
+{
+  FCUPS <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*"),"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FCGP  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FLBT  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FCUA  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FTR   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+  FCT   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+}
+
+ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*"),"/")),nrow=3)[3,])
+ECGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CGP/*") ,"/")),nrow=3)[3,])
+ELBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/LBT/*") ,"/")),nrow=3)[3,])
+ECUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUA/*") ,"/")),nrow=3)[3,])
+ETR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/TR/*")  ,"/")),nrow=3)[3,])
+ECT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CT/*")  ,"/")),nrow=3)[3,])
+
+CUPS   <- paste0("post_cooked/CUPS/",setdiff(ECUPS,FCUPS),".csv",sep="")
+CGP    <- paste0("post_cooked/CGP/", setdiff(ECGP,FCGP),  ".csv",sep="")
+LBT    <- paste0("post_cooked/LBT/", setdiff(ELBT,FLBT),  ".csv",sep="")
+CUA    <- paste0("post_cooked/CUA/", setdiff(ECUA,FCUA),  ".csv",sep="")
+TR     <- paste0("post_cooked/TR/",  setdiff(ETR ,FTR ),  ".csv",sep="")
+CT     <- paste0("post_cooked/CT/",  setdiff(ECT ,FCT ),  ".csv",sep="")
 
 ALL  <- union(sample(CUPS,SAMPLE),sample(CGP,SAMPLE))
 ALL  <- union(ALL,sample(LBT,SAMPLE))
 
-if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
-} else                   { ALL  <- union(ALL,CT) }
+if (SAMPLE < length(CUA)){ ALL  <- union(ALL,sample(CUA,SAMPLE))
+} else                   { ALL  <- union(ALL,CUA) }
 
 if (SAMPLE < length(TR)) { ALL  <- union(ALL,sample(TR,SAMPLE))
 } else                   { ALL  <- union(ALL,TR) }
 
+if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
+} else                   { ALL  <- union(ALL,CT) }
+
 LIM  <- fread("features.csv")
 
-# ALL  <- Sys.glob(paths="post_cooked/*/*")
-ALL <- Sys.glob(paths="post_cooked/LBT/*")
+# ALL <- Sys.glob(paths="post_cooked/*/*")
+# ALL <- Sys.glob(paths="post_cooked/CT/*")
 
 for (TY in TYPES)
 {
@@ -60,6 +81,11 @@ for (TY in TYPES)
   dir.create(paste("stlf/riskb/",   TY,sep="/"),showWarnings = F, recursive = T)
   dir.create(paste("stlf/mase/",    TY,sep="/"),showWarnings = F, recursive = T)
 }
+
+# CT: edxKl+t2YUOUV1679x4MEuUKWTy0sdqJMaOqa2NNgm933TCP+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g==
+#NAME <- "post_cooked/CT/edxKl+t2YUOUV1679x4MEuUKWTy0sdqJMaOqa2NNgm9.csv"
+# LBT: +/qa24rrKT7vCTmmuxS2y+UKWTy0sdqJMaOqa2NNgm933TCP+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g==
+#NAME <- "post_cooked/LBT/+\\qa24rrKT7vCTmmuxS2y+UKWTy0sdqJMaOqa2NNgm9.csv"
 
 B <- foreach(NAME = ALL,
              .options.future = list(seed = TRUE),
@@ -75,14 +101,15 @@ B <- foreach(NAME = ALL,
   POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
   POT_EST <- LIM$POT_EST[LIM$ID == ID]
   
-  if (TEST) ####### ÑAPA hasta tener los datos finales acorto una semana la serie temporal
+  ### Cojo los datos reales para CT y LBT y acorto la serie en otro caso
+  if (TYPE %in% c("CT","LBT"))
   {
+    real <- fread(paste0("stlf/test/",TYPE,"/",ID,".csv",sep=""))
+    real <- zoo(real$SUM_VAL_AI/1000,order.by=real$DIA_LECTURA)
+  } else {
     a    <- a[1:(length(a[[1]])-24*F_DAYS)]
     real <- window(r,start=index(r)[length(r)-24*F_DAYS+1])
     r    <- window(r,end=index(r)[length(r)-24*F_DAYS])
-  } else {
-    #real <- fread()
-    real <- window(r,start=index(r)[length(r)-24*F_DAYS+1])
   }
 
   TRAIN_DAYS  <- floor(TRAIN_LIMIT*(length(r)/24))    #### training days
@@ -101,6 +128,7 @@ B <- foreach(NAME = ALL,
   ### then we continue with the assessment
   if( (IMPUTED < COMPLETE) & (ZEROS < COMPLETE))
   {
+    f["real"]  <- real
     f["mean"]  <- as.numeric(rep(mean(r),24*F_DAYS))
     f["rw"]    <- rep(as.numeric(window(r,start=index(r)[length(r)-23])),F_DAYS)
     f["naive"] <- as.numeric(window(r,   start=index(r)[length(r)-24*6-23], end=index(r)[length(r)-24*( 6-F_DAYS-1)]))
@@ -126,8 +154,8 @@ B <- foreach(NAME = ALL,
     tryCatch({f["ses"]   <- as.numeric(forecast(ES,h=24*F_DAYS)$mean)},   warning=function(w) {},error= function(e) {print(e)},finally = {})
     tryCatch({f["ann"]   <- as.numeric(forecast(NN,h=24*F_DAYS)$mean)},   warning=function(w) {},error= function(e) {print(e)},finally = {})
     tryCatch({f["svm"]   <- as.numeric(predict(SVM$best.model,PREDICT))}, warning=function(w) {},error= function(e) {print(e)},finally = {})
-    f["ens"]   <- rowMedians(as.matrix(f),na.rm=T)
-  
+    f["ens"]             <- rowMedians(as.matrix(f),na.rm=T)
+
     write.csv(f, file=paste("stlf/forecast",TYPE,FILE,sep="/"), row.names=F)
 
     ## QQR  <- ecdf(real)
@@ -140,7 +168,7 @@ B <- foreach(NAME = ALL,
     
     for(j in MODELS)
     {
-      MAPE[1,j] <- 100*median(ifelse(sum(aux)!=0,abs(real[aux]-f[aux,j])/real[aux],NA),na.rm=T)
+      MAPE[1,j] <- 100*median(abs(real[aux]-f[aux,j])/real[aux],na.rm=T)
       RMSE[1,j] <- sqrt(median((real-f[,j])^2,na.rm=T))
       MASE[1,j] <- median(abs(real-f[,j]))/auxmase
     
@@ -210,10 +238,10 @@ for (TY in TYPES)
   EVAL("mape", TY)
   EVAL("rmse", TY)
   EVAL("time", TY)
-  EVAL("mca",  TY)
-  EVAL("mcb",  TY)
-  EVAL("riska",TY)
-  EVAL("riskb",TY)
+#   EVAL("mca",  TY)
+#   EVAL("mcb",  TY)
+#   EVAL("riska",TY)
+#   EVAL("riskb",TY)
   EVAL("mase", TY)
 }
 
@@ -226,20 +254,3 @@ R <- foreach(NAME = Sys.glob("stlf/*/*/summary.csv"),.combine=rbind) %dofuture% 
 }
 
 write.csv(R,file="stlf/summary.csv",row.names=F)
-
-
-#R <- fread("kpi.csv")
-# cat("cups","model","kpi","length","zeros","imputed","mean","sd","min","q1","q2","q3","max",     "\n",sep=",",file="kpi.csv")
-#     cat(NAME,j,"mape",LENGTH,ZEROS,IMPUTED,mean(MAPE[,j],na.rm=T),sd(MAPE[,j],na.rm=T),quantile(MAPE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
-#     cat(NAME,j,"rmse",LENGTH,ZEROS,IMPUTED,mean(RMSE[,j],na.rm=T),sd(RMSE[,j],na.rm=T),quantile(RMSE[,j],c(0,0.25,0.5,0.75,1),na.rm=T),"\n",sep=",",file="kpi.csv",append=T)
-
-
-#
-#COUNTRY <- AGE <- GENDER <- numeric(length(names(F[,-c(1:3)])))
-#
-#for (i in names(F[,-c(1:3)]))
-#{
-#   GENDER[i]  <- t.test(as.formula(paste(as.name(i),"ID202",sep="~")),data=F)$p.value
-#   AGE[i]     <- t.test(as.formula(paste(as.name(i),"ID137",sep="~")),data=F)$p.value
-#   COUNTRY[i] <- t.test(as.formula(paste(as.name(i),"ID300",sep="~")),data=F)$p.value
-#}
