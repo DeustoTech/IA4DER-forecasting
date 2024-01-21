@@ -1,4 +1,4 @@
-## Instalar y cargar bibliotecas
+## Instalar y cargar bibliotecas 
 install.packages("foreach")
 install.packages("doParallel")
 library(foreach)
