@@ -1,5 +1,6 @@
 Crear_Rmd<-function(Rscript,NombreRmd="goiEner.Rmd") {
   
+  
   require(data.table)
   require(stringr)
   require(dplyr)
