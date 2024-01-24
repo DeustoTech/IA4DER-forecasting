@@ -327,14 +327,55 @@ file_names <- c("Resultados/CUPS/SummaryPreds.csv",
                 "Resultados/CUPS/SummaryNN.csv")
 
 summaryNN_CUPS <- summaryNN_CUPS %>% select(ID, Median_MAPE, Q1_MAPE, Q3_MAPE)
-colnames(summaryNN_CUPS)[colnames(summaryNN_CUPS) == "Median_MAPE"] <- "mapeSN_mediana"
-colnames(summaryNN_CUPS)[colnames(summaryNN_CUPS) == "Q1_MAPE"] <- "mapeNN_q1"
-colnames(summaryNN_CUPS)[colnames(summaryNN_CUPS) == "Q3_MAPE"] <- "mapeNN_q3"
+colnames(summaryNN_CUPS)[colnames(summaryNN_CUPS) == "mapeSN_mediana"] <- "mapeNN_mediana"
+colnames(summaryNN_CUPS)[colnames(summaryNN_CUPS) == "Q1_MAPE"] <- "mapeSN_q1"
+colnames(summaryNN_CUPS)[colnames(summaryNN_CUPS) == "Q3_MAPE"] <- "mapeSN_q3"
 
 colnames(summaryNN_CUPS)
 
+b <- a
+
 a <- merge(a, summaryNN_CUPS, by = "ID", all.x = TRUE)
 colnames(a)
+
+# Crear un vector con los nombres de las columnas de mape mediana
+mediana_cols <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana",
+                  "mapeArima_mediana", "mapeETS_mediana", "mapeNN_mediana")
+
+for (i in nrow(a)) {
+  
+  # median_values <- c(
+  #   a$mapeMedia_mediana[i],
+  #   a$mapeNaive_mediana[i],
+  #   a$mapeSN_mediana[i],
+  #   a$mapeArima_mediana[i],
+  #   a$mapeETS_mediana[i],
+  #   a$mapeNN_mediana[i]
+  # )
+  
+  
+  min_index <- which.min(c(a$mapeMedia_mediana[i],
+                            a$mapeNaive_mediana[i],
+                            a$mapeSN_mediana[i],
+                            a$mapeArima_mediana[i],
+                            a$mapeETS_mediana[i],
+                            a$mapeNN_mediana[i]))
+  if (length(min_index) == 0) {
+    a$best_model[i] <- NA
+  } else {
+    a$best_model[i] <- model_names[min_index]
+  }
+}
+
+a$best_model <- apply(a[mediana_cols], 1, function(row) {
+  if (all(is.na(row))) {
+    return(NA)  # Si todas las entradas son NA, asignar NA a best_model
+  } else {
+    best_model_index <- which.min(row)
+    return(model_names[best_model_index])
+  }
+})
+
 
 fwrite(a,"featuresPrediccionesProvisional.csv", row.names = F)
                   
