@@ -174,8 +174,12 @@ features <- c(
 
 
 # Regresion lineal 
-
+# Para evitar predicciones negativas (el error no puede ser negativo)
+# usamos logaritmo y luego lo "deshacemos" 
 set.seed(0)
+
+index <- 0.75
+trainIndex <- sample(1:nrow(media), index * nrow(media))
 
 
 
@@ -184,12 +188,29 @@ media <- feats[columns]
 media$ID <- feats$ID
 media <- media %>% filter(!is.na(mapeMedia_mediana))
 
-index <- 0.75
-trainIndex <- sample(1:nrow(media), index * nrow(media))
-trainSet <- media[trainIndex, ] %>% select(-ID)
-testSet <- media[-trainIndex, ] %>% select(-ID)
 
-mediaLM <- lm(mapeMedia_mediana ~ ., data = trainSet)
+# Transformación logarítmica en conjunto de entrenamiento
+trainSet <- media[trainIndex, ] %>% select(-ID)
+trainSet$log_mapeMedia_mediana <- log(trainSet$mapeMedia_mediana + 1)
+
+# Ajustar el modelo lineal a la variable transformada en el conjunto de entrenamiento
+mediaLM_log <- lm(log_mapeMedia_mediana ~ .-ID - mapeMedia_mediana, data = trainSet)
+
+# Transformación logarítmica en conjunto de prueba
+testSet <- media[-trainIndex, ] %>% select(-ID)
+testSet$log_mapeMedia_mediana <- log(testSet$mapeMedia_mediana + 1)
+
+# Realizar predicciones en el conjunto de prueba
+predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
+
+# Comparar predicciones con los valores reales en el conjunto de prueba
+resultados <- data.frame(Real = testSet$mapeMedia_mediana, Prediccion = predicciones_log)
+print(resultados)
+
+
+
+
+
 
 
 
