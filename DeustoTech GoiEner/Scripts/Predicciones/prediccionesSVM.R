@@ -26,7 +26,7 @@ N <- paste(folder, N, sep = "")
 #L <- paste(folder, L, sep = "")
 
 ## crear documento para los resultados
-RESULT_FILE <- "ResultadosCUPS_SVM_2"
+RESULT_FILE <- "Resultados/CUPS/ResultadosCUPS_SVM_2.csv"
 
 ResultadosModelos <- tibble(
   ID = character(),
@@ -47,7 +47,7 @@ COMPLETE <- 0.10
 horas <- 0:23
 dias_semana <- c("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 F_DAYS <- 7 
-T_DAYS <- 60
+T_DAYS <- 40
 
 ### Posibles valores para tunear SVM
 svmHP <- list( 
@@ -99,14 +99,9 @@ predict_models <- function(csv_file){
       
       for (i in 1:iteracionesLab){
         
-        mape_media <- c()
-        mape_naive <- c()
-        mape_snaive <- c()
-        mape_arima <- c()
-        mape_ets <- c()
-        mape_nn <- c()
+
         mape_svm <- c()
-        mape_ensemble <- c()
+
         
         
         train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
@@ -150,7 +145,7 @@ predict_models <- function(csv_file){
               TipoDia = "Laborable",
               Real = actual[j],
               SMV_pred = svm[j],
-              SMV_mape = mape_svm[j],
+              SMV_mape = mape_svm[j]
             ),
             file = RESULT_FILE,
             append = TRUE,
@@ -163,14 +158,9 @@ predict_models <- function(csv_file){
         
         for (i in 1:iteracionesFinde){
           
-          mape_media <- c()
-          mape_naive <- c()
-          mape_snaive <- c()
-          mape_arima <- c()
-          mape_ets <- c()
-          mape_nn <- c()
+
           mape_svm <- c()
-          mape_ensemble <- c()
+
           
           train_start <- (i - 1) * (F_DAYS + T_DAYS) + 1
           train_end <- train_start + T_DAYS - 1
@@ -210,15 +200,7 @@ predict_models <- function(csv_file){
                 TipoDia = "Finde",
                 Real = actual[j],
                 SMV_pred = svm[j],
-                Ensemble_pred = ensemble[j],
-                Media_mape = mape_media[j],
-                Naive_mape = mape_naive[j],
-                SNaive_mape = mape_snaive[j],
-                Arima_mape = mape_arima[j],
-                ETS_mape = mape_ets[j],
-                NN_mape = mape_nn[j],
-                SMV_mape = mape_svm[j],
-                Ensemble_mape = mape_ensemble[j]
+                SMV_mape = mape_svm[j]
               ),
               file = RESULT_FILE,
               append = TRUE,
