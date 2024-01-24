@@ -312,7 +312,7 @@ Feats <- foreach(NAME = N,
                aux <- cbind(aux, best_model, features_semana, features_fin_de_semana)
              }
 
-write.csv(Feats,file="featuresPrediccionesProvisional.csv",row.names = F)
+write.csv(a,file="featuresPrediccionesProvisional.csv",row.names = F)
 
 
 a <- fread("Resultados/CUPS/SummaryProvisional.csv")
@@ -333,7 +333,7 @@ colnames(summaryNN_CUPS)[colnames(summaryNN_CUPS) == "Q3_MAPE"] <- "mapeSN_q3"
 
 colnames(summaryNN_CUPS)
 
-b <- a
+
 
 a <- merge(a, summaryNN_CUPS, by = "ID", all.x = TRUE)
 colnames(a)
@@ -342,17 +342,9 @@ colnames(a)
 mediana_cols <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana",
                   "mapeArima_mediana", "mapeETS_mediana", "mapeNN_mediana")
 
-for (i in nrow(a)) {
+for (i in 1:nrow(a)) {
   
-  # median_values <- c(
-  #   a$mapeMedia_mediana[i],
-  #   a$mapeNaive_mediana[i],
-  #   a$mapeSN_mediana[i],
-  #   a$mapeArima_mediana[i],
-  #   a$mapeETS_mediana[i],
-  #   a$mapeNN_mediana[i]
-  # )
-  
+ 
   
   min_index <- which.min(c(a$mapeMedia_mediana[i],
                             a$mapeNaive_mediana[i],
@@ -367,14 +359,7 @@ for (i in nrow(a)) {
   }
 }
 
-a$best_model <- apply(a[mediana_cols], 1, function(row) {
-  if (all(is.na(row))) {
-    return(NA)  # Si todas las entradas son NA, asignar NA a best_model
-  } else {
-    best_model_index <- which.min(row)
-    return(model_names[best_model_index])
-  }
-})
+
 
 
 fwrite(a,"featuresPrediccionesProvisional.csv", row.names = F)
