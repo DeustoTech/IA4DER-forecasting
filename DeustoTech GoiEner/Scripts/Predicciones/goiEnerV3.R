@@ -414,7 +414,7 @@ predict_models <- function(csv_file){
               data.table(
                 ID = ID,
                 Hora = hora,
-                TipoDia = "Laborable",
+                TipoDia = "Finde",
                 Real = actual[j],
                 Media_pred = media[j],
                 Naive_pred = naive[j],
