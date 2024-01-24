@@ -113,7 +113,7 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 
 # Carga fichero con todas las features
 
-feats <- read.csv("featuresPredicciones.csv")
+feats <- read.csv("featuresPrediccionesProvisional.csv")
 colnames(feats)
 
 
@@ -125,9 +125,11 @@ colnames(feats)
 
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
+# target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
+#             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", mapeEnsemble_mediana)
 
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-            "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
+            "mapeETS_mediana", "mapeNN_mediana")
 
 
 
@@ -159,7 +161,7 @@ allFeatures <- c( # Lista de todas las columnas
 
 
 
-features <- c(
+features <- c( # All stational feats
   "kWhTotal_autum_0.4", "kWhTotal_autum_5.8", "kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
   "kWhTotal_autum_17.20", "kWhTotal_autum_21.24", "kWhTotal_spring_0.4", "kWhTotal_spring_5.8", "kWhTotal_spring_9.12",
   "kWhTotal_spring_13.16", "kWhTotal_spring_17.20", "kWhTotal_spring_21.24", "kWhTotal_summer_0.4", "kWhTotal_summer_5.8",
@@ -172,21 +174,25 @@ features <- c(
  
 )
 
+features <- c("AVG",
+              "SD", "MIN", "Q1", "MEDIAN", "Q3",
+              "MAX", "TOTAL", "VAR", "POT_1", "POT_2",
+              "POT_3",  "POT_6", 
+              "MC25", "MC50", "MC80", "MC90", "MC95",
+              "P_T2.0_VALLE", "P_T2.0_LLANO","P_T_SOLAR_PICO", "P_T_SOLAR_LLANO")
+
 
 # Regresion lineal 
 # Para evitar predicciones negativas (el error no puede ser negativo)
 # usamos logaritmo y luego lo "deshacemos" 
 set.seed(0)
-
 index <- 0.75
-trainIndex <- sample(1:nrow(media), index * nrow(media))
-
-
-
 columns <- append(features, target[1])
 media <- feats[columns] 
 media$ID <- feats$ID
 media <- media %>% filter(!is.na(mapeMedia_mediana))
+trainIndex <- sample(1:nrow(media), index * nrow(media))
+testIndex <- setdiff(1:nrow(media), trainIndex)
 
 
 # Transformación logarítmica en conjunto de entrenamiento
@@ -194,7 +200,7 @@ trainSet <- media[trainIndex, ] %>% select(-ID)
 trainSet$log_mapeMedia_mediana <- log(trainSet$mapeMedia_mediana + 1)
 
 # Ajustar el modelo lineal a la variable transformada en el conjunto de entrenamiento
-mediaLM_log <- lm(log_mapeMedia_mediana ~ .-ID - mapeMedia_mediana, data = trainSet)
+mediaLM_log <- lm(log_mapeMedia_mediana ~ . - mapeMedia_mediana, data = trainSet)
 
 # Transformación logarítmica en conjunto de prueba
 testSet <- media[-trainIndex, ] %>% select(-ID)
@@ -202,18 +208,11 @@ testSet$log_mapeMedia_mediana <- log(testSet$mapeMedia_mediana + 1)
 
 # Realizar predicciones en el conjunto de prueba
 predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
-
+resultados$FeatsSet1 <- predicciones_log
 # Comparar predicciones con los valores reales en el conjunto de prueba
-resultados <- data.frame(Real = testSet$mapeMedia_mediana, Prediccion = predicciones_log)
-print(resultados)
-
-
-
-
-
-
-
-
+resultados <- data.frame(Real = testSet$mapeMedia_mediana, AllStationalFeats = predicciones_log)
+resultados$MAE_stationalFeats <- abs(resultados$Real - resultados$AllStationalFeats)
+resultados$MAE_featset1 <- abs(resultados$Real - resultados$FeatsSet1)
 
 
 
