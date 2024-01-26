@@ -113,7 +113,7 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 
 # Carga fichero con todas las features
 
-feats <- read.csv("featuresPredicciones.csv")
+feats <- read.csv("featuresPrediccionesProvisional.csv")
 colnames(feats)
 
 
@@ -125,41 +125,43 @@ colnames(feats)
 
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
+# target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
+#             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", mapeEnsemble_mediana)
 
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-            "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
+            "mapeETS_mediana", "mapeNN_mediana")
 
 
 
 allFeatures <- c( # Lista de todas las columnas
-    "ID", "LENGTH", "ZERO", "IMPUTED", "AVG",
-    "SD", "MIN", "Q1", "MEDIAN", "Q3",
-    "MAX", "TOTAL", "VAR", "POT_1", "POT_2",
-    "POT_3", "POT_4", "POT_5", "POT_6", "POT_NOM",
-    "MC25", "MC50", "MC80", "MC90", "MC95",
-    "P_T2.0_VALLE", "P_T2.0_LLANO", "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO",
-    "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO", "zip_code", "cnae", "municipality",
-    "contracted_tariff", "self_consumption_type", "mapeMedia_mediana", "mapeNaive_mediana",
-    "mapeSN_mediana", "mapeArima_mediana", "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana",
-    "mapeEnsemble_mediana", "mapeMedia_q1", "mapeNaive_q1", "mapeSN_q1", "mapeArima_q1", "mapeETS_q1",
-    "mapeSVM_q1", "mapeNN_q1", "mapeEnsemble_q1", "mapeMedia_q3", "mapeNaive_q3", "mapeSN_q3", "mapeArima_q3",
-    "mapeETS_q3", "mapeSVM_q3", "mapeNN_q3", "mapeEnsemble_q3", "P1_PICO_PRECIO", "P2_LLANO_PRECIO",
-    "P3_VALLE_PRECIO", "kWhTotal_autum_0.4", "kWhTotal_autum_5.8", "kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
-    "kWhTotal_autum_17.20", "kWhTotal_autum_21.24", "kWhTotal_spring_0.4", "kWhTotal_spring_5.8", "kWhTotal_spring_9.12",
-    "kWhTotal_spring_13.16", "kWhTotal_spring_17.20", "kWhTotal_spring_21.24", "kWhTotal_summer_0.4", "kWhTotal_summer_5.8",
-    "kWhTotal_summer_9.12", "kWhTotal_summer_13.16", "kWhTotal_summer_17.20", "kWhTotal_summer_21.24", "kWhTotal_winter_0.4",
-    "kWhTotal_winter_5.8", "kWhTotal_winter_9.12", "kWhTotal_winter_13.16", "kWhTotal_winter_17.20", "kWhTotal_winter_21.24",
-    "kWhMax_autum_0.4", "kWhMax_autum_5.8", "kWhMax_autum_9.12", "kWhMax_autum_13.16", "kWhMax_autum_17.20", "kWhMax_autum_21.24",
-    "kWhMax_spring_0.4", "kWhMax_spring_5.8", "kWhMax_spring_9.12", "kWhMax_spring_13.16", "kWhMax_spring_17.20", "kWhMax_spring_21.24",
-    "kWhMax_summer_0.4", "kWhMax_summer_5.8", "kWhMax_summer_9.12", "kWhMax_summer_13.16", "kWhMax_summer_17.20", "kWhMax_summer_21.24",
-    "kWhMax_winter_0.4", "kWhMax_winter_5.8", "kWhMax_winter_9.12", "kWhMax_winter_13.16", "kWhMax_winter_17.20", "kWhMax_winter_21.24",
-    "kWhTotal_autum_finde", "kWhTotal_spring_finde", "kWhTotal_summer_finde", "kWhTotal_winter_finde", "kWhMax_autum_finde",
-    "kWhMax_spring_finde", "kWhMax_summer_finde", "kWhMax_winter_finde"
-  )
+  "ID", "LENGTH", "ZERO", "IMPUTED", "AVG",
+  "SD", "MIN", "Q1", "MEDIAN", "Q3",
+  "MAX", "TOTAL", "VAR", "POT_1", "POT_2",
+  "POT_3", "POT_4", "POT_5", "POT_6", "POT_NOM",
+  "MC25", "MC50", "MC80", "MC90", "MC95",
+  "P_T2.0_VALLE", "P_T2.0_LLANO", "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO",
+  "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO", "zip_code", "cnae", "municipality",
+  "contracted_tariff", "self_consumption_type", "mapeMedia_mediana", "mapeNaive_mediana",
+  "mapeSN_mediana", "mapeArima_mediana", "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana",
+  "mapeEnsemble_mediana", "mapeMedia_q1", "mapeNaive_q1", "mapeSN_q1", "mapeArima_q1", "mapeETS_q1",
+  "mapeSVM_q1", "mapeNN_q1", "mapeEnsemble_q1", "mapeMedia_q3", "mapeNaive_q3", "mapeSN_q3", "mapeArima_q3",
+  "mapeETS_q3", "mapeSVM_q3", "mapeNN_q3", "mapeEnsemble_q3", "P1_PICO_PRECIO", "P2_LLANO_PRECIO",
+  "P3_VALLE_PRECIO", "kWhTotal_autum_0.4", "kWhTotal_autum_5.8", "kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
+  "kWhTotal_autum_17.20", "kWhTotal_autum_21.24", "kWhTotal_spring_0.4", "kWhTotal_spring_5.8", "kWhTotal_spring_9.12",
+  "kWhTotal_spring_13.16", "kWhTotal_spring_17.20", "kWhTotal_spring_21.24", "kWhTotal_summer_0.4", "kWhTotal_summer_5.8",
+  "kWhTotal_summer_9.12", "kWhTotal_summer_13.16", "kWhTotal_summer_17.20", "kWhTotal_summer_21.24", "kWhTotal_winter_0.4",
+  "kWhTotal_winter_5.8", "kWhTotal_winter_9.12", "kWhTotal_winter_13.16", "kWhTotal_winter_17.20", "kWhTotal_winter_21.24",
+  "kWhMax_autum_0.4", "kWhMax_autum_5.8", "kWhMax_autum_9.12", "kWhMax_autum_13.16", "kWhMax_autum_17.20", "kWhMax_autum_21.24",
+  "kWhMax_spring_0.4", "kWhMax_spring_5.8", "kWhMax_spring_9.12", "kWhMax_spring_13.16", "kWhMax_spring_17.20", "kWhMax_spring_21.24",
+  "kWhMax_summer_0.4", "kWhMax_summer_5.8", "kWhMax_summer_9.12", "kWhMax_summer_13.16", "kWhMax_summer_17.20", "kWhMax_summer_21.24",
+  "kWhMax_winter_0.4", "kWhMax_winter_5.8", "kWhMax_winter_9.12", "kWhMax_winter_13.16", "kWhMax_winter_17.20", "kWhMax_winter_21.24",
+  "kWhTotal_autum_finde", "kWhTotal_spring_finde", "kWhTotal_summer_finde", "kWhTotal_winter_finde", "kWhMax_autum_finde",
+  "kWhMax_spring_finde", "kWhMax_summer_finde", "kWhMax_winter_finde"
+)
 
 
 
-features <- c(
+s1 <- c( # All stational feats
   "kWhTotal_autum_0.4", "kWhTotal_autum_5.8", "kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
   "kWhTotal_autum_17.20", "kWhTotal_autum_21.24", "kWhTotal_spring_0.4", "kWhTotal_spring_5.8", "kWhTotal_spring_9.12",
   "kWhTotal_spring_13.16", "kWhTotal_spring_17.20", "kWhTotal_spring_21.24", "kWhTotal_summer_0.4", "kWhTotal_summer_5.8",
@@ -169,26 +171,25 @@ features <- c(
   "kWhMax_spring_0.4", "kWhMax_spring_5.8", "kWhMax_spring_9.12", "kWhMax_spring_13.16", "kWhMax_spring_17.20", "kWhMax_spring_21.24",
   "kWhMax_summer_0.4", "kWhMax_summer_5.8", "kWhMax_summer_9.12", "kWhMax_summer_13.16", "kWhMax_summer_17.20", "kWhMax_summer_21.24",
   "kWhMax_winter_0.4", "kWhMax_winter_5.8", "kWhMax_winter_9.12", "kWhMax_winter_13.16", "kWhMax_winter_17.20", "kWhMax_winter_21.24"
- 
+  
 )
 
+s2 <- c("AVG", "SD", "MIN", "Q1", "MEDIAN", "Q3", "MAX", "TOTAL", "VAR")
 
-############################### Regresion lineal 
-
-
+s3 <- c("POT_1", "POT_2",  
+        "MC25", "MC50", "MC80", "MC90", "MC95","P_T2.0_VALLE", "P_T2.0_LLANO",
+        "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO")
+# Regresion lineal 
 # Para evitar predicciones negativas (el error no puede ser negativo)
 # usamos logaritmo y luego lo "deshacemos" 
 set.seed(0)
-
 index <- 0.75
-trainIndex <- sample(1:nrow(media), index * nrow(media))
-
-
-
-columns <- append(features, target[1])
+columns <- append(s3, target[1])
 media <- feats[columns] 
 media$ID <- feats$ID
 media <- media %>% filter(!is.na(mapeMedia_mediana))
+trainIndex <- sample(1:nrow(media), index * nrow(media))
+testIndex <- setdiff(1:nrow(media), trainIndex)
 
 
 # Transformación logarítmica en conjunto de entrenamiento
@@ -196,24 +197,32 @@ trainSet <- media[trainIndex, ] %>% select(-ID)
 trainSet$log_mapeMedia_mediana <- log(trainSet$mapeMedia_mediana + 1)
 
 # Ajustar el modelo lineal a la variable transformada en el conjunto de entrenamiento
-mediaLM_log <- lm(log_mapeMedia_mediana ~ .-ID - mapeMedia_mediana, data = trainSet)
+mediaLM_log <- lm(log_mapeMedia_mediana ~ . - mapeMedia_mediana, data = trainSet)
 
 # Transformación logarítmica en conjunto de prueba
 testSet <- media[-trainIndex, ] %>% select(-ID)
 testSet$log_mapeMedia_mediana <- log(testSet$mapeMedia_mediana + 1)
-
+resultados <- data.frame(ID = media$ID[testIndex], Real = testSet$mapeMedia_mediana)
 # Realizar predicciones en el conjunto de prueba
+# S1
+
 predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
+resultados$Predicted_S1 <- predicciones_log
+resultados$MAE_S1 <- abs(resultados$Real - resultados$Predicted_S1)
 
-# Comparar predicciones con los valores reales en el conjunto de prueba
-resultados <- data.frame(Real = testSet$mapeMedia_mediana, Prediccion = predicciones_log)
-print(resultados)
+#S2
 
+predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
+resultados$Predicted_S2 <- predicciones_log
+resultados$MAE_S2 <- abs(resultados$Real - resultados$Predicted_S2)
 
+#S3
 
-# Otros modelos: gradient boosting, random walk, random forest, svr
+predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
+resultados$Predicted_S3 <- predicciones_log
+resultados$MAE_S3 <- abs(resultados$Real - resultados$Predicted_S3)
 
-
+fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.names = T, row.names = F)
 
 
 
