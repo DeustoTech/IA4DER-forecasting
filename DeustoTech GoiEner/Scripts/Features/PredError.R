@@ -173,7 +173,9 @@ features <- c(
 )
 
 
-# Regresion lineal 
+############################### Regresion lineal 
+
+
 # Para evitar predicciones negativas (el error no puede ser negativo)
 # usamos logaritmo y luego lo "deshacemos" 
 set.seed(0)
@@ -209,7 +211,7 @@ print(resultados)
 
 
 
-
+# Otros modelos: gradient boosting, random walk, random forest, svr
 
 
 
