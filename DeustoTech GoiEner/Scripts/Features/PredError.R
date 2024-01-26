@@ -113,8 +113,7 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 
 # Carga fichero con todas las features
 
-feats <- read.csv("featuresPrediccionesProvisional.csv")
-colnames(feats)
+feats <- read.csv("featuresPredicciones_2.csv.csv")
 
 
 # Estos son errores de los q1 y q3. De momento no los usamos
