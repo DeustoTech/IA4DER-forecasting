@@ -18,7 +18,7 @@ foreach(lib = librerias) %do% {
 
 
 # Cargar ficheros y constantes
-#setwd('C:/GIT HUB ANE/IA4DER-forecasting/DeustoTech GoiEner')
+setwd('C:/GIT HUB ANE/IA4DER-forecasting/DeustoTech GoiEner')
 
 folder <- "TransformersV2/"
 # Lista de archivos CSV en la carpeta extraída
@@ -117,6 +117,7 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 feats <- read.csv("featuresPredicciones_2.csv")
 
 summary(feats)
+colnames(feats)
 
 # Estos son errores de los q1 y q3. De momento no los usamos
 
@@ -207,6 +208,7 @@ testSet <- media[-trainIndex, ] %>% select(-ID)
 testSet$log_mapeMedia_mediana <- log(testSet$mapeMedia_mediana + 1)
 resultados <- data.frame(ID = media$ID[testIndex], Real = testSet$mapeMedia_mediana)
 # Realizar predicciones en el conjunto de prueba
+
 # S1
 
 predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
@@ -229,23 +231,107 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
 
 
 
+#pca de feats
+featsPCA <- feats %>% select(- c("ID", "municipality", "LENGTH", "ZERO", "IMPUTED"))
+
+best_model <- c('Media' = 0, 'Naive' = 1, 'Arima' = 2, 'NN' = 3, 'ETS' = 4)
+contracted_tariff <- c("2.0TD" = 0, "3.0TD" = 1, "6.1TD" = 2, "6.2TD" = 3)
+self_consumption_type <- c("00" = 0, "0" = 1, "41" = 2, "42" = 3, "43" = 4, "2B" = 5)
+featsPCA$best_model <- match(featsPCA$best_model, names(best_model))
+featsPCA$contracted_tariff <- match(featsPCA$contracted_tariff, names(contracted_tariff))
+featsPCA$self_consumption_type <- match(featsPCA$self_consumption_type, names(self_consumption_type))
+
+featsPCA <- impute(featsPCA, "mean")
+featsPCA <- scale(featsPCA)
+pca_result <- prcomp(featsPCA)
+summary(pca_result)
+
+#install.packages("factoextra")
+library(factoextra)
+fviz_eig(pca_result, addlabels = TRUE)
+
+
+# Seleccionar las columnas correspondientes a los primeros dos componentes principales
+columnas_pca <- c("PC1", "PC2")  # Asegúrate de usar los nombres correctos de los componentes principales
+featsPCA <- as.data.frame(predict(pca_result, featsPCA)[, columnas_pca])
+
+# Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
+datos_pca <- cbind(featsPCA, mapeMedia_mediana = feats$mapeMedia_mediana)
+
+set.seed(0)
+index <- sample(1:nrow(datos_pca), 0.75 * nrow(datos_pca))
+trainset <- datos_pca[index, ]
+testset <- datos_pca[-index, ]
+
+modelo <- lm(mapeMedia_mediana ~ ., data = trainset)
+predicciones_pca <- predict(modelo, newdata = testset)
+
+# Crear un nuevo conjunto de resultados solo para PCA
+resultados_pca <- data.frame(
+  ID = feats$ID[-index],
+  Real = testset$mapeMedia_mediana,
+  Predicted_PCA = rep(NA, length(feats$ID[-index])),  # Inicializar con NA
+  MAE_PCA = rep(NA, length(feats$ID[-index]))  # Inicializar con NA
+)
+
+# Asignar las predicciones PCA a las ubicaciones correspondientes
+resultados_pca$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
+resultados_pca$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$mapeMedia_mediana)
+
+
+fwrite(resultados_pca, file = "Resultados/PrediccionError/PredPCA.csv", col.names = TRUE, row.names = FALSE)
+
 
 
 #BOXPLOT DEL ERROR
-predMediaLM <- fread("../../Resultados/PrediccionError/PredMediaLM.csv")
+predMediaLM <- fread("Resultados/PrediccionError/PredMediaLM.csv")
+predMediaLM_PCA <- fread("Resultados/PrediccionError/PredPCA.csv")
 data_filtered <- predMediaLM[predMediaLM$MAE_S1 <= quantile(predMediaLM$MAE_S1, 0.75) &
                                predMediaLM$MAE_S2 <= quantile(predMediaLM$MAE_S2, 0.75) &
                                predMediaLM$MAE_S3 <= quantile(predMediaLM$MAE_S3, 0.75), ]
+data_filtered_pca <- predMediaLM_PCA[predMediaLM_PCA$MAE_PCA <= quantile(predMediaLM_PCA$MAE_PCA, 0.75, na.rm = T)]
 
 data_filtered <- data_filtered %>% select(MAE_S1, MAE_S2, MAE_S3)
+data_filtered_pca <- data_filtered_pca %>% select(MAE_PCA)
+
+data_filtered_all <- cbind(data_filtered, data_filtered_pca)
+
+boxplot(data_filtered_all, col = rainbow(ncol(data_filtered_all)))
 
 
-boxplot(data_filtered, col = rainbow(ncol(data_filtered)))
 
-
-
-
+# Función para realizar la regresión lineal y generar resultados
+regresion_lineal <- function(target_variable, s1_columns, s2_columns, s3_columns) {
+  set.seed(0)
+  index <- 0.75
   
+  columns_s1 <- append(s1_columns, target_variable)
+  columns_s2 <- append(s2_columns, target_variable)
+  columns_s3 <- append(s3_columns, target_variable)
+  
+  columns <- c("columns_s1", "columns_s2", "columns_s3")
+  for (col in columns) {
+    datos <- feats[col]
+    datos$ID <- feats$ID
+    datos <- datos %>% filter(!is.na(target_variable))
+    trainIndex <- sample(1:nrow(datos), index * nrow(datos))
+    testIndex <- setdiff(1:nrow(datos), trainIndex)
+    
+    trainSet <- datos[trainIndex, ] %>% select(-ID)
+    log_variable <- paste("log", target_variable, sep = "_")
+    trainSet$paste("log", variable, sep = "_") <- log(trainSet$target_variable +1)
+    
+    datosLM_log <- lm()
+  }
+  
+  
+}
 
+# Lista de variables objetivo
+target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
+            "mapeETS_mediana", "mapeNN_mediana")
 
-
+# Aplicar la función para cada variable objetivo y selección de columnas
+for (variable in target) {
+  regresion_lineal(variable, s1, s2, s3)
+}
