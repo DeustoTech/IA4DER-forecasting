@@ -18,6 +18,7 @@ foreach(lib = librerias) %do% {
 
 
 # Cargar ficheros y constantes
+#setwd('C:/GIT HUB ANE/IA4DER-forecasting/DeustoTech GoiEner')
 
 folder <- "TransformersV2/"
 # Lista de archivos CSV en la carpeta extraída
@@ -113,8 +114,9 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 
 # Carga fichero con todas las features
 
-feats <- read.csv("featuresPredicciones_2.csv.csv")
+feats <- read.csv("featuresPredicciones_2.csv")
 
+summary(feats)
 
 # Estos son errores de los q1 y q3. De momento no los usamos
 
@@ -178,6 +180,8 @@ s2 <- c("AVG", "SD", "MIN", "Q1", "MEDIAN", "Q3", "MAX", "TOTAL", "VAR")
 s3 <- c("POT_1", "POT_2",  
         "MC25", "MC50", "MC80", "MC90", "MC95","P_T2.0_VALLE", "P_T2.0_LLANO",
         "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO")
+
+
 # Regresion lineal 
 # Para evitar predicciones negativas (el error no puede ser negativo)
 # usamos logaritmo y luego lo "deshacemos" 
@@ -227,6 +231,21 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
 
 
 
+#BOXPLOT DEL ERROR
+predMediaLM <- fread("../../Resultados/PrediccionError/PredMediaLM.csv")
+data_filtered <- predMediaLM[predMediaLM$MAE_S1 <= quantile(predMediaLM$MAE_S1, 0.75) &
+                               predMediaLM$MAE_S2 <= quantile(predMediaLM$MAE_S2, 0.75) &
+                               predMediaLM$MAE_S3 <= quantile(predMediaLM$MAE_S3, 0.75), ]
+
+data_filtered <- data_filtered %>% select(MAE_S1, MAE_S2, MAE_S3)
+
+
+boxplot(data_filtered, col = rainbow(ncol(data_filtered)))
+
+
+
+
+  
 
 
 
