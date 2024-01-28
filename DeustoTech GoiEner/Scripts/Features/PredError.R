@@ -183,6 +183,11 @@ s3 <- c("POT_1", "POT_2",
         "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO")
 
 
+columns <- list(s1, s2, s3)
+for (col in columns) {
+  
+}
+
 # Regresion lineal 
 # Para evitar predicciones negativas (el error no puede ser negativo)
 # usamos logaritmo y luego lo "deshacemos" 
@@ -252,7 +257,7 @@ fviz_eig(pca_result, addlabels = TRUE)
 
 
 # Seleccionar las columnas correspondientes a los primeros dos componentes principales
-columnas_pca <- c("PC1", "PC2")  # Asegúrate de usar los nombres correctos de los componentes principales
+columnas_pca <- c("PC1", "PC2") 
 featsPCA <- as.data.frame(predict(pca_result, featsPCA)[, columnas_pca])
 
 # Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
@@ -263,8 +268,9 @@ index <- sample(1:nrow(datos_pca), 0.75 * nrow(datos_pca))
 trainset <- datos_pca[index, ]
 testset <- datos_pca[-index, ]
 
-modelo <- lm(mapeMedia_mediana ~ ., data = trainset)
-predicciones_pca <- predict(modelo, newdata = testset)
+modelo_pca <- lm([[target_variable]] ~ ., data = trainset_pca)
+predicciones_pca <- predict(modelo_pca, newdata = testset_pca)
+
 
 # Crear un nuevo conjunto de resultados solo para PCA
 resultados_pca <- data.frame(
@@ -275,8 +281,8 @@ resultados_pca <- data.frame(
 )
 
 # Asignar las predicciones PCA a las ubicaciones correspondientes
-resultados_pca$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
-resultados_pca$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$mapeMedia_mediana)
+resultados$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
+resultados$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$mapeMedia_mediana)
 
 
 fwrite(resultados_pca, file = "Resultados/PrediccionError/PredPCA.csv", col.names = TRUE, row.names = FALSE)
@@ -299,9 +305,11 @@ data_filtered_all <- cbind(data_filtered, data_filtered_pca)
 boxplot(data_filtered_all, col = rainbow(ncol(data_filtered_all)))
 
 
-
 # Función para realizar la regresión lineal y generar resultados
 regresion_lineal <- function(target_variable, s1_columns, s2_columns, s3_columns) {
+  
+  modelo <- gsub("^mape|_mediana$", "", target_variable)
+  
   set.seed(0)
   index <- 0.75
   
@@ -309,22 +317,50 @@ regresion_lineal <- function(target_variable, s1_columns, s2_columns, s3_columns
   columns_s2 <- append(s2_columns, target_variable)
   columns_s3 <- append(s3_columns, target_variable)
   
-  columns <- c("columns_s1", "columns_s2", "columns_s3")
-  for (col in columns) {
+  columns <- list(columns_s1, columns_s2, columns_s3)
+  results_list <- list()
+  
+  for (i in seq_along(columns)) {
+    
+    col <- columns[[i]]
+    col_name <- paste("s", i, sep = "")
+    
     datos <- feats[col]
     datos$ID <- feats$ID
-    datos <- datos %>% filter(!is.na(target_variable))
+    datos <- datos %>% filter(!is.na(!!sym(target_variable)))
+    
     trainIndex <- sample(1:nrow(datos), index * nrow(datos))
     testIndex <- setdiff(1:nrow(datos), trainIndex)
     
     trainSet <- datos[trainIndex, ] %>% select(-ID)
     log_variable <- paste("log", target_variable, sep = "_")
-    trainSet$paste("log", variable, sep = "_") <- log(trainSet$target_variable +1)
+    trainSet[[log_variable]] <- log(trainSet[[target_variable]] +1)
     
-    datosLM_log <- lm()
+    lm_formula <- as.formula(paste(log_variable, "~ . - ", target_variable))
+    datosLM_log <- lm(lm_formula, data = trainSet)
+    
+    testSet <- datos[-trainIndex, ] %>% select(-ID)
+    testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
+    
+    predicciones_log <- exp(predict(datosLM_log, newdata = testSet)) - 1
+    
+    namePred <- paste("Predicted", modelo, col_name, sep = "_")
+    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+    
+    results_list[[namePred]] <- predicciones_log
+    results_list[[nameMAE]] <- abs(testSet[[target_variable]] - predicciones_log)
   }
   
+  resultados <- data.frame(
+    ID = datos$ID[testIndex],
+    Real = testSet[[target_variable]],
+    results_list
+  )
   
+  # Escribir el CSV final
+  fwrite(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, ".csv", sep = ""))
+  
+  return(resultados)
 }
 
 # Lista de variables objetivo
@@ -334,4 +370,96 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
 # Aplicar la función para cada variable objetivo y selección de columnas
 for (variable in target) {
   regresion_lineal(variable, s1, s2, s3)
+}
+
+
+
+# Instalar paquetes si no están instalados
+if (!requireNamespace("randomForest", quietly = TRUE)) {
+  install.packages("randomForest")
+}
+
+if (!requireNamespace("gbm", quietly = TRUE)) {
+  install.packages("gbm")
+}
+
+library(randomForest)
+library(gbm)
+
+# Función para realizar regresión y generar resultados
+regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns) {
+  
+  modelo <- gsub("^mape|_mediana$", "", target_variable)
+  
+  set.seed(0)
+  index <- 0.75
+  
+  columns_s1 <- append(s1_columns, target_variable)
+  columns_s2 <- append(s2_columns, target_variable)
+  columns_s3 <- append(s3_columns, target_variable)
+  
+  columns <- list(columns_s1, columns_s2, columns_s3)
+  results_list <- list()
+  
+  for (i in seq_along(columns)) {
+    
+    col <- columns[[i]]
+    col_name <- paste("s", i, sep = "")
+    
+    datos <- feats[col]
+    datos$ID <- feats$ID
+    datos <- datos %>% filter(!is.na(!!sym(target_variable)))
+    
+    trainIndex <- sample(1:nrow(datos), index * nrow(datos))
+    testIndex <- setdiff(1:nrow(datos), trainIndex)
+    
+    trainSet <- datos[trainIndex, ] %>% select(-ID)
+    log_variable <- paste("log", target_variable, sep = "_")
+    trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
+    
+    if (model_type == "lm") {
+      # Regresión Lineal
+      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+      predicciones_log <- exp(predict(model, newdata = trainSet)) - 1
+    } else if (model_type == "rf") {
+      # Random Forest
+      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+      predicciones_log <- exp(predict(model, newdata = trainSet)) - 1
+    } else if (model_type == "gbm") {
+      # Gradient Boosting
+      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+      predicciones_log <- exp(predict(model, newdata = trainSet, n.trees = 100)) - 1
+    }
+    
+    namePred <- paste("Predicted", modelo, col_name, sep = "_")
+    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+    
+    results_list[[namePred]] <- predicciones_log
+    results_list[[nameMAE]] <- abs(trainSet[[target_variable]] - predicciones_log)
+  }
+  
+  resultados <- data.frame(
+    ID = datos$ID[trainIndex],
+    Real = trainSet[[target_variable]],
+    results_list
+  )
+  
+  # Escribir el CSV final
+  fwrite(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, "_", model_type, ".csv", sep = ""))
+  
+  return(resultados)
+}
+
+# Lista de modelos
+modelos <- c("lm", "rf", "gbm")
+
+# Lista de variables objetivo
+target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
+            "mapeETS_mediana", "mapeNN_mediana")
+
+# Aplicar la función para cada modelo y variable objetivo con selección de columnas
+for (modelo in modelos) {
+  for (variable in target) {
+    regresion_model(modelo, variable, s1, s2, s3)
+  }
 }
