@@ -197,4 +197,44 @@ for (i in 1:nrow(combined)){
 fwrite(combined, file = "Resultados/CUPS/SummaryPredsNuevo.csv")
 
 
+# Combinar summaryPredsNuevo y features viejo
 
+summary <- read.csv("Resultados/CUPS/SummaryPredsNuevo.csv")
+viejo <- read.csv("featuresPredicciones.csv")
+
+
+# Asumiendo que las columnas de interés en summary se llaman así
+columnas_nuevas <- c("mapeSVM_mediana", "mapeSVM_q1", "mapeSVM_q3", "mapeEnsemble_mediana", "mapeEnsemble_q1", "mapeEnsemble_q3")
+
+# Asegúrate de que las filas coincidan (ajustando según tus necesidades)
+summary_filtrado <- summary[1:nrow(viejo), ]
+
+# Agrega las nuevas columnas a viejo
+viejo[columnas_nuevas] <- summary_filtrado[columnas_nuevas]
+
+# Ahora viejo tiene las nuevas columnas desde summary
+
+
+
+# Asumiendo que columnas_nuevas contiene los nombres de las columnas que quieres copiar
+columnas_nuevas <- c("mapeMedia_mediana", "mapeMedia_q1", "mapeMedia_q3",
+                     "mapeNaive_mediana", "mapeNaive_q1", "mapeNaive_q3",
+                     "mapeSN_mediana", "mapeSN_q1", "mapeSN_q3",
+                     "mapeArima_mediana", "mapeArima_q1", "mapeArima_q3",
+                     "mapeNN_mediana", "mapeNN_q1", "mapeNN_q3",
+                     "mapeETS_mediana", "mapeETS_q1", "mapeETS_q3",
+                     "mapeSVM_mediana", "mapeSVM_q1", "mapeSVM_q3",
+                     "mapeEnsemble_mediana", "mapeEnsemble_q1", "mapeEnsemble_q3")
+
+# Resto del código sigue siendo el mismo
+
+
+viejo_subconjunto <- viejo[1:nrow(summary), ]
+
+# Copiar los valores desde summary a viejo
+viejo_subconjunto[, columnas_nuevas] <- summary[, columnas_nuevas]
+
+# Actualizar las primeras nrow(summary) filas de viejo con el subconjunto modificado
+viejo[1:nrow(summary), ] <- viejo_subconjunto
+
+fwrite(viejo, file = "featuresPredicciones_2.csv")
