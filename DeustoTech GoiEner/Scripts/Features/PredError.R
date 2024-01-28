@@ -127,11 +127,11 @@ colnames(feats)
 
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
-# target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-#             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", mapeEnsemble_mediana)
+target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
+            "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
 
-target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-            "mapeETS_mediana", "mapeNN_mediana")
+# target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
+#             "mapeETS_mediana", "mapeNN_mediana")
 
 
 
@@ -366,9 +366,10 @@ regresion_lineal <- function(target_variable, s1_columns, s2_columns, s3_columns
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
             "mapeETS_mediana", "mapeNN_mediana")
+target2 <- c("mapeSVM_mediana", "mapeEnsemble_mediana")
 
 # Aplicar la función para cada variable objetivo y selección de columnas
-for (variable in target) {
+for (variable in target2) {
   regresion_lineal(variable, s1, s2, s3)
 }
 
