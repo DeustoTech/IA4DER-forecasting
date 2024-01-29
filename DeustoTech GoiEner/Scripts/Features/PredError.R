@@ -534,9 +534,6 @@ unique(feats$best_model)
 library(randomForest)
 library(gbm)
 
-library(randomForest)
-library(gbm)
-
 clasificacion_model <- function(model_type) {
   
   set.seed(0)
@@ -544,8 +541,8 @@ clasificacion_model <- function(model_type) {
   
   # Crear un nuevo conjunto de datos con las variables predictoras y la variable objetivo
   datos_clasificacion <- feats
-  datos_clasificacion <- na.omit(datos_clasificacion)  
-  print(datos_clasificacion)
+  datos_clasificacion <- impute(datos_clasificacion, "mean")
+  
   set.seed(0)
   index <- sample(1:nrow(datos_clasificacion), index * nrow(datos_clasificacion))
   trainset <- datos_clasificacion[index, ]
