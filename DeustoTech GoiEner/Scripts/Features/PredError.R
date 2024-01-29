@@ -415,10 +415,13 @@ for (modelo in modelos) {
 
 #pca de feats
 feats <- read.csv("features.csv")
+
 featsPCA <- feats %>% select(- c("ID", "municipality", "LENGTH", "ZERO", "IMPUTED"))
 
+best_model <- c('Media' = 0, 'Naive' = 1, 'Arima' = 2, 'NN' = 3, 'ETS' = 4)
 contracted_tariff <- c("2.0TD" = 0, "3.0TD" = 1, "6.1TD" = 2, "6.2TD" = 3)
 self_consumption_type <- c("00" = 0, "0" = 1, "41" = 2, "42" = 3, "43" = 4, "2B" = 5)
+featsPCA$best_model <- match(featsPCA$best_model, names(best_model))
 featsPCA$contracted_tariff <- match(featsPCA$contracted_tariff, names(contracted_tariff))
 featsPCA$self_consumption_type <- match(featsPCA$self_consumption_type, names(self_consumption_type))
 
