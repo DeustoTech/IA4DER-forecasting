@@ -527,3 +527,60 @@ fwrite(resultados_pca, file = "Resultados/PrediccionError/PredPCA.csv", col.name
 
 
 
+unique(feats$best_model)
+
+
+
+library(randomForest)
+library(gbm)
+
+library(randomForest)
+library(gbm)
+
+clasificacion_model <- function(model_type) {
+  
+  set.seed(0)
+  index <- 0.75
+  
+  # Crear un nuevo conjunto de datos con las variables predictoras y la variable objetivo
+  datos_clasificacion <- feats
+  datos_clasificacion <- na.omit(datos_clasificacion)  
+  print(datos_clasificacion)
+  set.seed(0)
+  index <- sample(1:nrow(datos_clasificacion), index * nrow(datos_clasificacion))
+  trainset <- datos_clasificacion[index, ]
+  testset <- datos_clasificacion[-index, ]
+  
+  if (model_type == "rf") {
+    # Random Forest para clasificación
+    modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset)
+    predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
+  } else if (model_type == "gbm") {
+    # Gradient Boosting para clasificación
+    modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainset, distribution = "multinomial", n.trees = 100)
+    predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
+  }
+  
+  # Crear un nuevo conjunto de resultados
+  resultados_clasificacion <- data.frame(
+    ID = testset$ID,
+    Real = testset$best_model,
+    Predicted = predicciones_clasificacion,
+    Correct_Predictions = ifelse(predicciones_clasificacion == testset$best_model, 1, 0)
+  )
+  
+  # Escribir el CSV final
+  fwrite(resultados_clasificacion, file = paste("Resultados/PrediccionClasificacion/Clasif_", model_type, ".csv", sep = ""))
+  
+  return(resultados_clasificacion)
+}
+
+# Definir modelos
+modelos_clasificacion <- c("rf", "gbm")
+
+# Aplicar la función para clasificación y la variable objetivo "best_model"
+for (modelo_clasificacion in modelos_clasificacion) {
+  clasificacion_model(modelo_clasificacion)
+}
+
+
