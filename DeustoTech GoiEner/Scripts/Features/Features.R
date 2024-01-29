@@ -324,6 +324,31 @@ B <- read.csv("featuresPredicciones.csv")
 colnames(B)
 head(B)
 
+
+# BEST MODEL
+
+a <- read.csv("featuresPredicciones_2.csv") 
+model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "NN", "SVM", "Ensemble")
+for (i in 1:nrow(a)) {
+  min_index <- which.min(c(a$mapeMedia_mediana[i],
+                           a$mapeNaive_mediana[i],
+                           a$mapeSN_mediana[i],
+                           a$mapeArima_mediana[i],
+                           a$mapeETS_mediana[i],
+                           a$mapeNN_mediana[i],
+                           a$mapeSVM_mediana[i],
+                           a$mapeEnsemble_mediana[i]))
+  if (length(min_index) == 0) {
+    a$best_model[i] <- NA
+  } else {
+    a$best_model[i] <- model_names[min_index]
+  }
+}
+
+
+
+
+
 boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
         B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO,outline=F )
 
@@ -897,5 +922,7 @@ aux <- data.frame(
 )
 
 aux <- cbind(aux, features_semana, features_fin_de_semana)
+
+
 
 
