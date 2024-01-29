@@ -183,10 +183,6 @@ s3 <- c("POT_1", "POT_2",
         "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO")
 
 
-columns <- list(s1, s2, s3)
-for (col in columns) {
-  
-}
 
 # Regresion lineal 
 # Para evitar predicciones negativas (el error no puede ser negativo)
@@ -234,58 +230,6 @@ resultados$MAE_S3 <- abs(resultados$Real - resultados$Predicted_S3)
 
 fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.names = T, row.names = F)
 
-
-
-#pca de feats
-featsPCA <- feats %>% select(- c("ID", "municipality", "LENGTH", "ZERO", "IMPUTED"))
-
-best_model <- c('Media' = 0, 'Naive' = 1, 'Arima' = 2, 'NN' = 3, 'ETS' = 4)
-contracted_tariff <- c("2.0TD" = 0, "3.0TD" = 1, "6.1TD" = 2, "6.2TD" = 3)
-self_consumption_type <- c("00" = 0, "0" = 1, "41" = 2, "42" = 3, "43" = 4, "2B" = 5)
-featsPCA$best_model <- match(featsPCA$best_model, names(best_model))
-featsPCA$contracted_tariff <- match(featsPCA$contracted_tariff, names(contracted_tariff))
-featsPCA$self_consumption_type <- match(featsPCA$self_consumption_type, names(self_consumption_type))
-
-featsPCA <- impute(featsPCA, "mean")
-featsPCA <- scale(featsPCA)
-pca_result <- prcomp(featsPCA)
-summary(pca_result)
-
-#install.packages("factoextra")
-library(factoextra)
-fviz_eig(pca_result, addlabels = TRUE)
-
-
-# Seleccionar las columnas correspondientes a los primeros dos componentes principales
-columnas_pca <- c("PC1", "PC2") 
-featsPCA <- as.data.frame(predict(pca_result, featsPCA)[, columnas_pca])
-
-# Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
-datos_pca <- cbind(featsPCA, mapeMedia_mediana = feats$mapeMedia_mediana)
-
-set.seed(0)
-index <- sample(1:nrow(datos_pca), 0.75 * nrow(datos_pca))
-trainset <- datos_pca[index, ]
-testset <- datos_pca[-index, ]
-
-modelo_pca <- lm([[target_variable]] ~ ., data = trainset_pca)
-predicciones_pca <- predict(modelo_pca, newdata = testset_pca)
-
-
-# Crear un nuevo conjunto de resultados solo para PCA
-resultados_pca <- data.frame(
-  ID = feats$ID[-index],
-  Real = testset$mapeMedia_mediana,
-  Predicted_PCA = rep(NA, length(feats$ID[-index])),  # Inicializar con NA
-  MAE_PCA = rep(NA, length(feats$ID[-index]))  # Inicializar con NA
-)
-
-# Asignar las predicciones PCA a las ubicaciones correspondientes
-resultados$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
-resultados$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$mapeMedia_mediana)
-
-
-fwrite(resultados_pca, file = "Resultados/PrediccionError/PredPCA.csv", col.names = TRUE, row.names = FALSE)
 
 
 
@@ -464,3 +408,60 @@ for (modelo in modelos) {
     regresion_model(modelo, variable, s1, s2, s3)
   }
 }
+
+
+#### PCA ####
+
+
+#pca de feats
+feats <- read.csv("features.csv")
+featsPCA <- feats %>% select(- c("ID", "municipality", "LENGTH", "ZERO", "IMPUTED"))
+
+contracted_tariff <- c("2.0TD" = 0, "3.0TD" = 1, "6.1TD" = 2, "6.2TD" = 3)
+self_consumption_type <- c("00" = 0, "0" = 1, "41" = 2, "42" = 3, "43" = 4, "2B" = 5)
+featsPCA$contracted_tariff <- match(featsPCA$contracted_tariff, names(contracted_tariff))
+featsPCA$self_consumption_type <- match(featsPCA$self_consumption_type, names(self_consumption_type))
+
+featsPCA <- impute(featsPCA, "mean")
+featsPCA <- scale(featsPCA)
+pca_result <- prcomp(featsPCA)
+summary(pca_result)
+
+#install.packages("factoextra")
+library(factoextra)
+fviz_eig(pca_result, addlabels = TRUE)
+
+
+# Seleccionar las columnas correspondientes a los primeros dos componentes principales
+columnas_pca <- c("PC1", "PC2") 
+featsPCA <- as.data.frame(predict(pca_result, featsPCA)[, columnas_pca])
+
+# Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
+datos_pca <- cbind(featsPCA, mapeMedia_mediana = feats$mapeMedia_mediana)
+
+set.seed(0)
+index <- sample(1:nrow(datos_pca), 0.75 * nrow(datos_pca))
+trainset <- datos_pca[index, ]
+testset <- datos_pca[-index, ]
+
+modelo_pca <- lm([[target_variable]] ~ ., data = trainset_pca)
+predicciones_pca <- predict(modelo_pca, newdata = testset_pca)
+
+
+# Crear un nuevo conjunto de resultados solo para PCA
+resultados_pca <- data.frame(
+  ID = feats$ID[-index],
+  Real = testset$mapeMedia_mediana,
+  Predicted_PCA = rep(NA, length(feats$ID[-index])),  # Inicializar con NA
+  MAE_PCA = rep(NA, length(feats$ID[-index]))  # Inicializar con NA
+)
+
+# Asignar las predicciones PCA a las ubicaciones correspondientes
+resultados$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
+resultados$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$mapeMedia_mediana)
+
+
+fwrite(resultados_pca, file = "Resultados/PrediccionError/PredPCA.csv", col.names = TRUE, row.names = FALSE)
+
+
+
