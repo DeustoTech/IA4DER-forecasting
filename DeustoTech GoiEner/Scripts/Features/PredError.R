@@ -400,7 +400,7 @@ modelos <- c("lm", "rf", "gbm")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-            "mapeETS_mediana", "mapeNN_mediana")
+            "mapeETS_mediana", "mapeNN_mediana", "mapeSVM_mediana", "mapeEnsemble_mediana")
 
 # Aplicar la función para cada modelo y variable objetivo con selección de columnas
 for (modelo in modelos) {
@@ -413,8 +413,8 @@ for (modelo in modelos) {
 #### PCA ####
 
 
-#pca de feats
-feats <- read.csv("features.csv")
+#preparar datos para pca
+feats <- read.csv("featuresPredicciones_2.csv")
 
 featsPCA <- feats %>% select(- c("ID", "municipality", "LENGTH", "ZERO", "IMPUTED"))
 
@@ -430,14 +430,73 @@ featsPCA <- scale(featsPCA)
 pca_result <- prcomp(featsPCA)
 summary(pca_result)
 
-#install.packages("factoextra")
-library(factoextra)
-fviz_eig(pca_result, addlabels = TRUE)
+
+regresion_pca_model <- function(model_type, target_variable, pca_result) {
+  
+  modelo <- gsub("^mape|_mediana$", "", target_variable)
+  
+  set.seed(0)
+  index <- 0.75
+  
+  # Seleccionar las columnas correspondientes a los primeros dos componentes principales
+  columnas_pca <- c("PC1", "PC2") 
+  featsPCA <- as.data.frame(predict(pca_result, newdata = featsPCA)[, columnas_pca])
+  
+  # Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
+  datos_pca <- cbind(featsPCA, new_variable = feats[[target_variable]])
+  
+  set.seed(0)
+  index <- sample(1:nrow(datos_pca), 0.75 * nrow(datos_pca))
+  trainset <- datos_pca[index, ]
+  testset <- datos_pca[-index, ]
+  
+  
+  if (model_type == "lm") {
+    # Regresión Lineal
+    modelo_pca <- lm(new_variable ~ ., data = trainset)
+    predicciones_pca <- predict(modelo_pca, newdata = testset)
+  } else if (model_type == "rf") {
+    # Random Forest
+    modelo_pca <- randomForest(new_variable ~ ., data = trainset)
+    predicciones_pca <- predict(modelo_pca, newdata = testset)
+  } else if (model_type == "gbm") {
+    # Gradient Boosting
+    modelo_pca <- gbm(new_variable ~ ., data = trainset)
+    predicciones_pca <- predict(modelo_pca, newdata = testset, n.trees = 100)
+  }
+  
+  # Crear un nuevo conjunto de resultados solo para PCA
+  resultados_pca <- data.frame(
+    ID = feats$ID[-index],
+    Real = testset$new_variable,
+    Predicted_PCA = rep(NA, length(feats$ID[-index])),  # Inicializar con NA
+    MAE_PCA = rep(NA, length(feats$ID[-index]))  # Inicializar con NA
+  )
+  
+ 
+  # Asignar las predicciones PCA a las ubicaciones correspondientes
+  resultados_pca$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
+  resultados_pca$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$new_variable)
+  
+  # Escribir el CSV final
+  fwrite(resultados_pca, file = paste("Resultados/PrediccionError/PredPCA_", modelo, "_", model_type, ".csv", sep = ""))
+  
+  return(resultados_pca)
+}
+
+# Definir modelos
+modelos <- c("lm", "rf", "gbm")
+
+# Aplicar la función para cada modelo y variable objetivo
+for (modelo in modelos) {
+  for (variable in target) {
+    regresion_pca_model(modelo, variable, pca_result)
+  }
+}
 
 
-# Seleccionar las columnas correspondientes a los primeros dos componentes principales
-columnas_pca <- c("PC1", "PC2") 
-featsPCA <- as.data.frame(predict(pca_result, featsPCA)[, columnas_pca])
+
+
 
 # Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
 datos_pca <- cbind(featsPCA, mapeMedia_mediana = feats$mapeMedia_mediana)
