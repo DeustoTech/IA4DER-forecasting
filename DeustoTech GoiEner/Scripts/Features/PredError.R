@@ -399,38 +399,13 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
       
     } else if (model_type == "nn"){
       # Neural Network
-      
-      # Inicializa variables para almacenar los modelos y errores
-      mejor_modelo <- NULL
-      mejor_error <- Inf
-      
-      # Bucle para probar diferentes números de neuronas en la capa oculta
-      for (i in 3:7) {
-        # Entrenar el modelo
-        model <- neuralnet(
+      model <- neuralnet(
           as.formula(paste(log_variable, "~ . - ", target_variable)),
           data = trainSet,
-          hidden = i
+          hidden = 5
         )
-        
-        pred <- compute(model, trainset)
-        log_pred <- exp(pred$net.result) -1
-        
-        
-        # Calcular el error de entrenamiento
-        error_entrenamiento <- sum((log_pred - trainSet[[target_variable]])^2)
-        
-        # Actualizar el mejor modelo si el error es menor
-        if (error_entrenamiento < mejor_error) {
-          mejor_modelo <- model
-          mejor_error <- error_entrenamiento
-        }
-      }
-      
-      # Realizar predicciones con el mejor modelo
-      pred_mejor <- compute(mejor_modelo, testSet)
-      log_mejor <- pred_mejor$net.result
-      predicciones_log <- exp(log_mejor) - 1
+      pred <- compute(model, testSet)
+      predicciones_log <- exp(pred$net.result) - 1
       
       
     }
@@ -438,9 +413,21 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     namePred <- paste("Predicted", modelo, col_name, sep = "_")
     nameMAPE <- paste("MAPE", modelo, col_name, sep = "_")
     
+    # Inicializa un vector para almacenar los MAPE individuales
+    mape_por_fila <- numeric()
+    
+    # Itera sobre las filas y calcula el MAPE para cada una
+    for (i in 1:nrow(testSet)) {
+      # Calcula el MAPE para la fila i
+      mape_por_fila[i] <- mape(testSet[i, target_variable], predicciones_log[i])
+    }
+    
+    # Almacena el vector de MAPE por fila en la lista de resultados
+    
+    
+    
     results_list[[namePred]] <- predicciones_log
-    results_list[[nameMAPE]] <- 100 * median(abs(trainSet[[target_variable]] - predicciones_log) / trainSet[[target_variable]])
-      
+    results_list[[nameMAPE]] <- mape_por_fila  
     
   }
   
@@ -546,7 +533,7 @@ regresion_pca_model <- function(model_type, target_variable, pca_result) {
 }
 }
 # Definir modelos
-modelos <- c("lm", "rf", "gbm", "svm", "nn")
+modelos <- c("nn")
 
 # Aplicar la función para cada modelo y variable objetivo
 for (modelo in modelos) {
