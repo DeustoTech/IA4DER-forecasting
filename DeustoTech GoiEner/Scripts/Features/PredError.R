@@ -402,7 +402,7 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
       model <- neuralnet(
           as.formula(paste(log_variable, "~ . - ", target_variable)),
           data = trainSet,
-          hidden = 5
+          hidden = 3
         )
       pred <- compute(model, testSet)
       predicciones_log <- exp(pred$net.result) - 1
@@ -411,23 +411,10 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     }
     
     namePred <- paste("Predicted", modelo, col_name, sep = "_")
-    nameMAPE <- paste("MAPE", modelo, col_name, sep = "_")
-    
-    # Inicializa un vector para almacenar los MAPE individuales
-    mape_por_fila <- numeric()
-    
-    # Itera sobre las filas y calcula el MAPE para cada una
-    for (i in 1:nrow(testSet)) {
-      # Calcula el MAPE para la fila i
-      mape_por_fila[i] <- mape(testSet[i, target_variable], predicciones_log[i])
-    }
-    
-    # Almacena el vector de MAPE por fila en la lista de resultados
-    
-    
+    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
     
     results_list[[namePred]] <- predicciones_log
-    results_list[[nameMAPE]] <- mape_por_fila  
+    results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
     
   }
   
