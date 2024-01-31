@@ -581,3 +581,4 @@ for (modelo_clasificacion in modelos_clasificacion) {
 }
 
 
+missing_values <- colSums(is.na(feats))
