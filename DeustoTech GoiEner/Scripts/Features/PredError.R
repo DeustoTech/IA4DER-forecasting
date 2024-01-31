@@ -115,9 +115,11 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 # Carga fichero con todas las features
 
 feats <- read.csv("featuresPredicciones_2.csv")
+feats_complete <- fread("feats-complete.csv")
 
-summary(feats)
-colnames(feats)
+summary(feats_complete)
+ncol(feats_complete)
+
 
 # Estos son errores de los q1 y q3. De momento no los usamos
 
@@ -633,4 +635,74 @@ modelos_clasificacion <- c("rf", "gbm")
 for (modelo_clasificacion in modelos_clasificacion) {
   clasificacion_model(modelo_clasificacion, s1, s2, s3)
 }
+
+
+
+library(randomForest)
+library(gbm)
+library(nnet)  # Necesario para la regresión logística
+
+clasificacion_model <- function(model_type, s1, s2, s3) {
+  
+  # seleccionamos solo las filas que tengan variable de respuesta (best model)
+  datos_clasificacion <- feats[which(!is.na(feats$best_model)), ]
+  set.seed(0)
+  index <- 0.75
+  target <- datos_clasificacion$best_model
+  
+  columns_s1 <- append(s1, "best_model")
+  columns_s2 <- append(s2, "best_model")
+  columns_s3 <- append(s3, "best_model")
+  
+  columns <- list(columns_s1, columns_s2, columns_s3)
+  results_list <- list()
+  
+  for (i in seq_along(columns)) {
+    
+    col <- columns[[i]]
+    col_name <- paste("s", i, sep = "")
+    datos <- datos_clasificacion[col]
+    datos$ID <- datos_clasificacion$ID
+    
+    trainIndex <- sample(1:nrow(datos), index * nrow(datos))
+    trainset <- datos[trainIndex, ] %>% select(-ID)
+    testset <- datos[-trainIndex, ] %>% select(-ID)
+    
+    if (model_type == "rf") {
+      # Random Forest para clasificación
+      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 750, replace = T)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
+    } else if (model_type == "gbm") {
+      # Gradient Boosting para clasificación
+      modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainset, distribution = "multinomial", n.trees = 100)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
+    } else if (model_type == "logistic") {
+      # Regresión Logística para clasificación
+      modelo_clasificacion <- multinom(best_model ~ ., data = trainset)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "probs")
+    }
+    
+    namePred <- paste("Predicted", model_type, col_name, sep = "_")
+    results_list[[namePred]] <- predicciones_clasificacion
+  }
+  
+  # Crear un nuevo conjunto de resultados
+  resultados_clasificacion <- data.frame(
+    ID = datos$ID[-trainIndex],
+    Real = testset$best_model,
+    results_list
+  )
+  
+  # Escribir el CSV final
+  fwrite(resultados_clasificacion, file = paste("Resultados/PrediccionClasificacion/Clasif_", model_type, ".csv", sep = ""))
+  
+  return(resultados_clasificacion)
+}
+
+# Definir modelos
+modelos_clasificacion <- c("rf", "gbm", "logistic")
+
+for (modelo_clasificacion in modelos_clasificacion) {
+  clasificacion_model(modelo_clasificacion, s1, s2, s3)
+}   
 
