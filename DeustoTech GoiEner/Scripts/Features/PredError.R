@@ -381,7 +381,7 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
       
     }
     
-    namePred <- paste("Predicted", modelo, col_name, sep = "_")
+    namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
     nameMAE <- paste("MAE", modelo, col_name, sep = "_")
     
     results_list[[namePred]] <- predicciones_log
@@ -541,10 +541,6 @@ unique(feats$best_model)
 }
 
 # CLASIFICACION
-
-
-library(randomForest)
-library(gbm)
 
 clasificacion_model <- function(model_type, s1, s2, s3) {
   

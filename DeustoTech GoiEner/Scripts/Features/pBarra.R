@@ -7,7 +7,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest") 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "purrr") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -27,32 +27,19 @@ model_files <- list(
   svm = list.files(folder, pattern = "_svm.csv$", recursive = TRUE, full.names = TRUE)
 )
 
-# Inicializar un dataframe vacío
-result_df <- data.frame()
+df_list <- c()
 
-# Iterar sobre cada modelo y sus archivos correspondientes
-for (model_name in names(model_files)) {
-  # Leer todos los archivos para un modelo y combinarlos
-  model_data <- lapply(model_files[[model_name]], read.csv)
+for (file in model_files){
+  for (i in 1:length(file)){
+  df <- read.csv(file[i])
+  df_list <- append(df_list, list(df))}
   
-  # Extraer el nombre del modelo
-  model_name_extracted <- gsub("_.*$", "", model_name)
-  
-  # Renombrar las columnas
-  for (i in 1:length(lm)){
-  new_col_names <- ifelse(names(model_data[[i]]) %in% c("ID", "Real"), names(model_data[[i]]), paste0(names(model_data[[i]]), "_", model_name_extracted))
-  names(model_data[[i]]) <- new_col_names
-  }
-  
-  # Añadir el dataframe al resultado final
-  result_df <- dplyr::bind_rows(result_df, model_data)
 }
-result_df <- result_df %>%
-  select(-starts_with("MAE"))
 
-# Verificar el resultado
-head(result_df)
-fwrite(result_df, "Resultados/PrediccionError/combinedPreds.csv")
+
+combined <- df_list %>% reduce(inner_join, by = "ID")
+
+
 }
 
 # Calcular p barra 
