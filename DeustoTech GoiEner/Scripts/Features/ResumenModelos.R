@@ -207,33 +207,42 @@ fwrite(combined, file = "Resultados/CUPS/SummaryPredsNuevo.csv")
 
 # Combinar summaryPredsNuevo y features viejo
 
-summary <- read.csv("Resultados/CUPS/SummaryPredsNuevo.csv")
+combined <- read.csv("Resultados/CUPS/SummaryPredsNuevo.csv")
 viejo <- read.csv("featuresPredicciones_2.csv")
 
+columnas_nuevas <- colnames(combined)
 
-# Asumiendo que las columnas de interés en summary se llaman así
-columnas_nuevas <- c("mapeSVM_mediana", "mapeSVM_q1", "mapeSVM_q3", "mapeEnsemble_mediana", "mapeEnsemble_q1", "mapeEnsemble_q3")
-
-# Asegúrate de que las filas coincidan (ajustando según tus necesidades)
-summary_filtrado <- summary[1:nrow(viejo), ]
 
 # Agrega las nuevas columnas a viejo
-viejo[columnas_nuevas] <- summary_filtrado[columnas_nuevas]
+viejo[1:nrow(combined), columnas_nuevas] <- combined[, columnas_nuevas]
 
-# Ahora viejo tiene las nuevas columnas desde summary
-
-summary <- read.csv("Resultados/CUPS/SummaryPredsNuevo.csv")
-viejo <- read.csv("featuresPredicciones_2.csv")
 
 # Definir las columnas a reemplazar
-columnas_nuevas <- c("mapeMedia_mediana", "mapeMedia_q1", "mapeMedia_q3",
-                     "mapeNaive_mediana", "mapeNaive_q1", "mapeNaive_q3",
-                     "mapeSN_mediana", "mapeSN_q1", "mapeSN_q3",
-                     "mapeArima_mediana", "mapeArima_q1", "mapeArima_q3",
-                     "mapeNN_mediana", "mapeNN_q1", "mapeNN_q3",
-                     "mapeETS_mediana", "mapeETS_q1", "mapeETS_q3",
-                     "mapeSVM_mediana", "mapeSVM_q1", "mapeSVM_q3",
-                     "mapeEnsemble_mediana", "mapeEnsemble_q1", "mapeEnsemble_q3")
+
 
 
 fwrite(viejo, file = "featuresPredicciones_2.csv")
+
+
+
+model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "NN", "SVM", "Ensemble")
+for (i in 1:nrow(viejo)) {
+  min_index <- which.min(c(viejo$mapeMedia_mediana[i],
+                           viejo$mapeNaive_mediana[i],
+                           viejo$mapeSN_mediana[i],
+                           viejo$mapeArima_mediana[i],
+                           viejo$mapeETS_mediana[i],
+                           viejo$mapeNN_mediana[i],
+                           viejo$mapeSVM_mediana[i],
+                           viejo$mapeEnsemble_mediana[i]))
+  if (length(min_index) == 0) {
+    viejo$best_model2[i] <- NA
+  } else {
+    viejo$best_model2[i] <- model_names[min_index]
+  }
+}
+
+
+
+
+
