@@ -329,19 +329,19 @@ head(B)
 
 a <- read.csv("featuresPredicciones_2.csv") 
 model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "NN", "SVM", "Ensemble")
-for (i in 1:nrow(a)) {
-  min_index <- which.min(c(a$mapeMedia_mediana[i],
-                           a$mapeNaive_mediana[i],
-                           a$mapeSN_mediana[i],
-                           a$mapeArima_mediana[i],
-                           a$mapeETS_mediana[i],
-                           a$mapeNN_mediana[i],
-                           a$mapeSVM_mediana[i],
-                           a$mapeEnsemble_mediana[i]))
+for (i in 1:nrow(combined)) {
+  min_index <- which.min(c(combined$mapeMedia_mediana[i],
+                           combined$mapeNaive_mediana[i],
+                           combined$mapeSN_mediana[i],
+                           combined$mapeArima_mediana[i],
+                           combined$mapeETS_mediana[i],
+                           combined$mapeNN_mediana[i],
+                           combined$mapeSVM_mediana[i],
+                           combined$mapeEnsemble_mediana[i]))
   if (length(min_index) == 0) {
-    a$best_model[i] <- NA
+    combined$best_model[i] <- NA
   } else {
-    a$best_model[i] <- model_names[min_index]
+    combined$best_model[i] <- model_names[min_index]
   }
 }
 
