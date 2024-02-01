@@ -115,10 +115,21 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 # Carga fichero con todas las features
 
 feats <- read.csv("featuresPredicciones_2.csv")
+feats3 <- read.csv("featuresPredicciones_3.csv")
 feats_complete <- fread("feats-complete.csv")
 
-summary(feats_complete)
-ncol(feats_complete)
+#columnas cuestionario
+cols_cuest <- feats_complete %>% select(matches("^Q\\d"))
+colnames(cols_cuest)
+
+#descripcion socieconomica
+
+#descripcion del edificio
+
+#las costumbres de la gente
+
+
+
 
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
@@ -540,6 +551,10 @@ fwrite(resultados_pca, file = "Resultados/PrediccionError/PredPCA.csv", col.name
 unique(feats$best_model)
 }
 
+
+
+
+
 # CLASIFICACION
 
 clasificacion_model <- function(model_type, s1, s2, s3) {
@@ -674,4 +689,8 @@ modelos_clasificacion <- c("rf", "gbm", "logistic")
 for (modelo_clasificacion in modelos_clasificacion) {
   clasificacion_model(modelo_clasificacion, s1, s2, s3)
 }   
+
+
+
+
 
