@@ -139,11 +139,17 @@ summaryNN <- fread("Resultados/CUPS/SummaryNN.csv")
 summaryETS <- fread("Resultados/CUPS/SummaryETS.csv")
 summarySVM <- fread("Resultados/CUPS/SummarySVM.csv")
 
-c("mapeMedia_mediana","mapeNaive_mediana","mapeSN_mediana",
+mapes <- c("mapeMedia_mediana","mapeNaive_mediana","mapeSN_mediana",
 "mapeArima_mediana","mapeETS_mediana","mapeSVM_mediana","mapeNN_mediana",
 "mapeEnsemble_mediana","mapeMedia_q1","mapeNaive_q1","mapeSN_q1","mapeArima_q1","mapeETS_q1",
 "mapeSVM_q1","mapeNN_q1","mapeEnsemble_q1","mapeMedia_q3","mapeNaive_q3","mapeSN_q3","mapeArima_q3",
 "mapeETS_q3","mapeSVM_q3","mapeNN_q3","mapeEnsemble_q3")
+
+mapes2 <- c("mapeMedia_mediana","mapeNaive_mediana","mapeSN_mediana",
+           "mapeArima_mediana","mapeETS_mediana","mapeSVM_mediana","mapeNN_mediana",
+           "mapeMedia_q1","mapeNaive_q1","mapeSN_q1","mapeArima_q1","mapeETS_q1",
+           "mapeSVM_q1","mapeNN_q1","mapeMedia_q3","mapeNaive_q3","mapeSN_q3","mapeArima_q3",
+           "mapeETS_q3","mapeSVM_q3","mapeNN_q3")
 
 
 
@@ -153,6 +159,8 @@ df_list <- list(
 )
 
 combined <- df_list %>% reduce(inner_join, by = "ID")
+
+combined <- combined %>% select(ID, all_of(mapes2))
 
 colnames(combined)[colnames(combined) == "mapeETS_q3.y"] <- "mapeETS_q3"
 
@@ -200,7 +208,7 @@ fwrite(combined, file = "Resultados/CUPS/SummaryPredsNuevo.csv")
 # Combinar summaryPredsNuevo y features viejo
 
 summary <- read.csv("Resultados/CUPS/SummaryPredsNuevo.csv")
-viejo <- read.csv("featuresPredicciones.csv")
+viejo <- read.csv("featuresPredicciones_2.csv")
 
 
 # Asumiendo que las columnas de interés en summary se llaman así
@@ -214,9 +222,10 @@ viejo[columnas_nuevas] <- summary_filtrado[columnas_nuevas]
 
 # Ahora viejo tiene las nuevas columnas desde summary
 
+summary <- read.csv("Resultados/CUPS/SummaryPredsNuevo.csv")
+viejo <- read.csv("featuresPredicciones_2.csv")
 
-
-# Asumiendo que columnas_nuevas contiene los nombres de las columnas que quieres copiar
+# Definir las columnas a reemplazar
 columnas_nuevas <- c("mapeMedia_mediana", "mapeMedia_q1", "mapeMedia_q3",
                      "mapeNaive_mediana", "mapeNaive_q1", "mapeNaive_q3",
                      "mapeSN_mediana", "mapeSN_q1", "mapeSN_q3",
@@ -226,15 +235,5 @@ columnas_nuevas <- c("mapeMedia_mediana", "mapeMedia_q1", "mapeMedia_q3",
                      "mapeSVM_mediana", "mapeSVM_q1", "mapeSVM_q3",
                      "mapeEnsemble_mediana", "mapeEnsemble_q1", "mapeEnsemble_q3")
 
-# Resto del código sigue siendo el mismo
-
-
-viejo_subconjunto <- viejo[1:nrow(summary), ]
-
-# Copiar los valores desde summary a viejo
-viejo_subconjunto[, columnas_nuevas] <- summary[, columnas_nuevas]
-
-# Actualizar las primeras nrow(summary) filas de viejo con el subconjunto modificado
-viejo[1:nrow(summary), ] <- viejo_subconjunto
 
 fwrite(viejo, file = "featuresPredicciones_2.csv")

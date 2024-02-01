@@ -26,7 +26,7 @@ csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F
 metadata_file <- fread("metadata.csv")
 
 # csv_files <- csv_files[201:length(csv_files)]
-
+{
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
@@ -108,7 +108,7 @@ CG_p3 <- 36.115695
 L_p1 <- 0.204321
 L_p2 <- 0.200549
 L_p3 <- 0.185471
-
+}
 model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensemble")
 
 
@@ -121,20 +121,9 @@ summary(feats_complete)
 ncol(feats_complete)
 
 
-# Estos son errores de los q1 y q3. De momento no los usamos
-
-# "mapeMedia_q1", "mapeNaive_q1", "mapeSN_q1", "mapeArima_q1", "mapeETS_q1",
-#   "mapeSVM_q1", "mapeNN_q1", "mapeEnsemble_q1", "mapeMedia_q3", "mapeNaive_q3", "mapeSN_q3", "mapeArima_q3",
-#   "mapeETS_q3", "mapeSVM_q3", "mapeNN_q3", "mapeEnsemble_q3", 
-
-
 # Target: columna que vamos a predecir: error mediano de cada modelo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
-
-# target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-#             "mapeETS_mediana", "mapeNN_mediana")
-
 
 
 allFeatures <- c( # Lista de todas las columnas
@@ -186,7 +175,8 @@ s3 <- c("POT_1", "POT_2",
 
 
 
-# Regresion lineal 
+# Regresion lineal pruebas 
+{
 # Para evitar predicciones negativas (el error no puede ser negativo)
 # usamos logaritmo y luego lo "deshacemos" 
 set.seed(0)
@@ -246,10 +236,11 @@ resultados$MAE_S3 <- abs(resultados$Real - resultados$Predicted_S3)
 
 fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.names = T, row.names = F)
 
-
+}
 
 
 #BOXPLOT DEL ERROR
+{
 predMediaLM <- fread("Resultados/PrediccionError/PredMediaLM.csv")
 predMediaLM_PCA <- fread("Resultados/PrediccionError/PredPCA.csv")
 data_filtered <- predMediaLM[predMediaLM$MAE_S1 <= quantile(predMediaLM$MAE_S1, 0.75) &
@@ -263,7 +254,7 @@ data_filtered_pca <- data_filtered_pca %>% select(MAE_PCA)
 data_filtered_all <- cbind(data_filtered, data_filtered_pca)
 
 boxplot(data_filtered_all, col = rainbow(ncol(data_filtered_all)))
-
+}
 
 # Función para realizar la regresión lineal y generar resultados
 regresion_lineal <- function(target_variable, s1_columns, s2_columns, s3_columns) {
@@ -323,11 +314,6 @@ regresion_lineal <- function(target_variable, s1_columns, s2_columns, s3_columns
   return(resultados)
 }
 
-# Lista de variables objetivo
-target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-            "mapeETS_mediana", "mapeNN_mediana")
-target2 <- c("mapeSVM_mediana", "mapeEnsemble_mediana")
-
 # Aplicar la función para cada variable objetivo y selección de columnas
 for (variable in target2) {
   regresion_lineal(variable, s1, s2, s3)
@@ -335,25 +321,10 @@ for (variable in target2) {
 
 
 
-# Instalar paquetes si no están instalados
-if (!requireNamespace("randomForest", quietly = TRUE)) {
-  install.packages("randomForest")
-}
-
-if (!requireNamespace("gbm", quietly = TRUE)) {
-  install.packages("gbm")
-}
-
-library(randomForest)
-library(gbm)
-
 # Función para realizar regresión y generar resultados
-regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns) {
+regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, trainIndex) {
   
   modelo <- gsub("^mape|_mediana$", "", target_variable)
-  
-  set.seed(0)
-  index <- 0.75
   
   columns_s1 <- append(s1_columns, target_variable)
   columns_s2 <- append(s2_columns, target_variable)
@@ -371,8 +342,6 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     datos$ID <- feats$ID
     datos <- datos %>% filter(!is.na(!!sym(target_variable)))
     
-    trainIndex <- sample(1:nrow(datos), index * nrow(datos))
-
     trainSet <- datos[trainIndex, ] %>% select(-ID)
     log_variable <- paste("log", target_variable, sep = "_")
     trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
@@ -439,10 +408,14 @@ modelos <- c("lm", "rf", "gbm", "svm", "nn")
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
             "mapeETS_mediana", "mapeNN_mediana", "mapeSVM_mediana", "mapeEnsemble_mediana")
 
+set.seed(0)
+index <- 0.75
+trainIndex <- sample(1:214, index * 214) # 214 porque son las que no son NA
+
 # Aplicar la función para cada modelo y variable objetivo con selección de columnas
 for (modelo in modelos) {
   for (variable in target) {
-    regresion_model(modelo, variable, s1, s2, s3)
+    regresion_model(modelo, variable, s1, s2, s3, trainIndex)
   }
 }
 
