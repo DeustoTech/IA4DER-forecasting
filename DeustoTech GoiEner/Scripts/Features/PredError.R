@@ -116,20 +116,29 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 
 feats <- read.csv("featuresPredicciones_2.csv")
 feats3 <- read.csv("featuresPredicciones_3.csv")
-feats_complete <- fread("feats-complete.csv")
+feats_complete <- fread("feats-complete.csv") #los ID estan en la variable file
 
 #columnas cuestionario
 cols_cuest <- feats_complete %>% select(matches("^Q\\d"))
-colnames(cols_cuest)
+sum(is.na(cols_cuest[, Q1_1_X1...Cul.]))
+
 
 #descripcion socieconomica
-
+descSE <- c("Q6_2_X2...Es.la", "Q6_15_X15...Cu", "Q6_16_X16...Cu", "Q6_17_X17...Cu", 
+            "Q6_18_X18...Cu", "Q6_19_X19...Cu")
 #descripcion del edificio
+descEd <- c("Q3_1_X1..El.sum", "Q3_2_X2...Cul." , "Q6_1_X1...En.qu", "Q6_3_X3...Cul.", 
+            "Q6_4_X4...En.qu", "Q6_5_X5...Dispo", "Q6_6_X6...En.qu", "Q6_7_X7..Tamao")
 
 #las costumbres de la gente
-
-
-
+descCG <- c("Q1_1_X1...Cul.", "Q1_2_Aumentar.l", "Q1_3_X3...Qu.o", "Q1_4_X4...Cree.", 
+            "Q1_99_X.Han.afe", "Q1_7_X7...Han.a", "Q1_98_X8...Ha.b", "Q2_1_X1...Le.ha", 
+            "Q2_2_X2...Le.ha",  "Q2_3_X3...Le.ha", "Q2_4_X4...Desea", "Q3_99_X.Hay.alg", 
+            "Q3_98_X.Est.la" , "Q3_96_X.Cul.es", "Q4_1_X1..Elija.", "Q5_1_X1..Elija.", 
+            "Q6_8_X8...Cunt" , "Q6_9_X9...Cul.", "Q6_10_X10...Cu","Q6_11_X11...Cu", 
+            "Q6_12_X12...Cu", "Q6_13_X13...Cu", "Q6_14_X14..Nive", "Q6_20_X20...Cu", 
+            "Q6_21_X21...Has", "Q6_22_X22...Cm", "Q6_24_X24...Con",  "Q6_25_X25...Sab", 
+            "Q6_99_X.Conside", "Q6_27_X27...En.")
 
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
@@ -333,15 +342,19 @@ for (variable in target2) {
 
 
 # Función para realizar regresión y generar resultados
-regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, trainIndex) {
+regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, descSE_columns, descEd_columns, descCG_columns, trainIndex) {
   
   modelo <- gsub("^mape|_mediana$", "", target_variable)
   
   columns_s1 <- append(s1_columns, target_variable)
   columns_s2 <- append(s2_columns, target_variable)
   columns_s3 <- append(s3_columns, target_variable)
+  #columns_descSE <- append(descSE_columns, target_variable)
+  #columns_descEd <- append(descEd_columns, target_variable)
+  #columns_descCG <- append(descCG_columns, target_variable)
   
   columns <- list(columns_s1, columns_s2, columns_s3)
+  columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
   results_list <- list()
   
   for (i in seq_along(columns)) {
@@ -349,8 +362,8 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     col <- columns[[i]]
     col_name <- paste("s", i, sep = "")
     
-    datos <- feats[col]
-    datos$ID <- feats$ID
+    datos <- feats3[col]
+    datos$ID <- feats3$ID
     datos <- datos %>% filter(!is.na(!!sym(target_variable)))
     
     trainSet <- datos[trainIndex, ] %>% select(-ID)
@@ -400,6 +413,66 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     
   }
   
+
+  names(columnsDesc) <- c("descSE", "descEd", "descCG")
+  for (colsDesc in names(columnsDesc)) {
+    
+    col_name <- colsDesc
+    colsD <- columnsDesc[[colsDesc]]
+
+    datosDesc <- feats_complete[, ..colsD]
+    datosDesc$ID <- feats_complete$file
+    datosDesc <- merge(datosDesc, feats3[, c("ID", "mapeMedia_mediana")], by = "ID", all.x = TRUE)
+  
+    datosDesc$ID <- feats_complete$file
+    datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
+    
+    trainSetDesc <- datosDesc[trainIndex, ] %>% select(-ID)
+    log_variable <- paste("log", target_variable, sep = "_")
+    trainSetDesc[[log_variable]] <- log(trainSetDesc[[target_variable]] + 1)
+    
+    testSetDesc <- datosDesc[-trainIndex, ] %>% select(-ID)
+    testSetDesc[[log_variable]] <- log(testSetDesc[[target_variable]] + 1)
+    
+    if (model_type == "lm") {
+      # Regresión Lineal
+      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
+      predicciones_log <- exp(predict(model, newdata = testSetDesc)) - 1
+    } else if (model_type == "rf") {
+      # Random Forest
+      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
+      predicciones_log <- exp(predict(model, newdata = testSetDesc)) - 1
+    } else if (model_type == "gbm") {
+      # Gradient Boosting
+      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
+      predicciones_log <- exp(predict(model, newdata = testSetDesc, n.trees = 100)) - 1
+    } else if (model_type == "svm"){
+      # SVM
+      model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
+                    data = trainSetDesc, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+      predicciones_log <- exp(predict(model$best.model, newdata = testSetDesc)) - 1
+      
+    } else if (model_type == "nn"){
+      # Neural Network
+      model <- neuralnet(
+        as.formula(paste(log_variable, "~ . - ", target_variable)),
+        data = trainSetDesc,
+        hidden = 3
+      )
+      pred <- compute(model, testSetDesc)
+      predicciones_log <- exp(pred$net.result) - 1
+      
+      
+    }
+    
+    namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
+    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+    
+    results_list[[namePred]] <- predicciones_log
+    results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
+    
+  }
+  
   resultados <- data.frame(
     ID = datos$ID[-trainIndex],
     Real = testSet[[target_variable]],
@@ -426,7 +499,7 @@ trainIndex <- sample(1:214, index * 214) # 214 porque son las que no son NA
 # Aplicar la función para cada modelo y variable objetivo con selección de columnas
 for (modelo in modelos) {
   for (variable in target) {
-    regresion_model(modelo, variable, s1, s2, s3, trainIndex)
+    regresion_model(modelo, variable, s1, s2, s3, descSE, descEd, descCG, trainIndex)
   }
 }
 
