@@ -126,6 +126,11 @@ cols_cuest$ID <- feats_complete$file
 sum(is.na(cols_cuest[, Q1_1_X1...Cul.]))
 
 
+# Solo las que han respondido al cuestionario
+cuest <- cols_cuest[complete.cases(cols_cuest) & rowSums(!is.na(cols_cuest)) > 1]
+
+
+
 #descripcion socieconomica
 descSE <- c("Q6_2_X2...Es.la", "Q6_15_X15...Cu", "Q6_16_X16...Cu", "Q6_17_X17...Cu", 
             "Q6_18_X18...Cu", "Q6_19_X19...Cu")
@@ -352,69 +357,69 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   columns_s1 <- append(s1_columns, target_variable)
   columns_s2 <- append(s2_columns, target_variable)
   columns_s3 <- append(s3_columns, target_variable)
-  #columns_descSE <- append(descSE_columns, target_variable)
-  #columns_descEd <- append(descEd_columns, target_variable)
-  #columns_descCG <- append(descCG_columns, target_variable)
+  columns_descSE <- append(descSE_columns, target_variable)
+  columns_descEd <- append(descEd_columns, target_variable)
+  columns_descCG <- append(descCG_columns, target_variable)
   
   columns <- list(columns_s1, columns_s2, columns_s3)
   columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
   results_list <- list()
   
-  for (i in seq_along(columns)) {
-    
-    col <- columns[[i]]
-    col_name <- paste("s", i, sep = "")
-    
-    datos <- feats3[col]
-    datos$ID <- feats3$ID
-    datos <- datos %>% filter(!is.na(!!sym(target_variable)))
-    
-    trainSet <- datos[trainIndex, ] %>% select(-ID)
-    log_variable <- paste("log", target_variable, sep = "_")
-    trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
-    
-    testSet <- datos[-trainIndex, ] %>% select(-ID)
-    testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
-  
-    
-    if (model_type == "lm") {
-      # Regresión Lineal
-      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-      predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-    } else if (model_type == "rf") {
-      # Random Forest
-      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-      predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-    } else if (model_type == "gbm") {
-      # Gradient Boosting
-      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-      predicciones_log <- exp(predict(model, newdata = testSet, n.trees = 100)) - 1
-    } else if (model_type == "svm"){
-      # SVM
-      model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
-                                                data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-      predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
-      
-    } else if (model_type == "nn"){
-      # Neural Network
-      model <- neuralnet(
-          as.formula(paste(log_variable, "~ . - ", target_variable)),
-          data = trainSet,
-          hidden = 3
-        )
-      pred <- compute(model, testSet)
-      predicciones_log <- exp(pred$net.result) - 1
-      
-      
-    }
-    
-    namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
-    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
-    
-    results_list[[namePred]] <- predicciones_log
-    results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
-    
-  }
+  # for (i in seq_along(columns)) {
+  #   
+  #   col <- columns[[i]]
+  #   col_name <- paste("s", i, sep = "")
+  #   
+  #   datos <- feats3[col]
+  #   datos$ID <- feats3$ID
+  #   datos <- datos %>% filter(!is.na(!!sym(target_variable)))
+  #   
+  #   trainSet <- datos[trainIndex, ] %>% select(-ID)
+  #   log_variable <- paste("log", target_variable, sep = "_")
+  #   trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
+  #   
+  #   testSet <- datos[-trainIndex, ] %>% select(-ID)
+  #   testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
+  # 
+  #   
+  #   if (model_type == "lm") {
+  #     # Regresión Lineal
+  #     model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+  #     predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+  #   } else if (model_type == "rf") {
+  #     # Random Forest
+  #     model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+  #     predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+  #   } else if (model_type == "gbm") {
+  #     # Gradient Boosting
+  #     model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+  #     predicciones_log <- exp(predict(model, newdata = testSet, n.trees = 100)) - 1
+  #   } else if (model_type == "svm"){
+  #     # SVM
+  #     model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
+  #                                               data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+  #     predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
+  #     
+  #   } else if (model_type == "nn"){
+  #     # Neural Network
+  #     model <- neuralnet(
+  #         as.formula(paste(log_variable, "~ . - ", target_variable)),
+  #         data = trainSet,
+  #         hidden = 3
+  #       )
+  #     pred <- compute(model, testSet)
+  #     predicciones_log <- exp(pred$net.result) - 1
+  #     
+  #     
+  #   }
+  #   
+  #   namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
+  #   nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+  #   
+  #   results_list[[namePred]] <- predicciones_log
+  #   results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
+  #   
+  # }
   
   names(columnsDesc) <- c("descSE", "descEd", "descCG")
   for (colsDesc in names(columnsDesc)) {
@@ -422,23 +427,25 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     col_name <- colsDesc
     colsD <- columnsDesc[[colsDesc]]
 
-    datosDesc <- feats_complete[, ..colsD]
-    datosDesc$ID <- feats_complete$file
+    datosDesc <- cuest[, ..colsD]
+    datosDesc$ID <- cuest$ID
     datosDesc <- merge(datosDesc, feats3[, c("ID", target_variable)], by = "ID", all.x = TRUE)
 
 
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
-    trainSetDesc <- datosDesc[trainIndex, ] %>% select(-ID)
+    # print(summary(datosDesc))
+    print(nrow(datosDesc))
+    trainSetDesc <- datosDesc[trainIndexCuest, ] %>% select(-ID)
     log_variable <- paste("log", target_variable, sep = "_")
     trainSetDesc[[log_variable]] <- log(trainSetDesc[[target_variable]] + 1)
     
-    testSetDesc <- datosDesc[-trainIndex, ] %>% select(-ID)
+    testSetDesc <- datosDesc[-trainIndexCuest, ] %>% select(-ID)
     testSetDesc[[log_variable]] <- log(testSetDesc[[target_variable]] + 1)
     
     if (model_type == "lm") {
       # Regresión Lineal
       #aqui hay algo que deja de funcionar
-      print(summary(trainSetDesc))
+      # print(summary(trainSetDesc))
       model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
       predicciones_log <- exp(predict(model, newdata = testSetDesc)) - 1
 
@@ -479,13 +486,13 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   
   
   resultados <- data.frame(
-    ID = datos$ID[-trainIndex],
+    ID = datos$ID[-trainIndexCuest],
     Real = testSet[[target_variable]],
     results_list
   )
   
   # Escribir el CSV final
-  fwrite(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, "_", model_type, ".csv", sep = ""))
+  fwrite(resultados, file = paste("Resultados/PrediccionError/Cuest/Pred_", modelo, "_", model_type, ".csv", sep = ""))
   
   return(resultados)
 }
@@ -500,6 +507,7 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
 set.seed(0)
 index <- 0.75
 trainIndex <- sample(1:214, index * 214) # 214 porque son las que no son NA
+trainIndexCuest <- sample(1:99, index * 99)
 
 # Aplicar la función para cada modelo y variable objetivo con selección de columnas
 for (modelo in modelos) {
