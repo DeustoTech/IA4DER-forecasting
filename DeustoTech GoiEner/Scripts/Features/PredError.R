@@ -118,8 +118,11 @@ feats <- read.csv("featuresPredicciones_2.csv")
 feats3 <- read.csv("featuresPredicciones_3.csv")
 feats_complete <- fread("feats-complete.csv") #los ID estan en la variable file
 
+summary(cols_cuest)
+
 #columnas cuestionario
 cols_cuest <- feats_complete %>% select(matches("^Q\\d"))
+cols_cuest$ID <- feats_complete$file
 sum(is.na(cols_cuest[, Q1_1_X1...Cul.]))
 
 
@@ -413,7 +416,6 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     
   }
   
-
   names(columnsDesc) <- c("descSE", "descEd", "descCG")
   for (colsDesc in names(columnsDesc)) {
     
@@ -422,11 +424,10 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
 
     datosDesc <- feats_complete[, ..colsD]
     datosDesc$ID <- feats_complete$file
-    datosDesc <- merge(datosDesc, feats3[, c("ID", "mapeMedia_mediana")], by = "ID", all.x = TRUE)
-  
-    datosDesc$ID <- feats_complete$file
+    datosDesc <- merge(datosDesc, feats3[, c("ID", target_variable)], by = "ID", all.x = TRUE)
+
+
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
-    
     trainSetDesc <- datosDesc[trainIndex, ] %>% select(-ID)
     log_variable <- paste("log", target_variable, sep = "_")
     trainSetDesc[[log_variable]] <- log(trainSetDesc[[target_variable]] + 1)
@@ -436,8 +437,11 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     
     if (model_type == "lm") {
       # Regresión Lineal
+      #aqui hay algo que deja de funcionar
+      print(summary(trainSetDesc))
       model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
       predicciones_log <- exp(predict(model, newdata = testSetDesc)) - 1
+
     } else if (model_type == "rf") {
       # Random Forest
       model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
@@ -472,6 +476,7 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
     
   }
+  
   
   resultados <- data.frame(
     ID = datos$ID[-trainIndex],
