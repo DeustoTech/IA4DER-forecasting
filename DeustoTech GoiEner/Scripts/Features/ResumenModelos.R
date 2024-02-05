@@ -18,50 +18,50 @@ CUPS$ID <- basename(CUPS$ID)
 
 
 
-result_df <- CUPS %>%
-  group_by(ID = CUPS$ID) %>%
+result_df <- cuest %>%
+  group_by(ID = cuest$ID) %>%
   summarise(
     
     
     
-    Median_MAPE_media = median(Media_mape, na.rm = TRUE),
-    Q1_MAPE_media = quantile(Media_mape, 0.25, na.rm = TRUE),
-    Q3_MAPE_media = quantile(Media_mape, 0.75, na.rm = TRUE),
+    mapeMedia_mediana = median(Media_mape, na.rm = TRUE),
+    mapeMedia_q1 = quantile(Media_mape, 0.25, na.rm = TRUE),
+    mapeMedia_q3 = quantile(Media_mape, 0.75, na.rm = TRUE),
     
-    Median_MAPE_naive = median(Naive_mape, na.rm = TRUE),
-    Q1_MAPE_naive = quantile(Naive_mape, 0.25, na.rm = TRUE),
-    Q3_MAPE_naive = quantile(Naive_mape, 0.75, na.rm = TRUE),
+    mapeNaive_mediana = median(Naive_mape, na.rm = TRUE),
+    mapeNaive_q1 = quantile(Naive_mape, 0.25, na.rm = TRUE),
+    mapeNaive_q3 = quantile(Naive_mape, 0.75, na.rm = TRUE),
     
-    Median_MAPE_snaive = median(SNaive_mape, na.rm = TRUE),
-    Q1_MAPE_snaive = quantile(SNaive_mape, 0.25, na.rm = TRUE),
-    Q3_MAPE_snaive = quantile(SNaive_mape, 0.75, na.rm = TRUE),
+    mapeSN_mediana = median(SNaive_mape, na.rm = TRUE),
+    mapeSN_q1 = quantile(SNaive_mape, 0.25, na.rm = TRUE),
+    mapeSN_q3 = quantile(SNaive_mape, 0.75, na.rm = TRUE),
     
-    Median_MAPE_arima = median(Arima_mape, na.rm = TRUE),
-    Q1_MAPE_arima = quantile(Arima_mape, 0.25, na.rm = TRUE),
-    Q3_MAPE_arima = quantile(Arima_mape, 0.75, na.rm = TRUE),
+    mapeArima_mediana = median(Arima_mape, na.rm = TRUE),
+    mapeArima_q1 = quantile(Arima_mape, 0.25, na.rm = TRUE),
+    mapeArima_q3 = quantile(Arima_mape, 0.75, na.rm = TRUE),
     
-    Median_MAPE_ets = median(ETS_mape, na.rm = TRUE),
-    Q1_MAPE_ets = quantile(ETS_mape, 0.25, na.rm = TRUE),
-    Q3_MAPE_ets = quantile(ETS_mape, 0.75, na.rm = TRUE),
+    mapeETS_mediana = median(ETS_mape, na.rm = TRUE),
+    mapeETS_q1 = quantile(ETS_mape, 0.25, na.rm = TRUE),
+    mapeETS_q3 = quantile(ETS_mape, 0.75, na.rm = TRUE),
     
-    Median_MAPE_nn = median(NN_mape, na.rm = TRUE),
-    Q1_MAPE_nn = quantile(NN_mape, 0.25, na.rm = TRUE),
-    Q3_MAPE_nn = quantile(NN_mape, 0.75, na.rm = TRUE),
+    mapeNN_mediana = median(NN_mape, na.rm = TRUE),
+    mapeNN_q1 = quantile(NN_mape, 0.25, na.rm = TRUE),
+    mapeNN_q3 = quantile(NN_mape, 0.75, na.rm = TRUE),
     
-    Median_MAPE_svm = median(SMV_pred, na.rm = TRUE),
-    Q1_MAPE_svm = quantile(SMV_pred, 0.25, na.rm = TRUE),
-    Q3_MAPE_svm = quantile(SMV_pred, 0.75, na.rm = TRUE),
+    mapeSVM_mediana = median(SMV_mape, na.rm = TRUE),
+    mapeSVM_q1 = quantile(SMV_mape, 0.25, na.rm = TRUE),
+    mapeSVM_q3 = quantile(SMV_mape, 0.75, na.rm = TRUE),
     
-    Median_MAPE_ensemble = median(Ensemble_mape, na.rm = TRUE),
-    Q1_MAPE_ensemble = quantile(Ensemble_mape, 0.25, na.rm = TRUE),
-    Q3_MAPE_ensemble = quantile(Ensemble_mape, 0.75, na.rm = TRUE)
+    mapeEnsemble_mediana = median(Ensenmble_mape, na.rm = TRUE),
+    mapeEnsemble_q1 = quantile(Ensenmble_mape, 0.25, na.rm = TRUE),
+    mapeEnsemble_q3 = quantile(Ensenmble_mape, 0.75, na.rm = TRUE)
     
    
     
     
   )
 
-fwrite(result_df, file = "Resultados/CUPS/SummaryPreds.csv", col.names = T, row.names = F)
+fwrite(result_df, file = "Resultados/CUPS/SummaryPredsCuest.csv", col.names = T, row.names = F)
 
 
 
@@ -207,8 +207,8 @@ fwrite(combined, file = "Resultados/CUPS/SummaryPredsNuevo.csv")
 
 # Combinar summaryPredsNuevo y features viejo
 
-combined <- read.csv("Resultados/CUPS/SummaryPredsNuevo.csv")
-viejo <- read.csv("featuresPredicciones_2.csv")
+combined <- read.csv("Resultados/CUPS/SummaryPredsCuest.csv")
+viejo <- read.csv("featuresPredicciones_3.csv")
 
 columnas_nuevas <- colnames(combined)
 
@@ -221,7 +221,7 @@ viejo[1:nrow(combined), columnas_nuevas] <- combined[, columnas_nuevas]
 
 
 
-fwrite(viejo, file = "featuresPredicciones_2.csv")
+fwrite(viejo, file = "featuresPredicciones_3.csv")
 
 
 
@@ -243,6 +243,8 @@ for (i in 1:nrow(viejo)) {
 }
 
 
+
+cuest <- read.csv("Resultados/CUPS/PredCuest.csv")
 
 
 
