@@ -43,8 +43,37 @@ N <- paste(folder, N, sep = "")
 #CT <- paste(folder, CT, sep = "")
 #L <- paste(folder, L, sep = "")
 
+feats_complete <- fread("feats-complete.csv") #los ID estan en la variable file
+
+
+#columnas cuestionario
+cols_cuest <- feats_complete %>% select(matches("^Q\\d"))
+cols_cuest$ID <- feats_complete$file
+sum(is.na(cols_cuest[, Q1_1_X1...Cul.]))
+
+
+# Solo las que han respondido al cuestionario
+cuest <- cols_cuest[complete.cases(cols_cuest) & rowSums(!is.na(cols_cuest)) > 1]
+
+# Obtener las ID de cuest
+cuest_IDs <- cuest$ID
+
+# Extraer solo el nombre sin la extensión ".csv" de N
+N_names <- basename(tools::file_path_sans_ext(N))
+
+# Filtrar los nombres en N que tienen ID en cuest
+N_subset_names <- N_names[N_names %in% cuest_IDs]
+
+# Obtener la lista completa de archivos que cumplen la condición
+N_subset <- paste0(folder, N_subset_names, ".csv")
+
+
+
+
+
+
 ## crear documento para los resultados
-RESULT_FILE <- "ResultadosHiperNuevos.csv"
+RESULT_FILE <- "Resultados/CUPS/PredCuest.csv"
 
 ResultadosModelos <- tibble(
   ID = character(),
