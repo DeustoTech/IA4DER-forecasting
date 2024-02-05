@@ -276,6 +276,7 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   columns_s2 <- append(s2_columns, target_variable)
   columns_s3 <- append(s3_columns, target_variable)
   columns_descSE <- append(descSE_columns, target_variable)
+  print(columns_descSE)
   columns_descEd <- append(descEd_columns, target_variable)
   columns_descCG <- append(descCG_columns, target_variable)
   
@@ -344,10 +345,8 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     
     col_name <- colsDesc
     colsD <- columnsDesc[[colsDesc]]
-
-    datosDesc <- cuest[, ..colsD]
+    datosDesc <- cuest[, colsD]
     
-
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
 
     trainSetDesc <- datosDesc[trainIndexCuest, ] %>% select(-ID)
@@ -430,9 +429,6 @@ cuest_nrow <- nrow(cuest)
 feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeEnsemble_mediana)))
 trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
 trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
-
-
-
 
 
 
