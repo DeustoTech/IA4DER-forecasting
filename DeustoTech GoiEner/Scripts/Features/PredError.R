@@ -126,7 +126,7 @@ cols_cuest$ID <- feats_complete$file
 sum(is.na(cols_cuest[, Q1_1_X1...Cul.]))
 
 
-# Solo las que han respondido al cuestionario
+# Solo las que han respondido al cuestionario entero
 cuest <- cols_cuest[complete.cases(cols_cuest) & rowSums(!is.na(cols_cuest)) > 1]
 
 
@@ -365,61 +365,61 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
   results_list <- list()
   
-  # for (i in seq_along(columns)) {
-  #   
-  #   col <- columns[[i]]
-  #   col_name <- paste("s", i, sep = "")
-  #   
-  #   datos <- feats3[col]
-  #   datos$ID <- feats3$ID
-  #   datos <- datos %>% filter(!is.na(!!sym(target_variable)))
-  #   
-  #   trainSet <- datos[trainIndex, ] %>% select(-ID)
-  #   log_variable <- paste("log", target_variable, sep = "_")
-  #   trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
-  #   
-  #   testSet <- datos[-trainIndex, ] %>% select(-ID)
-  #   testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
-  # 
-  #   
-  #   if (model_type == "lm") {
-  #     # Regresión Lineal
-  #     model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-  #     predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-  #   } else if (model_type == "rf") {
-  #     # Random Forest
-  #     model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-  #     predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-  #   } else if (model_type == "gbm") {
-  #     # Gradient Boosting
-  #     model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-  #     predicciones_log <- exp(predict(model, newdata = testSet, n.trees = 100)) - 1
-  #   } else if (model_type == "svm"){
-  #     # SVM
-  #     model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
-  #                                               data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-  #     predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
-  #     
-  #   } else if (model_type == "nn"){
-  #     # Neural Network
-  #     model <- neuralnet(
-  #         as.formula(paste(log_variable, "~ . - ", target_variable)),
-  #         data = trainSet,
-  #         hidden = 3
-  #       )
-  #     pred <- compute(model, testSet)
-  #     predicciones_log <- exp(pred$net.result) - 1
-  #     
-  #     
-  #   }
-  #   
-  #   namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
-  #   nameMAE <- paste("MAE", modelo, col_name, sep = "_")
-  #   
-  #   results_list[[namePred]] <- predicciones_log
-  #   results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
-  #   
-  # }
+  for (i in seq_along(columns)) {
+
+    col <- columns[[i]]
+    col_name <- paste("s", i, sep = "")
+
+    datos <- feats3[col]
+    datos$ID <- feats3$ID
+    datos <- datos %>% filter(!is.na(!!sym(target_variable)))
+
+    trainSet <- datos[trainIndex, ] %>% select(-ID)
+    log_variable <- paste("log", target_variable, sep = "_")
+    trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
+
+    testSet <- datos[-trainIndex, ] %>% select(-ID)
+    testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
+
+
+    if (model_type == "lm") {
+      # Regresión Lineal
+      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+      predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+    } else if (model_type == "rf") {
+      # Random Forest
+      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+      predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+    } else if (model_type == "gbm") {
+      # Gradient Boosting
+      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+      predicciones_log <- exp(predict(model, newdata = testSet, n.trees = 100)) - 1
+    } else if (model_type == "svm"){
+      # SVM
+      model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
+                                                data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+      predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
+
+    } else if (model_type == "nn"){
+      # Neural Network
+      model <- neuralnet(
+          as.formula(paste(log_variable, "~ . - ", target_variable)),
+          data = trainSet,
+          hidden = 3
+        )
+      pred <- compute(model, testSet)
+      predicciones_log <- exp(pred$net.result) - 1
+
+
+    }
+
+    namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
+    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+
+    results_list[[namePred]] <- predicciones_log
+    results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
+
+  }
   
   names(columnsDesc) <- c("descSE", "descEd", "descCG")
   for (colsDesc in names(columnsDesc)) {
@@ -428,13 +428,10 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     colsD <- columnsDesc[[colsDesc]]
 
     datosDesc <- cuest[, ..colsD]
-    datosDesc$ID <- cuest$ID
-    datosDesc <- merge(datosDesc, feats3[, c("ID", target_variable)], by = "ID", all.x = TRUE)
-
+    
 
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
-    # print(summary(datosDesc))
-    print(nrow(datosDesc))
+
     trainSetDesc <- datosDesc[trainIndexCuest, ] %>% select(-ID)
     log_variable <- paste("log", target_variable, sep = "_")
     trainSetDesc[[log_variable]] <- log(trainSetDesc[[target_variable]] + 1)
@@ -504,10 +501,22 @@ modelos <- c("lm", "rf", "gbm", "svm", "nn")
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
             "mapeETS_mediana", "mapeNN_mediana", "mapeSVM_mediana", "mapeEnsemble_mediana")
 
+cuest <- feats3 %>%
+  inner_join(cuest, by = "ID") %>%
+  filter(!is.na(mapeEnsemble_mediana)) 
+# Cuest son todos los que han respondido al cuestionario y procesadas
+
 set.seed(0)
 index <- 0.75
-trainIndex <- sample(1:214, index * 214) # 214 porque son las que no son NA
-trainIndexCuest <- sample(1:99, index * 99)
+cuest_nrow <- nrow(cuest)
+feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeEnsemble_mediana)))
+trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
+trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
+
+
+
+
+
 
 # Aplicar la función para cada modelo y variable objetivo con selección de columnas
 for (modelo in modelos) {
@@ -650,6 +659,7 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
   set.seed(0)
   index <- 0.75
   target <- datos_clasificacion$best_model
+  names(columns) <- c("s1", "s2", "s3")
   
   columns_s1 <- append(s1, "best_model")
   columns_s2 <- append(s2, "best_model")
@@ -658,11 +668,11 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
   columns <- list(columns_s1, columns_s2, columns_s3)
   results_list <- list()
   
-  for (i in seq_along(columns)) {
+  for (cols in names(columns)) {
     
-    col <- columns[[i]]
-    col_name <- paste("s", i, sep = "")
-    datos <- datos_clasificacion[col]
+    col_name <- cols
+    col <- columns[[cols]]
+    datos <- datos_clasificacion[, col]
     datos$ID <- datos_clasificacion$ID
     
     trainIndex <- sample(1:nrow(datos), index * nrow(datos))
@@ -672,16 +682,24 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
     
     if (model_type == "rf") {
       # Random Forest para clasificación
-      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 750, replace = T)
+      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 100, replace = T)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
     } else if (model_type == "gbm") {
       # Gradient Boosting para clasificación
       modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainset, distribution = "multinomial", n.trees = 100)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
     }
+    else if (model_type == "logistic") {
+      # Regresión Logística para clasificación
+      modelo_clasificacion <- multinom(best_model ~ ., data = trainset)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "probs")
+    }
     
     namePred <- paste("Predicted", model_type, col_name, sep = "_")
+    nameMAE <- paste("MAE", model_type, col_name, sep = "_")
     results_list[[namePred]] <- predicciones_clasificacion
+    results_list[[nameMAE]] <- abs(predicciones_clasificacion - as.numeric(testset$best_model))
+    
   }
   
   # Crear un nuevo conjunto de resultados
@@ -699,7 +717,7 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
 
 
 # Definir modelos
-modelos_clasificacion <- c("rf", "gbm")
+modelos_clasificacion <- c("rf", "gbm", "logistic")
 
 # Aplicar la función para clasificación y la variable objetivo "best_model"
 for (modelo_clasificacion in modelos_clasificacion) {
