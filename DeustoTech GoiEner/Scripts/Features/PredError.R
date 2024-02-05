@@ -267,88 +267,6 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
 }
 
 
-#BOXPLOT DEL ERROR
-{
-predMediaLM <- fread("Resultados/PrediccionError/PredMediaLM.csv")
-predMediaLM_PCA <- fread("Resultados/PrediccionError/PredPCA.csv")
-data_filtered <- predMediaLM[predMediaLM$MAE_S1 <= quantile(predMediaLM$MAE_S1, 0.75) &
-                               predMediaLM$MAE_S2 <= quantile(predMediaLM$MAE_S2, 0.75) &
-                               predMediaLM$MAE_S3 <= quantile(predMediaLM$MAE_S3, 0.75), ]
-data_filtered_pca <- predMediaLM_PCA[predMediaLM_PCA$MAE_PCA <= quantile(predMediaLM_PCA$MAE_PCA, 0.75, na.rm = T)]
-
-data_filtered <- data_filtered %>% select(MAE_S1, MAE_S2, MAE_S3)
-data_filtered_pca <- data_filtered_pca %>% select(MAE_PCA)
-
-data_filtered_all <- cbind(data_filtered, data_filtered_pca)
-
-boxplot(data_filtered_all, col = rainbow(ncol(data_filtered_all)))
-}
-
-# Función para realizar la regresión lineal y generar resultados
-regresion_lineal <- function(target_variable, s1_columns, s2_columns, s3_columns) {
-  
-  modelo <- gsub("^mape|_mediana$", "", target_variable)
-  
-  set.seed(0)
-  index <- 0.75
-  
-  columns_s1 <- append(s1_columns, target_variable)
-  columns_s2 <- append(s2_columns, target_variable)
-  columns_s3 <- append(s3_columns, target_variable)
-  
-  columns <- list(columns_s1, columns_s2, columns_s3)
-  results_list <- list()
-  
-  for (i in seq_along(columns)) {
-    
-    col <- columns[[i]]
-    col_name <- paste("s", i, sep = "")
-    
-    datos <- feats[col]
-    datos$ID <- feats$ID
-    datos <- datos %>% filter(!is.na(!!sym(target_variable)))
-    
-    trainIndex <- sample(1:nrow(datos), index * nrow(datos))
-    testIndex <- setdiff(1:nrow(datos), trainIndex)
-    
-    trainSet <- datos[trainIndex, ] %>% select(-ID)
-    log_variable <- paste("log", target_variable, sep = "_")
-    trainSet[[log_variable]] <- log(trainSet[[target_variable]] +1)
-    
-    lm_formula <- as.formula(paste(log_variable, "~ . - ", target_variable))
-    datosLM_log <- lm(lm_formula, data = trainSet)
-    
-    testSet <- datos[-trainIndex, ] %>% select(-ID)
-    testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
-    
-    predicciones_log <- exp(predict(datosLM_log, newdata = testSet)) - 1
-    
-    namePred <- paste("Predicted", modelo, col_name, sep = "_")
-    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
-    
-    results_list[[namePred]] <- predicciones_log
-    results_list[[nameMAE]] <- abs(testSet[[target_variable]] - predicciones_log)
-  }
-  
-  resultados <- data.frame(
-    ID = datos$ID[testIndex],
-    Real = testSet[[target_variable]],
-    results_list
-  )
-  
-  # Escribir el CSV final
-  fwrite(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, ".csv", sep = ""))
-  
-  return(resultados)
-}
-
-# Aplicar la función para cada variable objetivo y selección de columnas
-for (variable in target2) {
-  regresion_lineal(variable, s1, s2, s3)
-}
-
-
-
 # Función para realizar regresión y generar resultados
 regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, descSE_columns, descEd_columns, descCG_columns, trainIndex) {
   
@@ -517,129 +435,6 @@ for (modelo in modelos) {
 }
 
 
-#### PCA ####
-{
-
-#preparar datos para pca
-feats <- read.csv("featuresPredicciones_2.csv")
-
-featsPCA <- feats %>% select(- c("ID", "municipality", "LENGTH", "ZERO", "IMPUTED"))
-
-best_model <- c('Media' = 0, 'Naive' = 1, 'Arima' = 2, 'NN' = 3, 'ETS' = 4)
-contracted_tariff <- c("2.0TD" = 0, "3.0TD" = 1, "6.1TD" = 2, "6.2TD" = 3)
-self_consumption_type <- c("00" = 0, "0" = 1, "41" = 2, "42" = 3, "43" = 4, "2B" = 5)
-featsPCA$best_model <- match(featsPCA$best_model, names(best_model))
-featsPCA$contracted_tariff <- match(featsPCA$contracted_tariff, names(contracted_tariff))
-featsPCA$self_consumption_type <- match(featsPCA$self_consumption_type, names(self_consumption_type))
-
-featsPCA <- impute(featsPCA, "mean")
-featsPCA <- scale(featsPCA)
-pca_result <- prcomp(featsPCA)
-summary(pca_result)
-
-
-regresion_pca_model <- function(model_type, target_variable, pca_result) {
-  
-  modelo <- gsub("^mape|_mediana$", "", target_variable)
-  
-  set.seed(0)
-  index <- 0.75
-  
-  # Seleccionar las columnas correspondientes a los primeros dos componentes principales
-  columnas_pca <- c("PC1", "PC2") 
-  featsPCA <- as.data.frame(predict(pca_result, newdata = featsPCA)[, columnas_pca])
-  
-  # Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
-  datos_pca <- cbind(featsPCA, new_variable = feats[[target_variable]])
-  
-  set.seed(0)
-  index <- sample(1:nrow(datos_pca), 0.75 * nrow(datos_pca))
-  trainset <- datos_pca[index, ]
-  testset <- datos_pca[-index, ]
-  
-  
-  if (model_type == "lm") {
-    # Regresión Lineal
-    modelo_pca <- lm(new_variable ~ ., data = trainset)
-    predicciones_pca <- predict(modelo_pca, newdata = testset)
-  } else if (model_type == "rf") {
-    # Random Forest
-    modelo_pca <- randomForest(new_variable ~ ., data = trainset)
-    predicciones_pca <- predict(modelo_pca, newdata = testset)
-  } else if (model_type == "gbm") {
-    # Gradient Boosting
-    modelo_pca <- gbm(new_variable ~ ., data = trainset)
-    predicciones_pca <- predict(modelo_pca, newdata = testset, n.trees = 100)
-  }
-  
-  # Crear un nuevo conjunto de resultados solo para PCA
-  resultados_pca <- data.frame(
-    ID = feats$ID[-index],
-    Real = testset$new_variable,
-    Predicted_PCA = rep(NA, length(feats$ID[-index])),  # Inicializar con NA
-    MAE_PCA = rep(NA, length(feats$ID[-index]))  # Inicializar con NA
-  )
-  
- 
-  # Asignar las predicciones PCA a las ubicaciones correspondientes
-  resultados_pca$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
-  resultados_pca$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$new_variable)
-  
-  # Escribir el CSV final
-  fwrite(resultados_pca, file = paste("Resultados/PrediccionError/PredPCA_", modelo, "_", model_type, ".csv", sep = ""))
-  
-  return(resultados_pca)
-}
-}
-# Definir modelos
-modelos <- c("nn")
-
-# Aplicar la función para cada modelo y variable objetivo
-for (modelo in modelos) {
-  for (variable in target) {
-    regresion_pca_model(modelo, variable, pca_result)
-  }
-}
-
-
-
-{
-
-# Crear un nuevo conjunto de datos con los componentes principales y la variable objetivo
-datos_pca <- cbind(featsPCA, mapeMedia_mediana = feats$mapeMedia_mediana)
-
-set.seed(0)
-index <- sample(1:nrow(datos_pca), 0.75 * nrow(datos_pca))
-trainset <- datos_pca[index, ]
-testset <- datos_pca[-index, ]
-
-modelo_pca <- lm([[target_variable]] ~ ., data = trainset_pca)
-predicciones_pca <- predict(modelo_pca, newdata = testset_pca)
-
-
-# Crear un nuevo conjunto de resultados solo para PCA
-resultados_pca <- data.frame(
-  ID = feats$ID[-index],
-  Real = testset$mapeMedia_mediana,
-  Predicted_PCA = rep(NA, length(feats$ID[-index])),  # Inicializar con NA
-  MAE_PCA = rep(NA, length(feats$ID[-index]))  # Inicializar con NA
-)
-
-# Asignar las predicciones PCA a las ubicaciones correspondientes
-resultados$Predicted_PCA[match(resultados_pca$ID, feats$ID[-index])] <- predicciones_pca
-resultados$MAE_PCA[match(resultados_pca$ID, feats$ID[-index])] <- abs(predicciones_pca - testset$mapeMedia_mediana)
-
-
-fwrite(resultados_pca, file = "Resultados/PrediccionError/PredPCA.csv", col.names = TRUE, row.names = FALSE)
-
-
-
-unique(feats$best_model)
-}
-
-
-
-
 
 # CLASIFICACION
 
@@ -725,22 +520,25 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
   columns_s3 <- append(s3, "best_model")
   
   columns <- list(columns_s1, columns_s2, columns_s3)
+  names(columns) <- c("s1", "s2", "s3")
   results_list <- list()
   
-  for (i in seq_along(columns)) {
+  for (cols in names(columns)) {
     
-    col <- columns[[i]]
-    col_name <- paste("s", i, sep = "")
-    datos <- datos_clasificacion[col]
+    col_name <- cols
+    col <- columns[[cols]]
+    datos <- datos_clasificacion[, col]
+
     datos$ID <- datos_clasificacion$ID
     
     trainIndex <- sample(1:nrow(datos), index * nrow(datos))
     trainset <- datos[trainIndex, ] %>% select(-ID)
     testset <- datos[-trainIndex, ] %>% select(-ID)
     
+    
     if (model_type == "rf") {
       # Random Forest para clasificación
-      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 750, replace = T)
+      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 100, replace = T)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
     } else if (model_type == "gbm") {
       # Gradient Boosting para clasificación
@@ -753,7 +551,10 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
     }
     
     namePred <- paste("Predicted", model_type, col_name, sep = "_")
+    nameMAE <- paste("MAE", model_type, col_name, sep = "_")
+    
     results_list[[namePred]] <- predicciones_clasificacion
+    results_list[[nameMAE]] <- abs(predicciones_clasificacion - as.numeric(testset$best_model))
   }
   
   # Crear un nuevo conjunto de resultados
@@ -770,7 +571,7 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
 }
 
 # Definir modelos
-modelos_clasificacion <- c("rf", "gbm", "logistic")
+modelos_clasificacion <- c( "gbm", "logistic")
 
 for (modelo_clasificacion in modelos_clasificacion) {
   clasificacion_model(modelo_clasificacion, s1, s2, s3)
