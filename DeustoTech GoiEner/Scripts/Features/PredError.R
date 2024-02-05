@@ -509,7 +509,7 @@ library(nnet)  # Necesario para la regresión logística
 
 clasificacion_model <- function(model_type, s1, s2, s3) {
   
-  # seleccionamos solo las filas que tengan variable de respuesta (best model)
+  # seleccionamos solo las filas que tengan variable de respuesta  (best model)
   datos_clasificacion <- feats[which(!is.na(feats$best_model)), ]
   set.seed(0)
   index <- 0.75
