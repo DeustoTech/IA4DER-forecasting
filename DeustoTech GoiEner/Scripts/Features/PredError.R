@@ -131,6 +131,16 @@ cuest <- cols_cuest[complete.cases(cols_cuest) & rowSums(!is.na(cols_cuest)) > 1
 
 
 
+cuest <- left_join(cuest, feats3[, c("ID", target)], by = "ID")
+
+# Eliminar duplicados en feats3 basándote en la columna ID
+feats3_unique <- feats3 %>% distinct(ID, .keep_all = TRUE)
+
+# Realizar la unión sin duplicados
+cuest <- left_join(cuest, feats3_unique[, c("ID", target)], by = "ID")
+
+
+
 #descripcion socieconomica
 descSE <- c("Q6_2_X2...Es.la", "Q6_15_X15...Cu", "Q6_16_X16...Cu", "Q6_17_X17...Cu", 
             "Q6_18_X18...Cu", "Q6_19_X19...Cu")
@@ -276,7 +286,6 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   columns_s2 <- append(s2_columns, target_variable)
   columns_s3 <- append(s3_columns, target_variable)
   columns_descSE <- append(descSE_columns, target_variable)
-  print(columns_descSE)
   columns_descEd <- append(descEd_columns, target_variable)
   columns_descCG <- append(descCG_columns, target_variable)
   
@@ -343,17 +352,21 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   names(columnsDesc) <- c("descSE", "descEd", "descCG")
   for (colsDesc in names(columnsDesc)) {
     
-    col_name <- colsDesc
-    colsD <- columnsDesc[[colsDesc]]
-    datosDesc <- cuest[, colsD]
+    # Lista de todas las variables categóricas
+    variables_categoricas <- colsDesc
     
+    col_names <- colsDesc
+    colsD <- columnsDesc[[colsDesc]]
+    datosDesc <- cuest %>%
+      select(!!colsD, all_of(target_variable))
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
-
-    trainSetDesc <- datosDesc[trainIndexCuest, ] %>% select(-ID)
+    trainSetDesc <- datosDesc[trainIndexCuest, ]
+    
+    
     log_variable <- paste("log", target_variable, sep = "_")
     trainSetDesc[[log_variable]] <- log(trainSetDesc[[target_variable]] + 1)
     
-    testSetDesc <- datosDesc[-trainIndexCuest, ] %>% select(-ID)
+    testSetDesc <- datosDesc[-trainIndexCuest, ]# %>% select(-ID)
     testSetDesc[[log_variable]] <- log(testSetDesc[[target_variable]] + 1)
     
     if (model_type == "lm") {
