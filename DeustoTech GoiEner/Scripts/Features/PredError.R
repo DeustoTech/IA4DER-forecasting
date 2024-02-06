@@ -369,6 +369,7 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     testSetDesc <- datosDesc[-trainIndexCuest, ]# %>% select(-ID)
     testSetDesc[[log_variable]] <- log(testSetDesc[[target_variable]] + 1)
     
+    
     if (model_type == "lm") {
       # Regresión Lineal
       #aqui hay algo que deja de funcionar

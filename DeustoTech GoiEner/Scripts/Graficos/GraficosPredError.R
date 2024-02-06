@@ -19,7 +19,8 @@ folder <- "Resultados/PrediccionError/"
 lm <- list.files(folder, pattern = "_lm.csv$", recursive = T, full.names = F)
 rf <- list.files(folder, pattern = "_rf.csv$", recursive = T, full.names = F)
 gbm <- list.files(folder, pattern = "_gbm.csv$", recursive = T, full.names = F)
-
+svm <- list.files(folder, pattern = "_svm.csv$", recursive = T, full.names = F)
+gbm <- list.files(folder, pattern = "_nn.csv$", recursive = T, full.names = F)
 
 Arima <- list.files(folder, pattern = "Pred_Arima_.*\\.csv$", recursive = T, full.names = F)
 Arima <- paste(folder, Arima, sep = "")
@@ -359,4 +360,44 @@ title(xlab = xlabel, ylab = ylabel)
   xlabel <- "Modelo"
   ylabel <- "MAE"
   title(xlab = xlabel, ylab = ylabel)
+}
+
+
+
+##GRÁFICOS PREDICCIONES 3
+{
+  feats3 <- fread("featuresPredicciones_3.csv")
+  
+  summary(feats3)
+  
+  barplot_data <- table(feats3$best_model)
+  barplot_data <- as.data.frame(barplot_data)
+  barplot_data <- barplot_data %>% filter(Freq != 17305)
+  
+  
+  barplot(barplot_data$Freq, 
+          main = "Distribución del modelo con menor error mediano",
+          names.arg = barplot_data$Var1,
+          xlab = "Modelo",
+          ylab = "Frecuencia",
+          col = "skyblue",
+          ylim = c(0, max(barplot_data$Freq) + 10),  # Ajusta el límite del eje y para mayor claridad
+          las = 2)  # Rotar etiquetas del eje x si son largas
+}
+
+
+##prediccion clasificacion
+{
+  clasif_logistic <- fread("Resultados/PrediccionClasificacion/Clasif_logistic.csv")
+  clasif_gbm <- fread("Resultados/PrediccionClasificacion/Clasif_gbm.csv")
+  clasif_rf <- fread("Resultados/PrediccionClasificacion/Clasif_rf.csv") #con este no podemos hacer nada, esta mal
+  clasif_gbm <- sub("\\.100$", "", clasif_gbm)
+}
+
+
+
+#Arima
+{
+  mae_arima_log <- grep("^MAE.*Arima$", names(clasif_logistic), value = TRUE)
+  ma_arima_gbm <- grep("^MAE.*Arima.100$", names(clasif_logistic), value = TRUE)
 }
