@@ -48,7 +48,8 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
 
 # Calcular p barra 
 {
-  feats <- read.csv("featuresPredicciones_2.csv")
+  combined <- read.csv("Resultados/PrediccionError/combinedPreds.csv")
+  feats <- read.csv("featuresPredicciones_3.csv")
   
   modelos <- c("rf", "lm", "svm", "nn", "gbm")
   featuresets <- c("s1", "s2","s3")

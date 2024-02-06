@@ -208,16 +208,27 @@ fwrite(combined, file = "Resultados/CUPS/SummaryPredsNuevo.csv")
 # Combinar summaryPredsNuevo y features viejo
 
 combined <- read.csv("Resultados/CUPS/SummaryPredsCuest.csv")
-viejo <- read.csv("featuresPredicciones_3.csv")
+viejo <- read.csv("featuresPredicciones_2.csv")
 
-columnas_nuevas <- colnames(combined)
+columnas_a_actualizar <- setdiff(colnames(combined), "ID")
+
+for (i in 1:nrow(combined)) {
+  ID <- combined$ID[i]
+  
+  # Encuentra la fila en viejo que coincide con la ID
+  fila_viejo <- viejo[viejo$ID == ID, ]
+  
+  # Actualiza las columnas específicas en la fila encontrada
+  viejo[viejo$ID == ID, columnas_a_actualizar] <- combined[i, columnas_a_actualizar]
+}
+
+# Ahora "viejo" tiene las filas actualizadas
 
 
-# Agrega las nuevas columnas a viejo
-viejo[1:nrow(combined), columnas_nuevas] <- combined[, columnas_nuevas]
 
 
-# Definir las columnas a reemplazar
+
+# Definir las columnas a reemplazar 
 
 
 
