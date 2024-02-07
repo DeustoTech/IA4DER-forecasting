@@ -444,13 +444,25 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
       select(!!colsD, all_of(target_variable))
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
     
+    trainSetCuest <- cuest[trainIndexCuest, ]
+    testSetCuest <- cuest[-trainIndexCuest, ]
+    
+    
     # Verificar y eliminar niveles ausentes
     for (col in colsD) {
       result <- verificar_y_eliminar_niveles(trainSetCuest, datosDesc, col)
       trainSetCuest <- result$train
       datosDesc <- result$test
+      
+      niveles <- unique(trainSetCuest[[col]])
+      
+      # Verificar si hay menos de dos niveles
+      if (length(niveles) < 2 & col %in% categoricas) {
+        cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
+        trainSetCuest[[col]] <- NULL
+        testSetCuest[[col]] <- NULL
+      }
     }
-    
     log_variable <- paste("log", target_variable, sep = "_")
     trainSetCuest[[log_variable]] <- log(trainSetCuest[[target_variable]] + 1)
     datosDesc[[log_variable]] <- log(datosDesc[[target_variable]] + 1)
