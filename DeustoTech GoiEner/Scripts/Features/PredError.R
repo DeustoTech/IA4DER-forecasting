@@ -352,14 +352,14 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   names(columnsDesc) <- c("descSE", "descEd", "descCG")
   for (colsDesc in names(columnsDesc)) {
     
-    # Lista de todas las variables categóricas
-    variables_categoricas <- colsDesc
-    
     col_names <- colsDesc
     colsD <- columnsDesc[[colsDesc]]
     datosDesc <- cuest %>%
       select(!!colsD, all_of(target_variable))
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
+    print(colnames(datosDesc))
+    datosDesc <- datosDesc %>% select(- Q6_15_X15...Cu) #esto hay que cambiarlo
+    
     trainSetDesc <- datosDesc[trainIndexCuest, ]
     
     
@@ -436,7 +436,7 @@ cuest <- feats3 %>%
   inner_join(cuest, by = "ID") %>%
   filter(!is.na(mapeEnsemble_mediana)) 
 # Cuest son todos los que han respondido al cuestionario y procesadas
-
+cuest
 set.seed(0)
 index <- 0.75
 cuest_nrow <- nrow(cuest)
