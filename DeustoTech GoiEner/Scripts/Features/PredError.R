@@ -114,7 +114,6 @@ model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensem
 
 # Carga fichero con todas las features
 
-feats <- read.csv("featuresPredicciones_2.csv")
 feats3 <- read.csv("featuresPredicciones_3.csv")
 feats_complete <- fread("feats-complete.csv") #los ID estan en la variable file
 
@@ -139,31 +138,116 @@ feats3_unique <- feats3 %>% distinct(ID, .keep_all = TRUE)
 # Realizar la unión sin duplicados
 cuest <- left_join(cuest, feats3_unique[, c("ID", target)], by = "ID")
 
-
-
+# Columnas y limipiar cuestionario
+{
 #descripcion socieconomica
-descSE <- c("Q6_2_X2...Es.la", "Q6_15_X15...Cu", "Q6_16_X16...Cu", "Q6_17_X17...Cu", 
-            "Q6_18_X18...Cu", "Q6_19_X19...Cu")
-#descripcion del edificio
-descEd <- c("Q3_1_X1..El.sum", "Q3_2_X2...Cul." , "Q6_1_X1...En.qu", "Q6_3_X3...Cul.", 
-            "Q6_4_X4...En.qu", "Q6_5_X5...Dispo", "Q6_6_X6...En.qu", "Q6_7_X7..Tamao")
-
-#las costumbres de la gente
-descCG <- c("Q1_1_X1...Cul.", "Q1_2_Aumentar.l", "Q1_3_X3...Qu.o", "Q1_4_X4...Cree.", 
-            "Q1_99_X.Han.afe", "Q1_7_X7...Han.a", "Q1_98_X8...Ha.b", "Q2_1_X1...Le.ha", 
-            "Q2_2_X2...Le.ha",  "Q2_3_X3...Le.ha", "Q2_4_X4...Desea", "Q3_99_X.Hay.alg", 
-            "Q3_98_X.Est.la" , "Q3_96_X.Cul.es", "Q4_1_X1..Elija.", "Q5_1_X1..Elija.", 
-            "Q6_8_X8...Cunt" , "Q6_9_X9...Cul.", "Q6_10_X10...Cu","Q6_11_X11...Cu", 
+descSE <- c("Q6_2_X2...Es.la", "Q6_15_X15...Cu", "Q6_16_X16...Cu", # Categoricas
+            "Q6_17_X17...Cu", "Q6_18_X18...Cu", "Q6_19_X19...Cu","Q6_8_X8...Cunt" , 
+            "Q6_9_X9...Cul.", "Q6_10_X10...Cu","Q6_11_X11...Cu", 
             "Q6_12_X12...Cu", "Q6_13_X13...Cu", "Q6_14_X14..Nive", "Q6_20_X20...Cu", 
             "Q6_21_X21...Has", "Q6_22_X22...Cm", "Q6_24_X24...Con",  "Q6_25_X25...Sab", 
-            "Q6_99_X.Conside", "Q6_27_X27...En.")
+            "Q6_99_X.Conside", "Q6_27_X27...En.") # numericas
+
+#descripcion del edificio
+descEd <- c("Q3_1_X1..El.sum", "Q3_2_X2...Cul." , "Q6_1_X1...En.qu", "Q6_3_X3...Cul.", 
+            "Q6_4_X4...En.qu", "Q6_5_X5...Dispo", "Q6_6_X6...En.qu", "Q6_7_X7..Tamao") # Todas categoricas
+
+#las costumbres de la gente
+descCG <- c("Q1_1_X1...Cul.", # rango 0-10
+            "Q1_2_Aumentar.l", "Q1_2_Incentivar","Q1_2_Mejorar.la",  "Q1_2_Reducir.la", "Q1_2_Todas.las." , # Binarias
+            "Q1_5_Ajustar.el",  "Q1_5_Buscar.inf", "Q1_5_Cambiar.la", "Q1_5_Cambiar.lo", "Q1_5_Cambiar.mi", # Binarias
+            "Q1_5_Cambiar.mi.1","Q1_5_Ninguna","Q1_5_Otro", "Q1_5_Reducir.el","Q1_5_Usar.la.fu", # Binarias
+            "Q1_3_X3...Qu.o",  # Categorica
+            # "Q1_99_X.Han.afe", # Son varias respuestas separadas por ; para cada CUP
+            "Q1_6_Desconoca", "Q1_6_La.rutina.","Q1_6_Mi.horario" , "Q1_6_Ninguno" ,"Q1_6_No.quiero." ,    
+            "Q1_6_Otro", "Q1_6_Priorizo.e",
+
+            "Q1_7_X7...Han.a", # Categorica
+            # "Q1_98_X8...Ha.b",  # Son varias respuestas separadas por ; para cada CUP
+            "Q2_1_X1...Le.ha", # Categorica
+            "Q2_2_X2...Le.ha",  "Q2_3_X3...Le.ha",  # rango 0-10
+            "Q3_99_X.Hay.alg", # Categorica
+            "Q3_98_X.Est.la" , # Categorica
+            "Q4_1_X1..Elija.", "Q5_1_X1..Elija." # categoricas
+            )
+
+# Vector con las variables categóricas (incluyendo binarias)
+categoricas <- c("Q6_2_X2...Es.la", "Q6_15_X15...Cu", "Q6_16_X16...Cu", 
+                 "Q6_17_X17...Cu", "Q6_18_X18...Cu", "Q6_19_X19...Cu","Q6_8_X8...Cunt" , 
+                 "Q6_9_X9...Cul.", "Q6_10_X10...Cu","Q6_11_X11...Cu", 
+                 "Q6_12_X12...Cu", "Q6_13_X13...Cu", "Q6_14_X14..Nive", "Q6_20_X20...Cu", 
+                 "Q6_21_X21...Has", "Q6_22_X22...Cm", "Q6_24_X24...Con",  "Q6_25_X25...Sab", 
+                 "Q6_99_X.Conside", "Q6_27_X27...En.",
+                 "Q3_1_X1..El.sum", "Q3_2_X2...Cul." , "Q6_1_X1...En.qu", "Q6_3_X3...Cul.", 
+                 "Q6_4_X4...En.qu", "Q6_5_X5...Dispo", "Q6_6_X6...En.qu", "Q6_7_X7..Tamao",
+                 "Q1_1_X1...Cul.", "Q1_2_Aumentar.l", "Q1_2_Incentivar","Q1_2_Mejorar.la",  
+                 "Q1_2_Reducir.la", "Q1_2_Todas.las.", "Q1_5_Ajustar.el",  "Q1_5_Buscar.inf", 
+                 "Q1_5_Cambiar.la", "Q1_5_Cambiar.lo", "Q1_5_Cambiar.mi", "Q1_5_Cambiar.mi.1",
+                 "Q1_5_Ninguna","Q1_5_Otro", "Q1_5_Reducir.el","Q1_5_Usar.la.fu", "Q1_3_X3...Qu.o",
+                 "Q1_6_Desconoca", "Q1_6_La.rutina.","Q1_6_Mi.horario" , "Q1_6_Ninguno" ,"Q1_6_No.quiero." ,    
+                 "Q1_6_Otro", "Q1_6_Priorizo.e", "Q1_7_X7...Han.a", "Q2_1_X1...Le.ha", 
+                 "Q2_2_X2...Le.ha",  "Q2_3_X3...Le.ha", "Q3_99_X.Hay.alg", "Q3_98_X.Est.la", 
+                 "Q4_1_X1..Elija.", "Q5_1_X1..Elija.")
+
+# Vector con las variables numéricas y de rango
+numericas <- c("Q1_99_X.Han.afe", "Q1_98_X8...Ha.b", "Q2_1_X1...Le.ha", 
+                       "Q2_2_X2...Le.ha", "Q2_3_X3...Le.ha")
+
+
+# Definir las columnas categóricas
+columnas <- c("descSE", "descEd", "descCG")
+
+# Crear el conjunto de entrenamiento y prueba
+set.seed(0)  # Establecer semilla para reproducibilidad
+index <- 0.7
+trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
+trainSetCuest <- cuest[trainIndexCuest, ]
+testSetCuest <- cuest[-trainIndexCuest, ]
+
+verificar_y_eliminar_niveles <- function(train, test, col) {
+  # Verificar si la columna es categórica
+  if (col %in% categoricas) {
+    # Obtener niveles únicos en el conjunto de entrenamiento y prueba
+    niveles_train <- unique(train[[col]])
+    niveles_test <- unique(test[[col]])
+    
+    # Verificar si todos los niveles están presentes en el conjunto de entrenamiento
+    niveles_faltantes <- setdiff(niveles_test, niveles_train)
+    
+    # Verificar si la columna tiene menos de dos niveles
+    if (length(niveles_train) < 2 || length(niveles_test) < 2) {
+      cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
+      train[[col]] <- NULL
+      test[[col]] <- NULL
+    } else if (length(niveles_faltantes) > 0) {
+      cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
+      train[[col]] <- NULL
+      test[[col]] <- NULL
+    }
+  }
+  
+  return(list(train = train, test = test))
+}
+
+# Verificar y eliminar niveles solo para columnas categóricas
+for (col in categoricas) {
+  result <- verificar_y_eliminar_niveles(trainSetCuest, testSetCuest, col)
+  trainSetCuest <- result$train
+  testSetCuest <- result$test
+}
+
+
+
+
+
+}
+
 
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
-
-
+{
 allFeatures <- c( # Lista de todas las columnas
   "ID", "LENGTH", "ZERO", "IMPUTED", "AVG",
   "SD", "MIN", "Q1", "MEDIAN", "Q3",
@@ -211,7 +295,7 @@ s3 <- c("POT_1", "POT_2",
         "MC25", "MC50", "MC80", "MC90", "MC95","P_T2.0_VALLE", "P_T2.0_LLANO",
         "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO")
 
-
+}
 
 # Regresion lineal pruebas 
 {
@@ -350,6 +434,8 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
   }
   
   names(columnsDesc) <- c("descSE", "descEd", "descCG")
+  resultados_list <- list()
+  
   for (colsDesc in names(columnsDesc)) {
     
     col_names <- colsDesc
@@ -357,70 +443,62 @@ regresion_model <- function(model_type, target_variable, s1_columns, s2_columns,
     datosDesc <- cuest %>%
       select(!!colsD, all_of(target_variable))
     datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
-    print(colnames(datosDesc))
-    datosDesc <- datosDesc %>% select(- Q6_15_X15...Cu) #esto hay que cambiarlo
     
-    trainSetDesc <- datosDesc[trainIndexCuest, ]
-    
+    # Verificar y eliminar niveles ausentes
+    for (col in colsD) {
+      result <- verificar_y_eliminar_niveles(trainSetCuest, datosDesc, col)
+      trainSetCuest <- result$train
+      datosDesc <- result$test
+    }
     
     log_variable <- paste("log", target_variable, sep = "_")
-    trainSetDesc[[log_variable]] <- log(trainSetDesc[[target_variable]] + 1)
-    
-    testSetDesc <- datosDesc[-trainIndexCuest, ]# %>% select(-ID)
-    testSetDesc[[log_variable]] <- log(testSetDesc[[target_variable]] + 1)
-    
+    trainSetCuest[[log_variable]] <- log(trainSetCuest[[target_variable]] + 1)
+    datosDesc[[log_variable]] <- log(datosDesc[[target_variable]] + 1)
     
     if (model_type == "lm") {
       # Regresión Lineal
-      #aqui hay algo que deja de funcionar
-      # print(summary(trainSetDesc))
-      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
-      predicciones_log <- exp(predict(model, newdata = testSetDesc)) - 1
-
+      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+      predicciones_log <- exp(predict(model, newdata = datosDesc)) - 1
     } else if (model_type == "rf") {
       # Random Forest
-      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
-      predicciones_log <- exp(predict(model, newdata = testSetDesc)) - 1
+      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+      predicciones_log <- exp(predict(model, newdata = datosDesc)) - 1
     } else if (model_type == "gbm") {
       # Gradient Boosting
-      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetDesc)
-      predicciones_log <- exp(predict(model, newdata = testSetDesc, n.trees = 100)) - 1
+      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+      predicciones_log <- exp(predict(model, newdata = datosDesc, n.trees = 100)) - 1
     } else if (model_type == "svm"){
       # SVM
       model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
-                    data = trainSetDesc, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-      predicciones_log <- exp(predict(model$best.model, newdata = testSetDesc)) - 1
-      
+                    data = trainSetCuest, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+      predicciones_log <- exp(predict(model$best.model, newdata = datosDesc)) - 1
     } else if (model_type == "nn"){
       # Neural Network
       model <- neuralnet(
         as.formula(paste(log_variable, "~ . - ", target_variable)),
-        data = trainSetDesc,
+        data = trainSetCuest,
         hidden = 3
       )
-      pred <- compute(model, testSetDesc)
+      pred <- compute(model, datosDesc)
       predicciones_log <- exp(pred$net.result) - 1
-      
-      
     }
     
-    namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
-    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+    namePred <- paste("Predicted", modelo, colsDesc, model_type, sep = "_")
+    nameMAE <- paste("MAE", modelo, colsDesc, sep = "_")
     
     results_list[[namePred]] <- predicciones_log
-    results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
-    
+    results_list[[nameMAE]] <- abs(predicciones_log - datosDesc[[target_variable]])
   }
   
-  
   resultados <- data.frame(
-    ID = datos$ID[-trainIndexCuest],
-    Real = testSet[[target_variable]],
+    ID = datosDesc$ID,  # Puedes necesitar ajustar esto si la columna ID se eliminó
+    Real = datosDesc[[target_variable]],
     results_list
   )
   
   # Escribir el CSV final
-  fwrite(resultados, file = paste("Resultados/PrediccionError/Cuest/Pred_", modelo, "_", model_type, ".csv", sep = ""))
+  write.csv(resultados, file = paste("Resultados/PrediccionError/Cuest/Pred_", modelo, "_", model_type, ".csv", sep = ""))
+  
   
   return(resultados)
 }
@@ -604,6 +682,7 @@ modelos_clasificacion <- c( "gbm", "logistic")
 for (modelo_clasificacion in modelos_clasificacion) {
   clasificacion_model(modelo_clasificacion, s1, s2, s3)
 }   
+
 
 
 
