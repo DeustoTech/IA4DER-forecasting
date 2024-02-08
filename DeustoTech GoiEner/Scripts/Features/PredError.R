@@ -525,6 +525,13 @@ limpiarColumnas <- function(trainIndexCuest, colsDesc, target){
           trainSet[[col]] <- NULL
           testSet[[col]] <- NULL
         }
+        # No funciona del todo bien. Segur mirando.
+        
+        # else {
+        #   # Convertir a factor
+        #   trainSet[[col]] <- as.factor(trainSet[[col]])
+        #   testSet[[col]] <- as.factor(testSet[[col]])
+        # }
         
       }
     }
