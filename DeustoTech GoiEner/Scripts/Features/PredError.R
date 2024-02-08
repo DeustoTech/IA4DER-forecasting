@@ -333,6 +333,7 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
     columns <- list(columns_s1, columns_s2, columns_s3)
     columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
     results_list <- list()
+    results_list2 <- list()
     
     for (i in seq_along(columns)) {
   
@@ -395,14 +396,16 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
       Real = testSet[[target_variable]],
       results_list
     )
+    write.csv(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, "_", model_type, ".csv", sep = ""))
     
     
     columnsDesc <- list(descSE, descCG, descEd)
     testSetCuest <- NULL
     trainSetCuest <- NULL
+    i = 1
   
     for (colsDesc in (columnsDesc)) {
-      # print(colsDesc)
+      print(names(colsDesc))
      
       
       # colsD <- columnsDesc[[colsDesc]]
@@ -454,24 +457,26 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
       }
       
       
-      namePred <- paste("Predicted", modelo, colsDesc, model_type, sep = "_")
-      nameMAE <- paste("MAE", modelo, colsDesc, sep = "_")
+      namePred <- paste("Predicted", modelo, columnas[i], model_type, sep = "_")
+      nameMAE <- paste("MAE", modelo, columnas[i], sep = "_")
       
-      # print("llego")
-      results_list[[namePred]] <- predicciones_log # Peta aquí
-      results_list[[nameMAE]] <- abs(predicciones_log - testSetCuest[[target_variable]])
+      i = i + 1
+      
+      
+      print(namePred)
+      results_list2[[namePred]] <- predicciones_log
+      results_list2[[nameMAE]] <- abs(predicciones_log - testSetCuest[[target_variable]])
     }
-    resultados_temp <- data.frame(
+    resultadosCuest <- data.frame(
       ID = testID,
       Real = testSetCuest[[target_variable]],
-      results_list
+      results_list2
     )
     
-    resultados <- cbind(resultados, resultados_temp)
-      
+   
     
-    # Escribir el CSV final
-    write.csv(resultados, file = paste("Resultados/PrediccionError/Cuest/Pred_", modelo, "_", model_type, ".csv", sep = ""))
+    # Como el cuestionario tiene menos observaciones para el testset, lo guardarmos en arhcivos distintos
+    write.csv(resultadosCuest, file = paste("Resultados/PrediccionError/Cuest/Cuest_Pred_", modelo, "_", model_type, ".csv", sep = ""))
     
     
     return(resultados)
@@ -489,7 +494,7 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
 set.seed(0)
 index <- 0.75
 cuest_nrow <- nrow(cuest)
-feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeEnsemble_mediana)))
+feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeSVM_mediana)))
 trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
 trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
 
