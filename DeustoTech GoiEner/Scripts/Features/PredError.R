@@ -197,49 +197,6 @@ numericas <- c("Q1_99_X.Han.afe", "Q1_98_X8...Ha.b", "Q2_1_X1...Le.ha",
 # Definir las columnas categóricas
 columnas <- c("descSE", "descEd", "descCG")
 
-# Crear el conjunto de entrenamiento y prueba
-set.seed(0)  # Establecer semilla para reproducibilidad
-index <- 0.7
-trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
-trainSetCuest <- cuest[trainIndexCuest, ]
-testSetCuest <- cuest[-trainIndexCuest, ]
-
-verificar_y_eliminar_niveles <- function(train, test, col) {
-  # Verificar si la columna es categórica
-  if (col %in% categoricas) {
-    # Obtener niveles únicos en el conjunto de entrenamiento y prueba
-    niveles_train <- unique(train[[col]])
-    niveles_test <- unique(test[[col]])
-    
-    # Verificar si todos los niveles están presentes en el conjunto de entrenamiento
-    niveles_faltantes <- setdiff(niveles_test, niveles_train)
-    
-    # Verificar si la columna tiene menos de dos niveles
-    if (length(niveles_train) < 2 || length(niveles_test) < 2) {
-      cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
-      train[[col]] <- NULL
-      test[[col]] <- NULL
-    } else if (length(niveles_faltantes) > 0) {
-      cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
-      train[[col]] <- NULL
-      test[[col]] <- NULL
-    }
-  }
-  
-  return(list(train = train, test = test))
-}
-
-# Verificar y eliminar niveles solo para columnas categóricas
-for (col in categoricas) {
-  result <- verificar_y_eliminar_niveles(trainSetCuest, testSetCuest, col)
-  trainSetCuest <- result$train
-  testSetCuest <- result$test
-}
-
-
-
-
-
 }
 
 
@@ -360,161 +317,166 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
 
 }
 
-
-# Función para realizar regresión y generar resultados
-regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, descSE_columns, descEd_columns, descCG_columns, trainIndex) {
   
-  modelo <- gsub("^mape|_mediana$", "", target_variable)
+  # Función para realizar regresión y generar resultados
+  regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, descSE_columns, descEd_columns, descCG_columns, trainIndex) {
+    
+    modelo <- gsub("^mape|_mediana$", "", target_variable)
+    
+    columns_s1 <- append(s1_columns, target_variable)
+    columns_s2 <- append(s2_columns, target_variable)
+    columns_s3 <- append(s3_columns, target_variable)
+    columns_descSE <- append(descSE_columns, target_variable)
+    columns_descEd <- append(descEd_columns, target_variable)
+    columns_descCG <- append(descCG_columns, target_variable)
+    
+    columns <- list(columns_s1, columns_s2, columns_s3)
+    columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
+    results_list <- list()
+    
+    for (i in seq_along(columns)) {
   
-  columns_s1 <- append(s1_columns, target_variable)
-  columns_s2 <- append(s2_columns, target_variable)
-  columns_s3 <- append(s3_columns, target_variable)
-  columns_descSE <- append(descSE_columns, target_variable)
-  columns_descEd <- append(descEd_columns, target_variable)
-  columns_descCG <- append(descCG_columns, target_variable)
+      col <- columns[[i]]
+      col_name <- paste("s", i, sep = "")
   
-  columns <- list(columns_s1, columns_s2, columns_s3)
-  columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
-  results_list <- list()
+      datos <- feats3[col]
+      datos$ID <- feats3$ID
+      datos <- datos %>% filter(!is.na(!!sym(target_variable)))
   
-  for (i in seq_along(columns)) {
+      trainSet <- datos[trainIndex, ] %>% select(-ID)
+      log_variable <- paste("log", target_variable, sep = "_")
+      trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
+  
+      testSet <- datos[-trainIndex, ] %>% select(-ID)
+      testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
+  
+  
+      if (model_type == "lm") {
+        # Regresión Lineal
+        model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+        predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+      } else if (model_type == "rf") {
+        # Random Forest
+        model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+        predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+      } else if (model_type == "gbm") {
+        # Gradient Boosting
+        model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+        predicciones_log <- exp(predict(model, newdata = testSet, n.trees = 100)) - 1
+      } else if (model_type == "svm"){
+        # SVM
+        model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
+                                                  data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+        predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
+  
+      } else if (model_type == "nn"){
+        # Neural Network
+        model <- neuralnet(
+            as.formula(paste(log_variable, "~ . - ", target_variable)),
+            data = trainSet,
+            hidden = 3
+          )
+        pred <- compute(model, testSet)
+        predicciones_log <- exp(pred$net.result) - 1
+  
+  
+      }
+  
+      namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
+      nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+  
+      results_list[[namePred]] <- predicciones_log
+      results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
+  
+    }
+    
+    resultados <- data.frame(
+      ID = datos$ID[-trainIndex],
+      Real = testSet[[target_variable]],
+      results_list
+    )
+    
+    
+    columnsDesc <- list(descSE, descCG, descEd)
+    testSetCuest <- NULL
+    trainSetCuest <- NULL
+  
+    for (colsDesc in (columnsDesc)) {
+      # print(colsDesc)
+     
+      
+      # colsD <- columnsDesc[[colsDesc]]
+      # datosDesc <- cuest %>%
+      #   select(!!colsD, all_of(target_variable))
+      # datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
+      
+      sets_limpios <- limpiarColumnas(trainIndexCuest, colsDesc, target_variable)
+      
+      trainSetCuest <- sets_limpios$trainSet
+      testSetCuest <- sets_limpios$testSet
+      
 
-    col <- columns[[i]]
-    col_name <- paste("s", i, sep = "")
-
-    datos <- feats3[col]
-    datos$ID <- feats3$ID
-    datos <- datos %>% filter(!is.na(!!sym(target_variable)))
-
-    trainSet <- datos[trainIndex, ] %>% select(-ID)
-    log_variable <- paste("log", target_variable, sep = "_")
-    trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
-
-    testSet <- datos[-trainIndex, ] %>% select(-ID)
-    testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
-
-
-    if (model_type == "lm") {
-      # Regresión Lineal
-      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-      predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-    } else if (model_type == "rf") {
-      # Random Forest
-      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-      predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-    } else if (model_type == "gbm") {
-      # Gradient Boosting
-      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
-      predicciones_log <- exp(predict(model, newdata = testSet, n.trees = 100)) - 1
-    } else if (model_type == "svm"){
-      # SVM
-      model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
-                                                data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-      predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
-
-    } else if (model_type == "nn"){
-      # Neural Network
-      model <- neuralnet(
+      # print(head(trainSetCuest))
+      
+      log_variable <- paste("log", target_variable, sep = "_")
+      trainSetCuest[[log_variable]] <- log(trainSetCuest[[target_variable]] + 1)
+      testSetCuest[[log_variable]] <- log(testSetCuest[[target_variable]] + 1)
+      
+      testID <- cuest[-trainIndexCuest] %>% select(ID)
+      
+      
+      if (model_type == "lm") {
+        # Regresión Lineal
+        model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+        predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
+      } else if (model_type == "rf") {
+        # Random Forest
+        model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+        predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
+      } else if (model_type == "gbm") {
+        # Gradient Boosting
+        model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+        predicciones_log <- exp(predict(model, newdata = testSetCuest, n.trees = 100)) - 1
+      } else if (model_type == "svm"){
+        # SVM
+        model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
+                      data = trainSetCuest, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+        predicciones_log <- exp(predict(model$best.model, newdata = testSetCuest)) - 1
+      } else if (model_type == "nn"){
+        # Neural Network
+        model <- neuralnet(
           as.formula(paste(log_variable, "~ . - ", target_variable)),
-          data = trainSet,
+          data = trainSetCuest,
           hidden = 3
         )
-      pred <- compute(model, testSet)
-      predicciones_log <- exp(pred$net.result) - 1
-
-
-    }
-
-    namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
-    nameMAE <- paste("MAE", modelo, col_name, sep = "_")
-
-    results_list[[namePred]] <- predicciones_log
-    results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
-
-  }
-  
-  names(columnsDesc) <- c("descSE", "descEd", "descCG")
-  resultados_list <- list()
-  
-  for (colsDesc in names(columnsDesc)) {
-    
-    col_names <- colsDesc
-    colsD <- columnsDesc[[colsDesc]]
-    datosDesc <- cuest %>%
-      select(!!colsD, all_of(target_variable))
-    datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
-    
-    trainSetCuest <- cuest[trainIndexCuest, ]
-    testSetCuest <- cuest[-trainIndexCuest, ]
-    
-    
-    # Verificar y eliminar niveles ausentes
-    for (col in colsD) {
-      result <- verificar_y_eliminar_niveles(trainSetCuest, datosDesc, col)
-      trainSetCuest <- result$train
-      datosDesc <- result$test
-      
-      niveles <- unique(trainSetCuest[[col]])
-      
-      # Verificar si hay menos de dos niveles
-      if (length(niveles) < 2 & col %in% categoricas) {
-        cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
-        trainSetCuest[[col]] <- NULL
-        testSetCuest[[col]] <- NULL
+        pred <- compute(model, testSetCuest)
+        predicciones_log <- exp(pred$net.result) - 1
       }
+      
+      
+      namePred <- paste("Predicted", modelo, colsDesc, model_type, sep = "_")
+      nameMAE <- paste("MAE", modelo, colsDesc, sep = "_")
+      
+      # print("llego")
+      results_list[[namePred]] <- predicciones_log # Peta aquí
+      results_list[[nameMAE]] <- abs(predicciones_log - testSetCuest[[target_variable]])
     }
-    log_variable <- paste("log", target_variable, sep = "_")
-    trainSetCuest[[log_variable]] <- log(trainSetCuest[[target_variable]] + 1)
-    datosDesc[[log_variable]] <- log(datosDesc[[target_variable]] + 1)
+    resultados_temp <- data.frame(
+      ID = testID,
+      Real = testSetCuest[[target_variable]],
+      results_list
+    )
     
-    if (model_type == "lm") {
-      # Regresión Lineal
-      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
-      predicciones_log <- exp(predict(model, newdata = datosDesc)) - 1
-    } else if (model_type == "rf") {
-      # Random Forest
-      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
-      predicciones_log <- exp(predict(model, newdata = datosDesc)) - 1
-    } else if (model_type == "gbm") {
-      # Gradient Boosting
-      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
-      predicciones_log <- exp(predict(model, newdata = datosDesc, n.trees = 100)) - 1
-    } else if (model_type == "svm"){
-      # SVM
-      model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
-                    data = trainSetCuest, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-      predicciones_log <- exp(predict(model$best.model, newdata = datosDesc)) - 1
-    } else if (model_type == "nn"){
-      # Neural Network
-      model <- neuralnet(
-        as.formula(paste(log_variable, "~ . - ", target_variable)),
-        data = trainSetCuest,
-        hidden = 3
-      )
-      pred <- compute(model, datosDesc)
-      predicciones_log <- exp(pred$net.result) - 1
-    }
+    resultados <- cbind(resultados, resultados_temp)
+      
     
-    namePred <- paste("Predicted", modelo, colsDesc, model_type, sep = "_")
-    nameMAE <- paste("MAE", modelo, colsDesc, sep = "_")
+    # Escribir el CSV final
+    write.csv(resultados, file = paste("Resultados/PrediccionError/Cuest/Pred_", modelo, "_", model_type, ".csv", sep = ""))
     
-    results_list[[namePred]] <- predicciones_log
-    results_list[[nameMAE]] <- abs(predicciones_log - datosDesc[[target_variable]])
+    
+    return(resultados)
   }
   
-  resultados <- data.frame(
-    ID = datosDesc$ID,  # Puedes necesitar ajustar esto si la columna ID se eliminó
-    Real = datosDesc[[target_variable]],
-    results_list
-  )
-  
-  # Escribir el CSV final
-  write.csv(resultados, file = paste("Resultados/PrediccionError/Cuest/Pred_", modelo, "_", model_type, ".csv", sep = ""))
-  
-  
-  return(resultados)
-}
-
 # Lista de modelos
 modelos <- c("lm", "rf", "gbm", "svm", "nn")
 
@@ -522,17 +484,50 @@ modelos <- c("lm", "rf", "gbm", "svm", "nn")
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
             "mapeETS_mediana", "mapeNN_mediana", "mapeSVM_mediana", "mapeEnsemble_mediana")
 
-cuest <- feats3 %>%
-  inner_join(cuest, by = "ID") %>%
-  filter(!is.na(mapeEnsemble_mediana)) 
-# Cuest son todos los que han respondido al cuestionario y procesadas
-cuest
+
+
 set.seed(0)
 index <- 0.75
 cuest_nrow <- nrow(cuest)
 feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeEnsemble_mediana)))
 trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
 trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
+
+limpiarColumnas <- function(trainIndexCuest, colsDesc, target){
+  
+  resultados <- list()
+  
+  trainSet <- cuest[trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
+  testSet <- cuest[-trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
+ 
+    
+    
+    for (col in colsDesc){
+      if (col %in% categoricas){
+        
+        niveles_train <- unique(trainSet[[col]])
+        niveles_test <- unique(testSet[[col]])
+        
+        niveles_faltantes <- setdiff(niveles_test, niveles_train)
+        
+        # Verificar si la columna tiene menos de dos niveles
+        if (length(niveles_train) < 2 || length(niveles_test) < 2) {
+          cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
+          trainSet[[col]] <- NULL
+          testSet[[col]] <- NULL
+        } else if (length(niveles_faltantes) > 0) {
+          cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
+          trainSet[[col]] <- NULL
+          testSet[[col]] <- NULL
+        }
+        
+      }
+    }
+  # cat(paste("Columnas:",(colnames(trainSet))))
+    return(list(trainSet = trainSet, testSet = testSet))
+    
+  
+}
 
 
 
@@ -542,7 +537,6 @@ for (modelo in modelos) {
     regresion_model(modelo, variable, s1, s2, s3, descSE, descEd, descCG, trainIndex)
   }
 }
-
 
 
 # CLASIFICACION
