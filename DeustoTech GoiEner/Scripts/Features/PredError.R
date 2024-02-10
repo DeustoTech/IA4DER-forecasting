@@ -16,7 +16,7 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
-
+{
 # Cargar ficheros y constantes
 setwd('C:/GIT HUB ANE/IA4DER-forecasting/DeustoTech GoiEner')
 
@@ -26,7 +26,7 @@ csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F
 metadata_file <- fread("metadata.csv")
 
 # csv_files <- csv_files[201:length(csv_files)]
-{
+
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
 L <- csv_files[grepl("-L\\.csv$", csv_files)]
@@ -111,6 +111,9 @@ L_p3 <- 0.185471
 }
 model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensemble")
 
+# Target: columna que vamos a predecir: error mediano de cada modelo
+target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
+            "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
 
 # Carga fichero con todas las features
 
@@ -122,21 +125,12 @@ summary(cols_cuest)
 #columnas cuestionario
 cols_cuest <- feats_complete %>% select(matches("^Q\\d"))
 cols_cuest$ID <- feats_complete$file
-sum(is.na(cols_cuest[, Q1_1_X1...Cul.]))
 
 
 # Solo las que han respondido al cuestionario entero
 cuest <- cols_cuest[complete.cases(cols_cuest) & rowSums(!is.na(cols_cuest)) > 1]
-
-
-
 cuest <- left_join(cuest, feats3[, c("ID", target)], by = "ID")
 
-# Eliminar duplicados en feats3 basándote en la columna ID
-feats3_unique <- feats3 %>% distinct(ID, .keep_all = TRUE)
-
-# Realizar la unión sin duplicados
-cuest <- left_join(cuest, feats3_unique[, c("ID", target)], by = "ID")
 
 # Columnas y limipiar cuestionario
 {
@@ -197,13 +191,17 @@ numericas <- c("Q1_99_X.Han.afe", "Q1_98_X8...Ha.b", "Q2_1_X1...Le.ha",
 # Definir las columnas categóricas
 columnas <- c("descSE", "descEd", "descCG")
 
+# EJECUTAR PARA NO TENER PROBLEMAS CON CATEGORICAS
+for (col in colnames(cuest)){
+  if (col %in% categoricas){
+    cuest[[col]] <- as.factor(cuest[[col]])
+  }
+}
+
 }
 
 
 
-# Target: columna que vamos a predecir: error mediano de cada modelo
-target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
-            "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
 {
 allFeatures <- c( # Lista de todas las columnas
   "ID", "LENGTH", "ZERO", "IMPUTED", "AVG",
@@ -254,86 +252,19 @@ s3 <- c("POT_1", "POT_2",
 
 }
 
-# Regresion lineal pruebas 
-{
-# Para evitar predicciones negativas (el error no puede ser negativo)
-# usamos logaritmo y luego lo "deshacemos" 
-set.seed(0)
-index <- 0.75
-columns <- append(s3, target[5])
-media <- feats[columns] 
-media$ID <- feats$ID
-media <- media %>% filter(!is.na(mapeETS_mediana))
-trainIndex <- sample(1:nrow(media), index * nrow(media))
-testIndex <- setdiff(1:nrow(media), trainIndex)
-target_variable <- "mapeETS_mediana"
-
-# Transformación logarítmica en conjunto de entrenamiento
-trainSet <- media[trainIndex, ] %>% select(-ID)
-trainSet$log_mapeETS_mediana <- log(trainSet$mapeETS_mediana + 1)
-
-log_variable <- paste("log", target_variable, sep = "_")
-trainSet[[log_variable]] <- log(trainSet[[target_variable]] +1)
 
 
-testSet <- media[-trainIndex, ] %>% select(-ID)
-testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
-
-
-nn <-  neuralnet(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, hidden = 5)
-
-predicciones_log <- (compute(nn, testSet))
-
-
-
-# Ajustar el modelo lineal a la variable transformada en el conjunto de entrenamiento
-mediaLM_log <- lm(log_mapeMedia_mediana ~ . - mapeMedia_mediana, data = trainSet)
-
-# Transformación logarítmica en conjunto de prueba
-testSet <- media[-trainIndex, ] %>% select(-ID)
-testSet$log_mapeMedia_mediana <- log(testSet$mapeMedia_mediana + 1)
-resultados <- data.frame(ID = media$ID[testIndex], Real = testSet$mapeMedia_mediana)
-# Realizar predicciones en el conjunto de prueba
-
-# S1
-
-predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
-resultados$Predicted_S1 <- predicciones_log
-resultados$MAE_S1 <- abs(resultados$Real - resultados$Predicted_S1)
-
-#S2
-
-predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
-resultados$Predicted_S2 <- predicciones_log
-resultados$MAE_S2 <- abs(resultados$Real - resultados$Predicted_S2)
-
-#S3
-
-predicciones_log <- exp(predict(mediaLM_log, newdata = testSet)) - 1
-resultados$Predicted_S3 <- predicciones_log
-resultados$MAE_S3 <- abs(resultados$Real - resultados$Predicted_S3)
-
-fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.names = T, row.names = F)
-
-}
-
-  
-  # Función para realizar regresión y generar resultados
-  regresion_model <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, descSE_columns, descEd_columns, descCG_columns, trainIndex) {
+# Función para realizar regresión y generar resultados
+regresion_model_feats <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, trainIndex) {
     
     modelo <- gsub("^mape|_mediana$", "", target_variable)
     
     columns_s1 <- append(s1_columns, target_variable)
     columns_s2 <- append(s2_columns, target_variable)
     columns_s3 <- append(s3_columns, target_variable)
-    columns_descSE <- append(descSE_columns, target_variable)
-    columns_descEd <- append(descEd_columns, target_variable)
-    columns_descCG <- append(descCG_columns, target_variable)
-    
+   
     columns <- list(columns_s1, columns_s2, columns_s3)
-    columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
     results_list <- list()
-    results_list2 <- list()
     
     for (i in seq_along(columns)) {
   
@@ -372,15 +303,13 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
   
       } else if (model_type == "nn"){
         # Neural Network
-        model <- neuralnet(
-            as.formula(paste(log_variable, "~ . - ", target_variable)),
-            data = trainSet,
-            hidden = 3
-          )
-        pred <- compute(model, testSet)
-        predicciones_log <- exp(pred$net.result) - 1
-  
-  
+        model <- nnet(
+          as.formula(paste(log_variable, "~ . - ", target_variable)),
+          data = trainSet,
+          size = 3
+        )
+        predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+      
       }
   
       namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
@@ -396,91 +325,97 @@ fwrite(resultados, file = "Resultados/PrediccionError/PredMediaLM.csv", col.name
       Real = testSet[[target_variable]],
       results_list
     )
-    write.csv(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, "_", model_type, ".csv", sep = ""))
-    
-    
-    columnsDesc <- list(descSE, descCG, descEd)
-    testSetCuest <- NULL
-    trainSetCuest <- NULL
-    i = 1
-  
-    for (colsDesc in (columnsDesc)) {
-      print(names(colsDesc))
-     
-      
-      # colsD <- columnsDesc[[colsDesc]]
-      # datosDesc <- cuest %>%
-      #   select(!!colsD, all_of(target_variable))
-      # datosDesc <- datosDesc %>% filter(!is.na(!!sym(target_variable)))
-      
-      sets_limpios <- limpiarColumnas(trainIndexCuest, colsDesc, target_variable)
-      
-      trainSetCuest <- sets_limpios$trainSet
-      testSetCuest <- sets_limpios$testSet
-      
-
-      # print(head(trainSetCuest))
-      
-      log_variable <- paste("log", target_variable, sep = "_")
-      trainSetCuest[[log_variable]] <- log(trainSetCuest[[target_variable]] + 1)
-      testSetCuest[[log_variable]] <- log(testSetCuest[[target_variable]] + 1)
-      
-      testID <- cuest[-trainIndexCuest] %>% select(ID)
-      
-      
-      if (model_type == "lm") {
-        # Regresión Lineal
-        model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
-        predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
-      } else if (model_type == "rf") {
-        # Random Forest
-        model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
-        predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
-      } else if (model_type == "gbm") {
-        # Gradient Boosting
-        model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
-        predicciones_log <- exp(predict(model, newdata = testSetCuest, n.trees = 100)) - 1
-      } else if (model_type == "svm"){
-        # SVM
-        model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
-                      data = trainSetCuest, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-        predicciones_log <- exp(predict(model$best.model, newdata = testSetCuest)) - 1
-      } else if (model_type == "nn"){
-        # Neural Network
-        model <- neuralnet(
-          as.formula(paste(log_variable, "~ . - ", target_variable)),
-          data = trainSetCuest,
-          hidden = 3
-        )
-        pred <- compute(model, testSetCuest)
-        predicciones_log <- exp(pred$net.result) - 1
-      }
-      
-      
-      namePred <- paste("Predicted", modelo, columnas[i], model_type, sep = "_")
-      nameMAE <- paste("MAE", modelo, columnas[i], sep = "_")
-      
-      i = i + 1
-      
-      
-      print(namePred)
-      results_list2[[namePred]] <- predicciones_log
-      results_list2[[nameMAE]] <- abs(predicciones_log - testSetCuest[[target_variable]])
-    }
-    resultadosCuest <- data.frame(
-      ID = testID,
-      Real = testSetCuest[[target_variable]],
-      results_list2
-    )
-    
+    write.csv(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, "_", model_type, ".csv", sep = ""), row.names = F)
    
-    
-    # Como el cuestionario tiene menos observaciones para el testset, lo guardarmos en arhcivos distintos
-    write.csv(resultadosCuest, file = paste("Resultados/PrediccionError/Cuest/Cuest_Pred_", modelo, "_", model_type, ".csv", sep = ""))
-    
     
     return(resultados)
   }
+  
+regression_model_cuest <- function(model_type, target_variable, descSE_columns, descEd_columns, descCG_columns, trainIndexCuest){
+  
+  modelo <- gsub("^mape|_mediana$", "", target_variable)
+  
+  columns_descSE <- append(descSE_columns, target_variable)
+  columns_descEd <- append(descEd_columns, target_variable)
+  columns_descCG <- append(descCG_columns, target_variable)
+  columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
+  results_list <- list()
+  
+
+  columnsDesc <- list(descSE, descCG, descEd)
+  testSetCuest <- NULL
+  trainSetCuest <- NULL
+  i = 1
+
+  for (colsDesc in (columnsDesc)) {
+   
+
+    sets_limpios <- limpiarColumnas(trainIndexCuest, colsDesc, target_variable)
+
+    trainSetCuest <- sets_limpios$trainSet
+    testSetCuest <- sets_limpios$testSet
+    
+    
+
+    log_variable <- paste("log", target_variable, sep = "_")
+    trainSetCuest[[log_variable]] <- log(trainSetCuest[[target_variable]] + 1)
+    testSetCuest[[log_variable]] <- log(testSetCuest[[target_variable]] + 1)
+   
+
+    testID <- cuest[-trainIndexCuest] %>% select(ID)
+
+
+    if (model_type == "lm") {
+      # Regresión Lineal
+      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+      predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
+    } else if (model_type == "rf") {
+      # Random Forest
+      model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+      predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
+    } else if (model_type == "gbm") {
+      # Gradient Boosting
+      model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSetCuest)
+      predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
+    } else if (model_type == "svm"){
+      # SVM
+      model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
+                    data = trainSetCuest, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
+      predicciones_log <- exp(predict(model$best.model, newdata = testSetCuest)) - 1
+    } else if (model_type == "nn"){
+      # Neural Network
+      
+      model <- nnet(
+        as.formula(paste(log_variable, "~ . - ", target_variable)),
+        data = trainSetCuest,
+        size = 2
+      )
+      predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
+    }
+
+
+    namePred <- paste("Predicted", modelo, columnas[i], model_type, sep = "_")
+    nameMAE <- paste("MAE", modelo, columnas[i], sep = "_")
+
+    i = i + 1
+
+
+    print(namePred)
+    results_list[[namePred]] <- predicciones_log
+    results_list[[nameMAE]] <- abs(predicciones_log - testSetCuest[[target_variable]])
+  }
+  resultadosCuest <- data.frame(
+    ID = testID,
+    Real = testSetCuest[[target_variable]],
+    results_list
+  )
+
+
+
+  # Como el cuestionario tiene menos observaciones para el testset, lo guardarmos en arhcivos distintos
+  write.csv(resultadosCuest, file = paste("Resultados/PrediccionError/Cuest/Cuest_Pred_", modelo, "_", model_type, ".csv", sep = ""))
+  return(resultadosCuest)
+}
   
 # Lista de modelos
 modelos <- c("lm", "rf", "gbm", "svm", "nn")
@@ -497,58 +432,67 @@ cuest_nrow <- nrow(cuest)
 feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeSVM_mediana)))
 trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
 trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
-
-limpiarColumnas <- function(trainIndexCuest, colsDesc, target){
+limpiarColumnas <- function(trainIndexCuest, colsDesc, target) {
   
   resultados <- list()
   
   trainSet <- cuest[trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
   testSet <- cuest[-trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
- 
-    
-    
-    for (col in colsDesc){
-      if (col %in% categoricas){
-        
-        niveles_train <- unique(trainSet[[col]])
-        niveles_test <- unique(testSet[[col]])
-        
-        niveles_faltantes <- setdiff(niveles_test, niveles_train)
-        
-        # Verificar si la columna tiene menos de dos niveles
-        if (length(niveles_train) < 2 || length(niveles_test) < 2) {
-          cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
-          trainSet[[col]] <- NULL
-          testSet[[col]] <- NULL
-        } else if (length(niveles_faltantes) > 0) {
-          cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
-          trainSet[[col]] <- NULL
-          testSet[[col]] <- NULL
-        }
-        # No funciona del todo bien. Segur mirando.
-        
-        # else {
-        #   # Convertir a factor
-        #   trainSet[[col]] <- as.factor(trainSet[[col]])
-        #   testSet[[col]] <- as.factor(testSet[[col]])
-        # }
-        
+  
+
+
+  for (col in colsDesc) {
+    if (col %in% categoricas) {
+      
+      # Obtener niveles únicos
+      niveles_train <- unique(trainSet[[col]])
+      niveles_test <- unique(testSet[[col]])
+      
+      niveles_faltantes <- setdiff(niveles_test, niveles_train)
+      
+      # Verificar si la columna tiene menos de dos niveles
+      if (length(niveles_train) < 2 || length(niveles_test) < 2) {
+        cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
+        trainSet[[col]] <- NULL
+        testSet[[col]] <- NULL
+      } else if (length(niveles_faltantes) > 0) {
+        cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
+        trainSet[[col]] <- NULL
+        testSet[[col]] <- NULL
+      } else {
+        cats <- c(cats, col)
       }
     }
-  # cat(paste("Columnas:",(colnames(trainSet))))
-    return(list(trainSet = trainSet, testSet = testSet))
-    
+  }
+
   
+  return(list(trainSet = trainSet, testSet = testSet))
 }
 
 
 
-# Aplicar la función para cada modelo y variable objetivo con selección de columnas
+
+
+
+
+# Regresion con columnas de las features
 for (modelo in modelos) {
   for (variable in target) {
-    regresion_model(modelo, variable, s1, s2, s3, descSE, descEd, descCG, trainIndex)
+    regresion_model_feats(modelo, variable, s1, s2, s3, trainIndex)
   }
 }
+# Regresion con columnas del cuestionario
+for (modelo in modelos) {
+  for (variable in target) {
+    regression_model_cuest(modelo, variable, descSE, descEd, descCG, trainIndexCuest)
+  }
+}
+
+
+
+
+
+
 
 
 # CLASIFICACION
