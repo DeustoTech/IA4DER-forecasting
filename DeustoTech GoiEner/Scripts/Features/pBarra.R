@@ -52,7 +52,7 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   feats <- read.csv("featuresPredicciones_3.csv")
   
   modelos <- c("rf", "lm", "svm", "nn", "gbm")
-  featuresets <- c("s1", "s2","s3")
+  featuresets <- c("s1", "s2","s3", "descCG", "descSE", "descEd")
   
   mapes <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
               "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
@@ -104,5 +104,41 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   
   
   fwrite(feats, "featuresPredicciones_3.csv")
+  
+  # mape del pbarra
+  
+
+  # Seleccionar las columnas necesarias de feats
+  feats_subset <- feats[, c("ID", grep("^pBarra", names(feats), value = TRUE))]
+  
+  # Unir feats_subset con la columna "Real" de combined por la columna "ID"
+  result_df <- merge(feats_subset, combined[c("ID", "Real")], by = "ID")
+
+  result_df <- result_df %>%
+    select(-ends_with(".1"))
+  
+  # Obtener el nombre de las columnas "pBarra"
+  pbarra_columns <- grep("^pBarra", names(result_df), value = TRUE)
+  
+  # Iterar sobre las columnas "pBarra" y calcular el MAPE
+  for (pbarra_col in pbarra_columns) {
+    mape_col_name <- paste("mapePbarra", sub("^pBarra_", "", pbarra_col), sep = "_")
+    
+    for(i in 1:nrow(result_df)){
+      result_df[i, mape_col_name] <- mape(result_df$Real[i], result_df[[i,pbarra_col]]) * 100
+    }
+    
+  }
+  
+
+  
+  # Filtrar columnas de result_df que empiezan por "mape"
+  result_df_subset <- result_df[, c("ID", grep("^mape", names(result_df), value = TRUE))]
+  
+  # Fusionar feats y result_df_subset por la columna ID
+  feats <- merge(feats, result_df_subset, by = "ID", all.x = TRUE)
+  
+  fwrite(feats, "featuresPredicciones_3.csv")
+  
   
 }
