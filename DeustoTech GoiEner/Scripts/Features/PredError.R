@@ -570,20 +570,6 @@ for (modelo_clasificacion in modelos_clasificacion) {
 }
 
 
-library(randomForest)
-library(gbm)
-library(nnet) # Para regresión logística multinomial
-library(dplyr)
-library(tidyr)
-library(data.table) # Para fwrite
-
-library(dplyr)
-library(tidyr)
-library(randomForest)
-library(gbm)
-library(nnet) # Para regresión logística multinomial
-library(data.table) # Para fwrite
-library(class)
 
 cat_columns <- c("municipality", "contracted_tariff", "best_model", "ID", "zip_code", "cnae", "self_consumption_type")
 num_columns <- setdiff(names(feats3), cat_columns)
@@ -631,8 +617,8 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
     
     if (model_type == "svm") {
       # Random Forest para clasificación
-      modelo_clasificacion <- svm(as.factor(best_model) ~ ., data = trainset, probability = TRUE)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
+      modelo_clasificacion <- svm(best_model ~ ., data = trainset, probability = T)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset)
     } else if (model_type == "gbm") {
       # Gradient Boosting para clasificación
       modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainset, n.trees = 100)
