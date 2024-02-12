@@ -20,7 +20,7 @@ lm <- list.files(folder, pattern = "_lm.csv$", recursive = T, full.names = F)
 rf <- list.files(folder, pattern = "_rf.csv$", recursive = T, full.names = F)
 gbm <- list.files(folder, pattern = "_gbm.csv$", recursive = T, full.names = F)
 svm <- list.files(folder, pattern = "_svm.csv$", recursive = T, full.names = F)
-gbm <- list.files(folder, pattern = "_nn.csv$", recursive = T, full.names = F)
+nn <- list.files(folder, pattern = "_nn.csv$", recursive = T, full.names = F)
 
 Arima <- list.files(folder, pattern = "Pred_Arima_.*\\.csv$", recursive = T, full.names = F)
 Arima <- paste(folder, Arima, sep = "")
@@ -372,7 +372,7 @@ title(xlab = xlabel, ylab = ylabel)
   
   barplot_data <- table(feats3$best_model)
   barplot_data <- as.data.frame(barplot_data)
-  barplot_data <- barplot_data %>% filter(Freq != 17305)
+  barplot_data <- barplot_data %>% filter(Freq != 17307)
   
   
   barplot(barplot_data$Freq, 
@@ -400,4 +400,39 @@ title(xlab = xlabel, ylab = ylabel)
 {
   mae_arima_log <- grep("^MAE.*Arima$", names(clasif_logistic), value = TRUE)
   ma_arima_gbm <- grep("^MAE.*Arima.100$", names(clasif_logistic), value = TRUE)
+}
+
+
+#CLASIFICACION
+{
+  folder <- "Resultados/PrediccionClasificacion/"
+  gbm <- list.files(folder, pattern = "_gbm.csv$", recursive = T, full.names = F)
+  knn <- list.files(folder, pattern = "_knn.csv$", recursive = T, full.names = F)
+  logistic <- list.files(folder, pattern = "_logistic.csv$", recursive = T, full.names = F)
+  rf <- list.files(folder, pattern = "_rf.csv$", recursive = T, full.names = F)
+  svm <- list.files(folder, pattern = "_svm.csv$", recursive = T, full.names = F)
+  
+  Arima <- list.files(folder, pattern = "Pred_Arima_.*\\.csv$", recursive = T, full.names = F)
+  Arima <- paste(folder, Arima, sep = "")
+  
+  Ensemble <- list.files(folder, pattern = "Pred_Ensemble_.*\\.csv$", recursive = T, full.names = F)
+  Ensemble <- paste(folder, Ensemble, sep = "")
+  
+  ETS <- list.files(folder, pattern = "Pred_ETS_.*\\.csv$", recursive = T, full.names = F)
+  ETS <- paste(folder, ETS, sep = "")
+  
+  Media <- list.files(folder, pattern = "Pred_Media_.*\\.csv$", recursive = T, full.names = F)
+  Media <- paste(folder, Media, sep = "")
+  
+  Naive <- list.files(folder, pattern = "Pred_Naive_.*\\.csv$", recursive = T, full.names = F)
+  Naive <- paste(folder, Naive, sep = "")
+  
+  NN <- list.files(folder, pattern = "Pred_NN_.*\\.csv$", recursive = T, full.names = F)
+  NN <- paste(folder, NN, sep = "")
+  
+  SN <- list.files(folder, pattern = "Pred_SN_.*\\.csv$", recursive = T, full.names = F)
+  SN <- paste(folder, SN, sep = "")
+  
+  SVM <- list.files(folder, pattern = "Pred_SVM_.*\\.csv$", recursive = T, full.names = F)
+  SVM <- paste(folder, SVM, sep = "")
 }
