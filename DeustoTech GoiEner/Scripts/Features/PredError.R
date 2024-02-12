@@ -7,7 +7,7 @@ library(doParallel)
 
 # añadir las librerias nuevas en este vector
 
-librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
+librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
                'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest") 
@@ -655,52 +655,63 @@ for (modelo_clasificacion in modelos_clasificacion) {
 
 
 
-
 clasification_model_cuest <- function(model_type, target, descSE_columns, descEd_columns, descCG_columns){
   
   results_list <- list()
-  columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
   
-  target_values <- feats3$best_model
+  columnsDesc <- list(
+    descSE = descSE_columns,
+    descEd = descEd_columns,
+    descCG = descCG_columns
+  )
+  
+  target_values <- feats3[[target]]
+  
 
-  for (colsDesc in columnsDesc) {
+  for (group in names(columnsDesc)) {
     
+    colsDesc <- columnsDesc[[group]]
     sets_limpios <- limpiarColumnas(trainIndexCuest, unlist(colsDesc), target)
+    
     trainSetCuest <- sets_limpios$trainSet
-    trainSetCuest[[target]] <- target_values[trainIndexCuest]
-    print(trainSetCuest)
+    trainTargetValues <- target_values[trainIndexCuest]
+    trainSetCuest[[target]] <- trainTargetValues
     
+    
+    # Preparar testSetCuest
     testSetCuest <- sets_limpios$testSet
-    testSetCuest[[target]] <- target_values[-trainIndexCuest] 
-    
-    
+    # Necesitamos definir testIndexCuest correctamente
+    testIndexCuest <- setdiff(1:nrow(cuest), trainIndexCuest)
+    testTargetValues <- target_values[testIndexCuest]
+    testSetCuest[[target]] <- testTargetValues
     
     testID <- cuest[-trainIndexCuest] %>% select(ID)
-    
-    
-    
-    
+
     if (model_type == "svm") {
       # Random Forest para clasificación
-      modelo_clasificacion <- svm(best_model ~ ., data = trainSetCuest, probability = T)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest)
+      modelo_clasificacion <- svm(as.factor(best_model) ~ ., data = trainSetCuest, probability = T)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "class")
     } else if (model_type == "gbm") {
       # Gradient Boosting para clasificación
-      modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainSetCuest, n.trees = 100)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "response")
+      modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainSetCuest, n.trees = 100, distribution = "multinomial")
+      predicciones_clasificacion <- predict.gbm(modelo_clasificacion, newdata = testSetCuest, type = "response")
     } else if (model_type == "logistic") {
       # Regresión Logística para clasificación
       modelo_clasificacion <- multinom(best_model ~ ., data = trainSetCuest)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "probs")
-    } else if (model_type == "knn") {
-      predicciones_clasificacion <- knn(train = data.matrix(trainSetCuest[, -which(names(trainSetCuest) == "best_model")]), test = data.matrix(testSetCuest[, -which(names(testSetCuest) == "best_model")]), cl = trainSetCuest$best_model, k = 5)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "class")
+    } else if (model_type == "rf") {
+      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainSetCuest, ntree = 100, replace = T)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "response")
     }
     
-    namePred <- paste("Predicted", model_type, colsDesc, sep = "_")
-    nameMAE <- paste("MAE", model_type, colsDesc, sep = "_")
-    
+    namePred <- paste("Predicted", model_type, group, sep = "_")
     results_list[[namePred]] <- predicciones_clasificacion
-    results_list[[nameMAE]] <- abs(predicciones_clasificacion - as.numeric(testset$best_model))
+    
+    accuracy <- sum(predicciones_clasificacion == testSetCuest[[target]]) / length(testSetCuest[[target]])
+    errorRate <- 1 - accuracy
+    
+    nameErrorRate <- paste("ErrorRate", model_type, group, sep = "_")
+    results_list[[nameErrorRate]] <- errorRate
     
   }
   resultadosCuest <- data.frame(
@@ -712,13 +723,13 @@ clasification_model_cuest <- function(model_type, target, descSE_columns, descEd
   
   
   # Como el cuestionario tiene menos observaciones para el testset, lo guardarmos en arhcivos distintos
-  write.csv(resultadosCuest, file = paste("Resultados/PrediccionClasificacion/Cuest/Cuest_Clasif_", modelo, "_", model_type, ".csv", sep = ""))
+  write.csv(resultadosCuest, file = paste("Resultados/PrediccionClasificacion/Cuest/Cuest_Clasif_", model_type, ".csv", sep = ""))
   return(resultadosCuest)
 }
 
 
 # Definir modelos
-modelos_clasificacion <- c( "gbm", "logistic", "svm", "knn")
+modelos_clasificacion <- c( "gbm", "logistic", "svm", "rf")
 
 
 set.seed(0)
