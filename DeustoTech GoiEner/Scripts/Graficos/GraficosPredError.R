@@ -386,54 +386,32 @@ title(xlab = xlabel, ylab = ylabel)
 }
 
 
-##prediccion clasificacion
-{
-  clasif_logistic <- fread("Resultados/PrediccionClasificacion/Clasif_logistic.csv")
-  clasif_gbm <- fread("Resultados/PrediccionClasificacion/Clasif_gbm.csv")
-  clasif_rf <- fread("Resultados/PrediccionClasificacion/Clasif_rf.csv") #con este no podemos hacer nada, esta mal
-  clasif_gbm <- sub("\\.100$", "", clasif_gbm)
-}
-
-
-
-#Arima
-{
-  mae_arima_log <- grep("^MAE.*Arima$", names(clasif_logistic), value = TRUE)
-  ma_arima_gbm <- grep("^MAE.*Arima.100$", names(clasif_logistic), value = TRUE)
-}
-
 
 #CLASIFICACION
 {
-  folder <- "Resultados/PrediccionClasificacion/"
-  gbm <- list.files(folder, pattern = "_gbm.csv$", recursive = T, full.names = F)
-  knn <- list.files(folder, pattern = "_knn.csv$", recursive = T, full.names = F)
-  logistic <- list.files(folder, pattern = "_logistic.csv$", recursive = T, full.names = F)
-  rf <- list.files(folder, pattern = "_rf.csv$", recursive = T, full.names = F)
-  svm <- list.files(folder, pattern = "_svm.csv$", recursive = T, full.names = F)
+  gbm <- fread("Resultados/PrediccionClasificacion/Clasif_gbm.csv")
+  logistic <- fread("Resultados/PrediccionClasificacion/Clasif_logistic.csv")
+  rf <- fread("Resultados/PrediccionClasificacion/Clasif_rf.csv")
+  svm <- fread("Resultados/PrediccionClasificacion/Clasif_svm.csv")
   
-  Arima <- list.files(folder, pattern = "Pred_Arima_.*\\.csv$", recursive = T, full.names = F)
-  Arima <- paste(folder, Arima, sep = "")
-  
-  Ensemble <- list.files(folder, pattern = "Pred_Ensemble_.*\\.csv$", recursive = T, full.names = F)
-  Ensemble <- paste(folder, Ensemble, sep = "")
-  
-  ETS <- list.files(folder, pattern = "Pred_ETS_.*\\.csv$", recursive = T, full.names = F)
-  ETS <- paste(folder, ETS, sep = "")
-  
-  Media <- list.files(folder, pattern = "Pred_Media_.*\\.csv$", recursive = T, full.names = F)
-  Media <- paste(folder, Media, sep = "")
-  
-  Naive <- list.files(folder, pattern = "Pred_Naive_.*\\.csv$", recursive = T, full.names = F)
-  Naive <- paste(folder, Naive, sep = "")
-  
-  NN <- list.files(folder, pattern = "Pred_NN_.*\\.csv$", recursive = T, full.names = F)
-  NN <- paste(folder, NN, sep = "")
-  
-  
-  SN <- list.files(folder, pattern = "Pred_SN_.*\\.csv$", recursive = T, full.names = F)
-  SN <- paste(folder, SN, sep = "")
-  
-  SVM <- list.files(folder, pattern = "Pred_SVM_.*\\.csv$", recursive = T, full.names = F)
-  SVM <- paste(folder, SVM, sep = "")
+  gbmCuest <- fread("Resultados/PrediccionClasificacion/Cuest/Cuest_Clasif_gbm.csv")
+  logisticCuest <- fread("Resultados/PrediccionClasificacion/Cuest/Cuest_Clasif_logistic.csv")
+  rfCuest <- fread("Resultados/PrediccionClasificacion/Cuest/Cuest_Clasif_rf.csv")
+  svmCuest <- fread("Resultados/PrediccionClasificacion/Cuest/Cuest_Clasif_svm.csv")
 }
+
+#EJEMPLO CON UN SOLO DATASET
+# Seleccionar solo las columnas de Error Rates
+indices <- logisticCuest[, (grep("ErrorRate_", names(logisticCuest)))]
+error_rates <- logisticCuest[,..indices]
+# Convertir de formato ancho a largo para facilitar el gráfico con ggplot
+error_rates_long <- reshape2::melt(error_rates)
+
+# Generar el gráfico de bigotes
+ggplot(error_rates_long, aes(x = variable, y = value)) +
+  geom_boxplot(outlier.shape = NA) + # Excluir outliers con outlier.shape = NA si es necesario
+  labs(title = "Boxplot de Error Rates para Clasificación Logística",
+       x = "Método de Clasificación",
+       y = "Error Rate") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
