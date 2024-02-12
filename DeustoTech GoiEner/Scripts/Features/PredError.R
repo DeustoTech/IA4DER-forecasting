@@ -432,6 +432,7 @@ cuest_nrow <- nrow(cuest)
 feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeSVM_mediana)))
 trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
 trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
+
 limpiarColumnas <- function(trainIndexCuest, colsDesc, target) {
   
   resultados <- list()
@@ -439,8 +440,6 @@ limpiarColumnas <- function(trainIndexCuest, colsDesc, target) {
   trainSet <- cuest[trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
   testSet <- cuest[-trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
   
-
-
   for (col in colsDesc) {
     if (col %in% categoricas) {
       
@@ -459,13 +458,9 @@ limpiarColumnas <- function(trainIndexCuest, colsDesc, target) {
         cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
-      } else {
-        cats <- c(cats, col)
-      }
+      } 
     }
   }
-
-  
   return(list(trainSet = trainSet, testSet = testSet))
 }
 
@@ -656,4 +651,83 @@ modelos_clasificacion <- c( "gbm", "logistic", "svm", "knn")
 
 for (modelo_clasificacion in modelos_clasificacion) {
   clasificacion_model(modelo_clasificacion, s1, s2, s3)
+} 
+
+
+
+
+clasification_model_cuest <- function(model_type, target, descSE_columns, descEd_columns, descCG_columns){
+  
+  results_list <- list()
+  columnsDesc <- list(descSE_columns, descEd_columns, descCG_columns)
+  
+  target_values <- feats3$best_model
+
+  for (colsDesc in columnsDesc) {
+    
+    sets_limpios <- limpiarColumnas(trainIndexCuest, unlist(colsDesc), target)
+    trainSetCuest <- sets_limpios$trainSet
+    trainSetCuest[[target]] <- target_values[trainIndexCuest]
+    print(trainSetCuest)
+    
+    testSetCuest <- sets_limpios$testSet
+    testSetCuest[[target]] <- target_values[-trainIndexCuest] 
+    
+    
+    
+    testID <- cuest[-trainIndexCuest] %>% select(ID)
+    
+    
+    
+    
+    if (model_type == "svm") {
+      # Random Forest para clasificación
+      modelo_clasificacion <- svm(best_model ~ ., data = trainSetCuest, probability = T)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest)
+    } else if (model_type == "gbm") {
+      # Gradient Boosting para clasificación
+      modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainSetCuest, n.trees = 100)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "response")
+    } else if (model_type == "logistic") {
+      # Regresión Logística para clasificación
+      modelo_clasificacion <- multinom(best_model ~ ., data = trainSetCuest)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "probs")
+    } else if (model_type == "knn") {
+      predicciones_clasificacion <- knn(train = data.matrix(trainSetCuest[, -which(names(trainSetCuest) == "best_model")]), test = data.matrix(testSetCuest[, -which(names(testSetCuest) == "best_model")]), cl = trainSetCuest$best_model, k = 5)
+    }
+    
+    namePred <- paste("Predicted", model_type, colsDesc, sep = "_")
+    nameMAE <- paste("MAE", model_type, colsDesc, sep = "_")
+    
+    results_list[[namePred]] <- predicciones_clasificacion
+    results_list[[nameMAE]] <- abs(predicciones_clasificacion - as.numeric(testset$best_model))
+    
+  }
+  resultadosCuest <- data.frame(
+    ID = testID,
+    Real = testSetCuest[[target]],
+    results_list
+  )
+  
+  
+  
+  # Como el cuestionario tiene menos observaciones para el testset, lo guardarmos en arhcivos distintos
+  write.csv(resultadosCuest, file = paste("Resultados/PrediccionClasificacion/Cuest/Cuest_Clasif_", modelo, "_", model_type, ".csv", sep = ""))
+  return(resultadosCuest)
+}
+
+
+# Definir modelos
+modelos_clasificacion <- c( "gbm", "logistic", "svm", "knn")
+
+
+set.seed(0)
+index <- 0.75
+cuest_nrow <- nrow(cuest)
+feats_nrow <- nrow(feats3 %>% filter(!is.na(best_model)))
+trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
+trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
+
+for (modelo_clasificacion in modelos_clasificacion) {
+  clasification_model_cuest(modelo_clasificacion, "best_model",descSE, descEd, descCG)
 } 
