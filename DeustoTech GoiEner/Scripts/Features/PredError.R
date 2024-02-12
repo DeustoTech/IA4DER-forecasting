@@ -491,81 +491,6 @@ for (modelo in modelos) {
 
 
 # CLASIFICACION
-
-clasificacion_model <- function(model_type, s1, s2, s3) {
-  
-  # seleccionamos solo las filas que tengan variable de respuesta (best model)
-  datos_clasificacion <- feats3[which(!is.na(feats3$best_model)), ]
-  set.seed(0)
-  index <- 0.75
-  target <- datos_clasificacion$best_model
-  names(columns) <- c("s1", "s2", "s3")
-  
-  columns_s1 <- append(s1, "best_model")
-  columns_s2 <- append(s2, "best_model")
-  columns_s3 <- append(s3, "best_model")
-  
-  columns <- list(columns_s1, columns_s2, columns_s3)
-  results_list <- list()
-  
-  for (cols in names(columns)) {
-    
-    col_name <- cols
-    col <- columns[[cols]]
-    datos <- datos_clasificacion[, col]
-    datos$ID <- datos_clasificacion$ID
-    
-    trainIndex <- sample(1:nrow(datos), index * nrow(datos))
-    trainset <- datos[trainIndex, ] %>% select(-ID)
-    testset <- datos[-trainIndex, ] %>% select(-ID)
-    
-    
-    if (model_type == "rf") {
-      # Random Forest para clasificación
-      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 100, replace = T)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
-    } else if (model_type == "gbm") {
-      # Gradient Boosting para clasificación
-      modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainset, distribution = "multinomial", n.trees = 100)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
-    }
-    else if (model_type == "logistic") {
-      # Regresión Logística para clasificación
-      modelo_clasificacion <- multinom(best_model ~ ., data = trainset)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "probs")
-    }
-    
-    namePred <- paste("Predicted", model_type, col_name, sep = "_")
-    nameMAE <- paste("MAE", model_type, col_name, sep = "_")
-    results_list[[namePred]] <- predicciones_clasificacion
-    results_list[[nameMAE]] <- abs(predicciones_clasificacion - as.numeric(testset$best_model))
-    
-  }
-  
-  # Crear un nuevo conjunto de resultados
-  resultados_clasificacion <- data.frame(
-    ID = datos$ID[-trainIndex],
-    Real = testset$best_model,
-    results_list
-  )
-  
-  # Escribir el CSV final
-  fwrite(resultados_clasificacion, file = paste("Resultados/PrediccionClasificacion/Clasif_", model_type, ".csv", sep = ""))
-  
-  return(resultados_clasificacion)
-}
-
-
-# Definir modelos
-modelos_clasificacion <- c("rf", "gbm", "logistic")
-
-# Aplicar la función para clasificación y la variable objetivo "best_model"
-for (modelo_clasificacion in modelos_clasificacion) {
-  clasificacion_model(modelo_clasificacion, s1, s2, s3)
-}
-
-
-
 cat_columns <- c("municipality", "contracted_tariff", "best_model", "ID", "zip_code", "cnae", "self_consumption_type")
 num_columns <- setdiff(names(feats3), cat_columns)
 
@@ -612,8 +537,8 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
     
     if (model_type == "svm") {
       # Random Forest para clasificación
-      modelo_clasificacion <- svm(best_model ~ ., data = trainset, probability = T)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset)
+      modelo_clasificacion <- svm(as.factor(best_model) ~ ., data = trainset, probability = T)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "prob")
     } else if (model_type == "gbm") {
       # Gradient Boosting para clasificación
       modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainset, n.trees = 100)
@@ -622,15 +547,18 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
       # Regresión Logística para clasificación
       modelo_clasificacion <- multinom(best_model ~ ., data = trainset)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "probs")
-    } else if (model_type == "knn") {
-      predicciones_clasificacion <- knn(train = data.matrix(trainset[, -which(names(trainset) == "best_model")]), test = data.matrix(testset[, -which(names(testset) == "best_model")]), cl = trainset$best_model, k = 5)
+    } else if (model_type == "rf") {
+      modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 100, replace = T)
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "prob")
     }
     
     namePred <- paste("Predicted", model_type, col_name, sep = "_")
-    nameMAE <- paste("MAE", model_type, col_name, sep = "_")
-    
     results_list[[namePred]] <- predicciones_clasificacion
-    results_list[[nameMAE]] <- abs(predicciones_clasificacion - as.numeric(testset$best_model))
+    accuracy <- sum(predicciones_clasificacion == testset$best_model) / length(testset$best_model)
+    errorRate <- 1 - accuracy
+    
+    nameErrorRate <- paste("ErrorRate", model_type, col_name, sep = "_")
+    results_list[[nameErrorRate]] <- errorRate
   }
   
   # Crear un nuevo conjunto de resultados
@@ -647,7 +575,7 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
 }
 
 # Definir modelos
-modelos_clasificacion <- c( "gbm", "logistic", "svm", "knn")
+modelos_clasificacion <- c( "gbm", "logistic", "svm", "rf")
 
 for (modelo_clasificacion in modelos_clasificacion) {
   clasificacion_model(modelo_clasificacion, s1, s2, s3)
@@ -690,7 +618,7 @@ clasification_model_cuest <- function(model_type, target, descSE_columns, descEd
     if (model_type == "svm") {
       # Random Forest para clasificación
       modelo_clasificacion <- svm(as.factor(best_model) ~ ., data = trainSetCuest, probability = T)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "class")
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "prob")
     } else if (model_type == "gbm") {
       # Gradient Boosting para clasificación
       modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainSetCuest, n.trees = 100, distribution = "multinomial")
@@ -698,7 +626,7 @@ clasification_model_cuest <- function(model_type, target, descSE_columns, descEd
     } else if (model_type == "logistic") {
       # Regresión Logística para clasificación
       modelo_clasificacion <- multinom(best_model ~ ., data = trainSetCuest)
-      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "class")
+      predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "probs")
     } else if (model_type == "rf") {
       modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainSetCuest, ntree = 100, replace = T)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testSetCuest, type = "response")
@@ -742,3 +670,5 @@ trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
 for (modelo_clasificacion in modelos_clasificacion) {
   clasification_model_cuest(modelo_clasificacion, "best_model",descSE, descEd, descCG)
 } 
+
+
