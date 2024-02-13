@@ -555,6 +555,7 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
     namePred <- paste("Predicted", model_type, col_name, sep = "_")
     results_list[[namePred]] <- predicciones_clasificacion
     correct_predictions <- predicciones_clasificacion == testset$best_model
+    print(correct_predictions)
     accuracy <- sum(correct_predictions) / length(testset$best_model)
     errorRate <- 1 - accuracy
     nameErrorRate <- paste("ErrorRate", model_type, col_name, sep = "_")
