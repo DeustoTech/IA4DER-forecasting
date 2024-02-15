@@ -123,6 +123,7 @@ feats_complete <- fread("feats-complete.csv") # Cuestionario
 
 feats <- read.csv("allFeatures.csv")
 
+
 # sets de features a usar 
 {
 # features sobre la tarifa
@@ -166,7 +167,11 @@ categoricas <- c("tarifa.tarifa_atr_ref","cups.direccion_cp", "cnae", "main_resi
                  "size","annual_savings", "climate_change_actions", "energy_community", "citizen_role", "educational_level", "cluster")
 
 }
-
+for (col in colnames(feats)){
+  if (col %in% categoricas){
+    feats[[col]] <- as.factor(feats[[col]])
+  }
+}
 # SOLO PARA COMBINAR LOS CSV
 {
 # features del csv de cruz que ya tenemos nosotros, no las cogemos
@@ -180,6 +185,7 @@ fwrite(combined, "allFeatures.csv")
 }
 
 #columnas cuestionario
+{
 cols_cuest <- feats_complete %>% select(matches("^Q\\d"))
 cols_cuest$ID <- feats_complete$file
 
@@ -187,7 +193,7 @@ cols_cuest$ID <- feats_complete$file
 # Solo las que han respondido al cuestionario entero
 cuest <- cols_cuest[complete.cases(cols_cuest) & rowSums(!is.na(cols_cuest)) > 1]
 cuest <- left_join(cuest, feats3[, c("ID", target)], by = "ID")
-
+}
 
 # Columnas y limipiar cuestionario
 {
@@ -319,25 +325,36 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     modelo <- gsub("^mape|_mediana$", "", target_variable)
     
     columns <- list(consumo, habitos, socio, edificio, cluster)
+    columns_names <- c("consumo", "habitos", "socio", "edificio", "cluster")
     results_list <- list()
-    
-    for (i in seq_along(columns)) {
+    name_i = 1
+    for (set in columns) {
+      # col <- columns[[i]]
+      col_name <- columns_names[name_i]
+      print(paste("Procesando columnas del set", col_name))
   
-      col <- columns[[i]]
-      col_name <- paste("s", i, sep = "")
-  
-      datos <- feats3[col]
-      datos$ID <- feats3$ID
-      datos <- datos %>% filter(!is.na(!!sym(target_variable)))
-  
-      trainSet <- datos[trainIndex, ] %>% select(-ID)
+      datos <- feats[, c(set, "ID", target_variable), drop = FALSE]
+      
+      datos <- datos[which(!is.na(datos[[target_variable]])), ] %>% as.data.frame()
+      # print(paste("Datos nrow: ", nrow(datos)))
+
+      sets_limpios <- limpiarColumnas(trainIndex, set, target_variable, datos)
+      
+      testID <- sets_limpios$testSet %>% select(ID)
+      
+      trainSet <- sets_limpios$trainSet %>% select(-ID)
+      testSet <- sets_limpios$testSet %>% select(-ID)
+      # print(paste("Trainset: ", nrow(trainSet), "Testset: ", nrow(testSet)))
+      
+      # trainSet <- datos[trainIndex, ] %>% select(-ID)
       log_variable <- paste("log", target_variable, sep = "_")
       trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
   
-      testSet <- datos[-trainIndex, ] %>% select(-ID)
+      # testSet <- datos[-trainIndex, ] %>% select(-ID)
       testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
   
-  
+      print(paste("Columnas del set", col_name, "limpias"))
+      print(head(trainSet))
       if (model_type == "lm") {
         # Regresión Lineal
         model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
@@ -372,19 +389,19 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
   
       results_list[[namePred]] <- predicciones_log
       results_list[[nameMAPE]] <- mape(predicciones_log, testSet[[target_variable]]) * 100
-  
+      name_i = name_i + 1
     }
     
     resultados <- data.frame(
-      ID = datos$ID[-trainIndex],
+      ID = testID,
       Real = testSet[[target_variable]],
       results_list
     )
-    write.csv(resultados, file = paste("Resultados/PrediccionError/Pred_", modelo, "_", model_type, ".csv", sep = ""), row.names = F)
+    write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/Pred_", modelo, "_", model_type, "_", col_name, ".csv", sep = ""), row.names = F)
    
     
     return(resultados)
-  }
+}
   
 regression_model_cuest <- function(model_type, target_variable, descSE_columns, descEd_columns, descCG_columns, trainIndexCuest){
   
@@ -484,28 +501,26 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
 set.seed(0)
 index <- 0.75
 cuest_nrow <- nrow(cuest)
-feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeSVM_mediana)))
+feats_nrow <- nrow(feats %>% filter(!is.na(mapeSVM_mediana)))
 trainIndex <- sample(1:feats_nrow, index * feats_nrow) 
-trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
+# trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
 
-limpiarColumnas <- function(trainIndexCuest, colsDesc, target) {
+limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   
   resultados <- list()
   
-  trainSet <- cuest[trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
-  testSet <- cuest[-trainIndexCuest, ] %>% select(all_of(colsDesc), !!sym(target))
+  
+  trainSet <- dataset[trainIndex, ] %>% select(all_of(colsDesc), !!sym(target), ID)
+  testSet <- dataset[-trainIndex, ] %>% select(all_of(colsDesc), !!sym(target), ID)
   
   for (col in colsDesc) {
     if (col %in% categoricas) {
       
-      # Obtener niveles únicos
-      niveles_train <- unique(trainSet[[col]])
-      niveles_test <- unique(testSet[[col]])
+       niveles_train <- unique(trainSet[[col]])
+       niveles_test <- unique(testSet[[col]])
       
       niveles_faltantes <- setdiff(niveles_test, niveles_train)
-      
-      # Verificar si la columna tiene menos de dos niveles
-      if (length(niveles_train) < 2 || length(niveles_test) < 2) {
+      if (length(levels(trainSet[[col]])) < 2 || length(levels(testSet[[col]])) < 2){
         cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
@@ -528,7 +543,7 @@ limpiarColumnas <- function(trainIndexCuest, colsDesc, target) {
 # Regresion con columnas de las features
 for (modelo in modelos) {
   for (variable in target) {
-    regresion_model_feats(modelo, variable, s1, s2, s3, trainIndex)
+    regresion_model_feats(modelo, variable, trainIndex)
   }
 }
 # Regresion con columnas del cuestionario
