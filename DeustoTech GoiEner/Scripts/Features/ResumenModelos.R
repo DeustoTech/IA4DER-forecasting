@@ -207,8 +207,8 @@ fwrite(combined, file = "Resultados/CUPS/SummaryPredsNuevo.csv")
 
 # Combinar summaryPredsNuevo y features viejo
 
-combined <- read.csv("Resultados/CUPS/SummaryPredsCuest.csv")
-viejo <- read.csv("featuresPredicciones_2.csv")
+combined <- read.csv("Resultados/CUPS/SummaryPredsFeats2.csv")
+viejo2 <- read.csv("featuresPredicciones_3.csv")
 
 columnas_a_actualizar <- setdiff(colnames(combined), "ID")
 
