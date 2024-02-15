@@ -18,7 +18,6 @@ foreach(lib = librerias) %do% {
 
 {
 # Cargar ficheros y constantes
-setwd('C:/GIT HUB ANE/IA4DER-forecasting/DeustoTech GoiEner')
 
 folder <- "TransformersV2/"
 # Lista de archivos CSV en la carpeta extraída
@@ -116,11 +115,69 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
 
 # Carga fichero con todas las features
+{
+feats <- read.csv("featuresPredicciones_3.csv") # Features y predicciones nuestras
+feats2 <- read.csv("features_complete2.csv") # Features de cruz
+feats_complete <- fread("feats-complete.csv") # Cuestionario
+}
 
-feats3 <- read.csv("featuresPredicciones_3.csv")
-feats_complete <- fread("feats-complete.csv") #los ID estan en la variable file
+feats <- read.csv("allFeatures.csv")
 
-summary(cols_cuest)
+# sets de features a usar 
+{
+# features sobre la tarifa
+tarifa <- c("tarifa.tarifa_atr_re","p1_kw","p2_kw", "p3_kw","p4_kw", "p5_kw", "p6_kw",  
+            "cups.direccion_cp",  "cnae") 
+
+# features sobre el consumo
+consumo <- c("cups.direccion_cp",  "kWhTotal_autum_9.12"  , "kWhTotal_autum_13.16",  "kWhTotal_autum_17.20",
+             "kWhTotal_autum_21.24" , "kWhTotal_spring_0.4"  , "kWhTotal_spring_5.8" , 
+  "kWhTotal_spring_9.12" , "kWhTotal_spring_13.16" ,"kWhTotal_spring_17.20", "kWhTotal_spring_21.24", "kWhTotal_summer_0.4"  , "kWhTotal_summer_5.8"  ,
+  "kWhTotal_summer_9.12" , "kWhTotal_summer_13.16", "kWhTotal_summer_17.20", "kWhTotal_summer_21.24", "kWhTotal_winter_0.4"  , "kWhTotal_winter_5.8"  ,
+  "kWhTotal_winter_9.12" , "kWhTotal_winter_13.16", "kWhTotal_winter_17.20", "kWhTotal_winter_21.24", "kWhMax_autum_0.4"     , "kWhMax_autum_5.8"   ,  
+  "kWhMax_autum_9.12"    , "kWhMax_autum_13.16"   , "kWhMax_autum_17.20"  ,  "kWhMax_autum_21.24"  ,  "kWhMax_spring_0.4"    , "kWhMax_spring_5.8"  ,  
+  "kWhMax_spring_9.12"  ,  "kWhMax_spring_13.16" ,  "kWhMax_spring_17.20"  , "kWhMax_spring_21.24"  , "kWhMax_summer_0.4"   ,  "kWhMax_summer_5.8"  ,  
+  "kWhMax_summer_9.12"  ,  "kWhMax_summer_13.16" ,  "kWhMax_summer_17.20"  , "kWhMax_summer_21.24"  , "kWhMax_winter_0.4"    , "kWhMax_winter_5.8"  ,  
+  "kWhMax_winter_9.12"  ,  "kWhMax_winter_13.16"  , "kWhMax_winter_17.20"  , "kWhMax_winter_21.24" ,  "kWhTotal_autum_finde" , "kWhTotal_spring_finde",
+  "kWhTotal_summer_finde" ,"kWhTotal_winter_finde", "kWhMax_autum_finde"  ,  "kWhMax_spring_finde"  , "kWhMax_summer_finde" ,  "kWhMax_winter_finde"  )
+
+# features sobre las descripcion del edificio
+edificio <- c("cups.direccion_cp", "cnae", "main_residence" ,"secondary_residence" ,"energy_accumulators", "shop_office", "common_area",
+              "electric_heat", "electric_kitchen","heat_pump","electric_vehicle", "dwelling_type","dwelling_age", "certificate" ,
+              "climate", "locality_size", "size")
+
+# features de descripcion socioeconómica
+socio <- c("cups.direccion_cp","dwelling_type","dwelling_age","rent", "indepedent_adults","indepedent_adults_avg_age","independent_women_adult",
+           "dependent_people", "dependent_people_avg_age", "dependent_women" ,"annual_savings" ,"heating_cost", "fuel_cost", "electrical_cost",
+           "climate_awareness","climate_change_actions","energy_tansition_knowledge","citizen_role",
+           "energy_community", "education_level", "POWER_TARGET", "TotalEnergyBudget" )
+
+# features habitos de la CUP
+habitos <- c("cups.direccion_cp", "main_residence", "secondary_residence", "energy_accumulators", "shop_office", "common_area", "office_hours", "electric_heat" ,                    
+ "electric_kitchen","heat_pump","electric_vehicle","same_pattern_weekends","weekday_breakfast","weekday_lunch", "weekday_dinner", "weekday_sleep" ,                    
+  "weekend_breakfast","weekend_lunch","weekend_dinner","weekend_sleep", "autumn", "winter" ,"spring","summer" ,"long_holidays","weekends", "people_at_home" )
+
+cluster <- c("cups.direccion_cp", "cluster")
+
+# columnas categoricas
+categoricas <- c("tarifa.tarifa_atr_ref","cups.direccion_cp", "cnae", "main_residence", "secondary_residence" ,"energy_accumulators", "shop_office", "common_area", 
+                 "electric_heat", "electric_kitchen","heat_pump","electric_vehicle", "same_pattern_weekends", "autumn", "winter" ,"spring","summer",
+                 "long_holidays","weekends","dwelling_type","people_at_home", "dwelling_age", "certificate" ,"climate", "locality_size",
+                 "size","annual_savings", "climate_change_actions", "energy_community", "citizen_role", "educational_level", "cluster")
+
+}
+
+# SOLO PARA COMBINAR LOS CSV
+{
+# features del csv de cruz que ya tenemos nosotros, no las cogemos
+
+dontSelect <- c("P_T2.0_VALLE" ,"P_T2.0_LLANO", "P_T2.0_PICO","P_T_SOLAR_PICO","P_T_SOLAR_LLANO","P_T_SOLAR_SPICO","P_T_SOLAR_SLLANO","MAX", "MEDIAN", "cnae")
+feats2.1 <- feats2 %>% select(-dontSelect) # no cogemos esas columnas
+
+
+combined <- merge(feats, feats2.1, by = "ID", all.x = T)
+fwrite(combined, "allFeatures.csv")
+}
 
 #columnas cuestionario
 cols_cuest <- feats_complete %>% select(matches("^Q\\d"))
@@ -255,15 +312,13 @@ s3 <- c("POT_1", "POT_2",
 
 
 # Función para realizar regresión y generar resultados
-regresion_model_feats <- function(model_type, target_variable, s1_columns, s2_columns, s3_columns, trainIndex) {
+regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     
+  # TODO limpiar columnas
+  
     modelo <- gsub("^mape|_mediana$", "", target_variable)
     
-    columns_s1 <- append(s1_columns, target_variable)
-    columns_s2 <- append(s2_columns, target_variable)
-    columns_s3 <- append(s3_columns, target_variable)
-   
-    columns <- list(columns_s1, columns_s2, columns_s3)
+    columns <- list(consumo, habitos, socio, edificio, cluster)
     results_list <- list()
     
     for (i in seq_along(columns)) {
@@ -313,10 +368,10 @@ regresion_model_feats <- function(model_type, target_variable, s1_columns, s2_co
       }
   
       namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
-      nameMAE <- paste("MAE", modelo, col_name, sep = "_")
+      nameMAPE <- paste("MAPE", modelo, col_name, sep = "_")
   
       results_list[[namePred]] <- predicciones_log
-      results_list[[nameMAE]] <- abs(predicciones_log - testSet[[target_variable]])
+      results_list[[nameMAPE]] <- mape(predicciones_log, testSet[[target_variable]]) * 100
   
     }
     
@@ -430,7 +485,7 @@ set.seed(0)
 index <- 0.75
 cuest_nrow <- nrow(cuest)
 feats_nrow <- nrow(feats3 %>% filter(!is.na(mapeSVM_mediana)))
-trainIndex <- sample(1:feats_nrow, index * feats_nrow) # 214 porque son las que no son NA
+trainIndex <- sample(1:feats_nrow, index * feats_nrow) 
 trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
 
 limpiarColumnas <- function(trainIndexCuest, colsDesc, target) {
