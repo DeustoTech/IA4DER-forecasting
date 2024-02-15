@@ -329,22 +329,20 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     results_list <- list()
     name_i = 1
     for (set in columns) {
-      # col <- columns[[i]]
       col_name <- columns_names[name_i]
       print(paste("Procesando columnas del set", col_name))
   
       datos <- feats[, c(set, "ID", target_variable), drop = FALSE]
       
       datos <- datos[which(!is.na(datos[[target_variable]])), ] %>% as.data.frame()
-      # print(paste("Datos nrow: ", nrow(datos)))
+      print(paste("Datos nrow: ", nrow(datos)))
 
       sets_limpios <- limpiarColumnas(trainIndex, set, target_variable, datos)
-      
       testID <- sets_limpios$testSet %>% select(ID)
       
       trainSet <- sets_limpios$trainSet %>% select(-ID)
       testSet <- sets_limpios$testSet %>% select(-ID)
-      # print(paste("Trainset: ", nrow(trainSet), "Testset: ", nrow(testSet)))
+      print(paste("trainset colnames:", colnames(trainset)))
       
       # trainSet <- datos[trainIndex, ] %>% select(-ID)
       log_variable <- paste("log", target_variable, sep = "_")
@@ -354,8 +352,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
   
       print(paste("Columnas del set", col_name, "limpias"))
-      # print(head(trainSet))
-      
+  
       for (col in colnames(trainSet)){
         if (col %in% categoricas & length(levels(trainSet[[col]])) < 2){
           print(paste("Error en columna: ", col))
@@ -366,6 +363,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         # Regresión Lineal
         model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
         predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+        
       } else if (model_type == "rf") {
         # Random Forest
         model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
@@ -397,8 +395,9 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       results_list[[namePred]] <- predicciones_log
       results_list[[nameMAPE]] <- mape(predicciones_log, testSet[[target_variable]]) * 100
       name_i = name_i + 1
+     
     }
-    
+
     resultados <- data.frame(
       ID = testID,
       Real = testSet[[target_variable]],
@@ -497,7 +496,8 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
 }
   
 # Lista de modelos
-modelos <- c("lm", "rf", "gbm", "svm", "nn")
+#modelos <- c("lm", "rf", "gbm", "svm", "nn")
+modelos <- c("nn")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
@@ -516,6 +516,7 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   
   resultados <- list()
   
+  #colsDesc <- colsDesc[colsDesc != "cups.direccion_cp"]
   
   trainSet <- dataset[trainIndex, ] %>% select(all_of(colsDesc), !!sym(target), ID)
   testSet <- dataset[-trainIndex, ] %>% select(all_of(colsDesc), !!sym(target), ID)
