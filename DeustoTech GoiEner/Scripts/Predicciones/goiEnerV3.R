@@ -43,7 +43,16 @@ N <- paste(folder, N, sep = "")
 #CT <- paste(folder, CT, sep = "")
 #L <- paste(folder, L, sep = "")
 
-feats_complete <- fread("feats-complete.csv") #los ID estan en la variable file
+feats_complete <- fread("features_complete2.csv") #los ID estan en la variable file
+processed <- read.csv("featuresPredicciones_3.csv")
+feats_complete_ID <- feats_complete$ID
+
+merged <- merge(feats_complete, processed, by = "ID")
+rellenas <- merged[which(!is.na(merged$mapeEnsemble_mediana)), ]
+
+unprocessed <- setdiff(merged, rellenas)
+
+unprocessedID <- unprocessed$ID
 
 
 #columnas cuestionario
@@ -62,7 +71,7 @@ cuest_IDs <- cuest$ID
 N_names <- basename(tools::file_path_sans_ext(N))
 
 # Filtrar los nombres en N que tienen ID en cuest
-N_subset_names <- N_names[N_names %in% cuest_IDs]
+N_subset_names <- N_names[N_names %in% unprocessedID]
 
 # Obtener la lista completa de archivos que cumplen la condición
 N_subset <- paste0(folder, N_subset_names, ".csv")
@@ -73,7 +82,7 @@ N_subset <- paste0(folder, N_subset_names, ".csv")
 
 
 ## crear documento para los resultados
-RESULT_FILE <- "Resultados/CUPS/PredCuest.csv"
+RESULT_FILE <- "Resultados/CUPS/PredFeatsComplete.csv"
 
 ResultadosModelos <- tibble(
   ID = character(),
@@ -481,7 +490,7 @@ predict_models <- function(csv_file){
 #cl <- makeCluster(num_cores)
 #registerDoParallel(cl)
 
-foreach(csv_file = N, 
+foreach(csv_file = N_subset[1:150], 
         .packages = librerias) %do% predict_models(csv_file)
 
 
