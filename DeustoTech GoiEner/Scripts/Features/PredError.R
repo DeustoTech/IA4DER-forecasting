@@ -609,32 +609,31 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
       modelo_clasificacion <- svm(as.factor(best_model) ~ ., data = trainset, probability = TRUE)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, probability = T)
       
-      probabilidades_promedio <- apply(predicciones_clasificacion, c(1,2), mean)
-      clases_predichas <- apply(probabilidades_promedio, 1, function(x) names(x)[which.max(x)])
-      predicciones_clasificacion <- as.factor(clases_predichas)
+      probabilidades <- attr(predicciones_clasificacion, "probabilities")
+      clase_con_mayor_probabilidad <- apply(probabilidades, 1, which.max)
+      nombres_de_clases <- colnames(probabilidades)
+      predicciones_clasificacion <- nombres_de_clases[clase_con_mayor_probabilidad]
       
     } else if (model_type == "gbm") {
       modelo_clasificacion <- gbm(as.factor(best_model) ~ ., data = trainset, n.trees = 100)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "response")
       
-      predicciones_clasificacion <- as.data.frame(predicciones_clasificacion)
       probabilidades_promedio <- apply(predicciones_clasificacion, c(1,2), mean)
-      clases_predichas <- apply(probabilidades_promedio, 1, function(x) names(x)[which.max(x)])
-      predicciones_clasificacion <- as.factor(clases_predichas)
+      predicciones_clasificacion <- apply(probabilidades_promedio, 1, function(x) names(x)[which.max(x)])
+
     } else if (model_type == "logistic") {
       modelo_clasificacion <- multinom(best_model ~ ., data = trainset)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "probs")
       
       probabilidades_promedio <- apply(predicciones_clasificacion, c(1,2), mean)
-      clases_predichas <- apply(probabilidades_promedio, 1, function(x) names(x)[which.max(x)])
-      predicciones_clasificacion <- as.factor(clases_predichas)
+      predicciones_clasificacion <- apply(probabilidades_promedio, 1, function(x) names(x)[which.max(x)])
       
     } else if (model_type == "rf") {
       modelo_clasificacion <- randomForest(as.factor(best_model) ~ ., data = trainset, ntree = 100, probability = T)
       predicciones_clasificacion <- predict(modelo_clasificacion, newdata = testset, type = "prob")
+      
       probabilidades_promedio <- apply(predicciones_clasificacion, c(1,2), mean)
-      clases_predichas <- apply(probabilidades_promedio, 1, function(x) names(x)[which.max(x)])
-      predicciones_clasificacion <- as.factor(clases_predichas)
+      predicciones_clasificacion <- apply(probabilidades_promedio, 1, function(x) names(x)[which.max(x)])
      }
     
     namePred <- paste("Predicted", model_type, col_name, sep = "_")
@@ -643,10 +642,6 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
     nameErrorRate <- paste("Error", model_type, col_name, sep = "_")
     results_list[[nameErrorRate]] <- as.numeric(correct_predictions)
     
-    #accuracy <- sum(correct_predictions) / length(testset$best_model)
-    #errorRate <- 1 - accuracy
-    #nameErrorRate <- paste("ErrorRate", model_type, col_name, sep = "_")
-    #results_list[[nameErrorRate]] <- errorRate
   }
   
   # Crear un nuevo conjunto de resultados
@@ -664,7 +659,7 @@ clasificacion_model <- function(model_type, s1, s2, s3) {
 
 # Definir modelos
 #modelos_clasificacion <- c( "gbm", "logistic", "svm", "rf")
-modelos_clasificacion <- c("gbm")
+modelos_clasificacion <- c("rf")
 
 for (modelo_clasificacion in modelos_clasificacion) {
   clasificacion_model(modelo_clasificacion, s1, s2, s3)
