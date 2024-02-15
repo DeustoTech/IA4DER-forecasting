@@ -354,7 +354,14 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
   
       print(paste("Columnas del set", col_name, "limpias"))
-      print(head(trainSet))
+      # print(head(trainSet))
+      
+      for (col in colnames(trainSet)){
+        if (col %in% categoricas & length(levels(trainSet[[col]])) < 2){
+          print(paste("Error en columna: ", col))
+        }
+      }
+      
       if (model_type == "lm") {
         # Regresión Lineal
         model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
