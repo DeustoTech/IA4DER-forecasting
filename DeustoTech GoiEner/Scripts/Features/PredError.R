@@ -697,6 +697,7 @@ clasification_model_cuest <- function(model_type, target, descSE_columns, descEd
     trainSetCuest[[target]] <- trainTargetValues
     
     
+    
     # Preparar testSetCuest
     testSetCuest <- sets_limpios$testSet
     # Necesitamos definir testIndexCuest correctamente
