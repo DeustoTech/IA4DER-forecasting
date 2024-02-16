@@ -335,19 +335,17 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       datos <- feats[, c(set, "ID", target_variable), drop = FALSE]
       
       datos <- datos[which(!is.na(datos[[target_variable]])), ] %>% as.data.frame()
-      print(paste("Datos nrow: ", nrow(datos)))
 
       sets_limpios <- limpiarColumnas(trainIndex, set, target_variable, datos)
       testID <- sets_limpios$testSet %>% select(ID)
       
       trainSet <- sets_limpios$trainSet %>% select(-ID)
       testSet <- sets_limpios$testSet %>% select(-ID)
-      print(paste("trainset colnames:", colnames(trainset)))
       
       # trainSet <- datos[trainIndex, ] %>% select(-ID)
       log_variable <- paste("log", target_variable, sep = "_")
       trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
-  
+
       # testSet <- datos[-trainIndex, ] %>% select(-ID)
       testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
   
@@ -379,6 +377,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
   
       } else if (model_type == "nn"){
+        print(head(trainSet))
         # Neural Network
         model <- nnet(
           as.formula(paste(log_variable, "~ . - ", target_variable)),
@@ -541,12 +540,6 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   }
   return(list(trainSet = trainSet, testSet = testSet))
 }
-
-
-
-
-
-
 
 # Regresion con columnas de las features
 for (modelo in modelos) {
