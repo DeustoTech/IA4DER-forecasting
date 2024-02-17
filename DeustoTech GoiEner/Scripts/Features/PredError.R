@@ -10,7 +10,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest") 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -109,7 +109,7 @@ L_p2 <- 0.200549
 L_p3 <- 0.185471
 }
 #EJECUTAR
-model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensemble")
+model_names <- c("Media", "Naive", "SN", "Arima", "ETS", "SVM", "NN", "Ensemble")
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
@@ -352,25 +352,16 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       # testSet <- datos[-trainIndex, ] %>% select(-ID)
       testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
   
-      print(paste("Columnas del set", col_name, "limpias"))
-  
-      for (col in colnames(trainSet)){
-        if (col %in% categoricas & length(levels(trainSet[[col]])) < 2){
-          print(paste("Error en columna: ", col))
-        }
-      }
-      
+    
       if (model_type == "lm") {
         # Regresión Lineal
-        model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+        model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
         predicciones_log <- exp(predict(model, newdata = testSet)) - 1
         
       } else if (model_type == "rf") {
-        library(mice)
-        miceMod <- mice(trainSet, method='rf') # Imputación usando random forest como ejemplo
-        trainSet <- complete(miceMod)
         # Random Forest
-        model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
+        # print(names(trainSet))
+        model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
         predicciones_log <- exp(predict(model, newdata = testSet)) - 1
       } else if (model_type == "gbm") {
         # Gradient Boosting
@@ -390,17 +381,19 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
           data = trainSet,
           size = 1
         )
-        print(predict(model, newdata = testSet))
+        # print(predict(model, newdata = testSet))
         predicciones_log <- exp(predict(model, newdata = testSet)) - 1
         
       }
   
       namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
-      nameMAPE <- paste("MAPE", modelo, col_name, sep = "_")
+      nameMAPE <- paste("MAPE", modelo, col_name, model_type, sep = "_")
   
-      print(predicciones_log)
       results_list[[namePred]] <- predicciones_log
-      results_list[[nameMAPE]] <- mape(predicciones_log, testSet[[target_variable]]) * 100
+     
+      for (i in 1:nrow(testSet)) {
+        results_list[[nameMAPE]][i] <- mape(testSet[i, target_variable], predicciones_log[i]) * 100
+      }
       name_i = name_i + 1
      
     }
@@ -410,7 +403,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       Real = testSet[[target_variable]],
       results_list
     )
-    write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/Pred_", modelo, "_", model_type, "_", col_name, ".csv", sep = ""), row.names = F)
+    write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/Pred_", modelo, "_", model_type, ".csv", sep = ""), row.names = F)
    
     
     return(resultados)
@@ -503,8 +496,8 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
 }
   
 # Lista de modelos
-#modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("lm")
+# modelos <- c("lm", "rf", "gbm", "svm", "nn")
+modelos <- c("lm", "nn")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
@@ -531,18 +524,19 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   for (col in colsDesc) {
     if (col %in% categoricas) {
       
-       niveles_train <- unique(trainSet[[col]])
-       niveles_test <- unique(testSet[[col]])
+      niveles_train <- unique(trainSet[[col]])
+      niveles_test <- unique(testSet[[col]])
       
       niveles_faltantes <- setdiff(niveles_test, niveles_train)
       if (length(levels(trainSet[[col]])) <= 2 || length(levels(testSet[[col]])) <=  2){
-        cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
+        cat(paste("Eliminando la columna", col, "debido a dos o menos niveles.\n"))
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
       } else if (length(niveles_faltantes) > 0) {
         cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
+        
       } 
     } else {
       # Imputación para variables numéricas
