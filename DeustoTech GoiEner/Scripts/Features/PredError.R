@@ -352,7 +352,8 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       # testSet <- datos[-trainIndex, ] %>% select(-ID)
       testSet[[log_variable]] <- log(testSet[[target_variable]] + 1)
   
-    
+      print(paste("Trainset: ", nrow(trainSet), "filas. Testset: ", nrow(testSet), "filas."))
+      
       if (model_type == "lm") {
         # Regresión Lineal
         model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
@@ -408,6 +409,8 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     
     return(resultados)
 }
+
+
   
 regression_model_cuest <- function(model_type, target_variable, descSE_columns, descEd_columns, descCG_columns, trainIndexCuest){
   
@@ -497,7 +500,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
   
 # Lista de modelos
 # modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("lm", "nn")
+modelos <- c("lm", "svm")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
@@ -509,7 +512,7 @@ set.seed(0)
 index <- 0.75
 cuest_nrow <- nrow(cuest)
 feats_nrow <- nrow(feats %>% filter(!is.na(mapeSVM_mediana)))
-trainIndex <- sample(1:feats_nrow, index * feats_nrow) 
+# trainIndex <- sample(1:feats_nrow, index * feats_nrow) 
 # trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
 
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
@@ -517,34 +520,44 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   resultados <- list()
   
   #colsDesc <- colsDesc[colsDesc != "cups.direccion_cp"]
+
+  cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), ID)
+  trainSet <- cleanSet[0, ]
   
-  trainSet <- dataset[trainIndex, ] %>% select(all_of(colsDesc), !!sym(target), ID)
-  testSet <- dataset[-trainIndex, ] %>% select(all_of(colsDesc), !!sym(target), ID)
+  for (col in colsDesc){
+    if (col %in% categoricas){
+      niveles <- unique(cleanSet[[col]])
+      for (nivel in niveles) {
+        observacion <- cleanSet %>% filter(cleanSet[[col]] == nivel) %>% slice(1)
+        trainSet <- bind_rows(trainSet, observacion)
+        }
+        print(paste("TrainSet tiene todos los niveles de", col))
+    }
+  }
+  cleanSet2 <- anti_join(cleanSet, trainSet) # filas que todavia no hemos añadido al trainset
+  clean_nrow <- nrow(cleanSet2)
+  trainIndexClean <- sample(1:clean_nrow, index * clean_nrow)
   
-  for (col in colsDesc) {
-    if (col %in% categoricas) {
-      
-      niveles_train <- unique(trainSet[[col]])
-      niveles_test <- unique(testSet[[col]])
-      
-      niveles_faltantes <- setdiff(niveles_test, niveles_train)
+  trainSet2 <- cleanSet2[trainIndexClean, ]
+  trainSet <- bind_rows(trainSet, trainSet2)
+  testSet <- cleanSet2[-trainIndexClean, ]
+  
+  for (col in colsDesc){
+    if (col %in% categoricas){
       if (length(levels(trainSet[[col]])) <= 2 || length(levels(testSet[[col]])) <=  2){
         cat(paste("Eliminando la columna", col, "debido a dos o menos niveles.\n"))
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
-      } else if (length(niveles_faltantes) > 0) {
-        cat(paste("Eliminando la columna", col, "debido a niveles faltantes en el conjunto de entrenamiento.\n"))
-        trainSet[[col]] <- NULL
-        testSet[[col]] <- NULL
-        
-      } 
-    } else {
+      }
+    }
+    else {
       # Imputación para variables numéricas
       valueToImpute <- median(trainSet[[col]], na.rm = TRUE) # O usar mean según sea apropiado
       trainSet[[col]][is.na(trainSet[[col]])] <- valueToImpute
       testSet[[col]][is.na(testSet[[col]])] <- valueToImpute
     }
   }
+  
   return(list(trainSet = trainSet, testSet = testSet))
 }
 
