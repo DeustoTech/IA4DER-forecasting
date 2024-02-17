@@ -499,8 +499,8 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
 }
   
 # Lista de modelos
-# modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("lm", "svm")
+modelos <- c("lm", "rf", "gbm", "svm", "nn")
+# modelos <- c("lm", "svm")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
