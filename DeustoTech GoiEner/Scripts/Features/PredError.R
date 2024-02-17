@@ -108,6 +108,7 @@ L_p1 <- 0.204321
 L_p2 <- 0.200549
 L_p3 <- 0.185471
 }
+#EJECUTAR
 model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "SVM", "NN", "Ensemble")
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
@@ -172,6 +173,8 @@ for (col in colnames(feats)){
     feats[[col]] <- as.factor(feats[[col]])
   }
 }
+#HASTA AQUI
+
 # SOLO PARA COMBINAR LOS CSV
 {
 # features del csv de cruz que ya tenemos nosotros, no las cogemos
@@ -341,7 +344,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       
       trainSet <- sets_limpios$trainSet %>% select(-ID)
       testSet <- sets_limpios$testSet %>% select(-ID)
-      
+
       # trainSet <- datos[trainIndex, ] %>% select(-ID)
       log_variable <- paste("log", target_variable, sep = "_")
       trainSet[[log_variable]] <- log(trainSet[[target_variable]] + 1)
@@ -363,6 +366,9 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         predicciones_log <- exp(predict(model, newdata = testSet)) - 1
         
       } else if (model_type == "rf") {
+        library(mice)
+        miceMod <- mice(trainSet, method='rf') # Imputación usando random forest como ejemplo
+        trainSet <- complete(miceMod)
         # Random Forest
         model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
         predicciones_log <- exp(predict(model, newdata = testSet)) - 1
@@ -392,6 +398,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
       nameMAPE <- paste("MAPE", modelo, col_name, sep = "_")
   
+      print(predicciones_log)
       results_list[[namePred]] <- predicciones_log
       results_list[[nameMAPE]] <- mape(predicciones_log, testSet[[target_variable]]) * 100
       name_i = name_i + 1
@@ -497,7 +504,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
   
 # Lista de modelos
 #modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("nn")
+modelos <- c("lm")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
@@ -528,7 +535,7 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
        niveles_test <- unique(testSet[[col]])
       
       niveles_faltantes <- setdiff(niveles_test, niveles_train)
-      if (length(levels(trainSet[[col]])) < 2 || length(levels(testSet[[col]])) < 2){
+      if (length(levels(trainSet[[col]])) <= 2 || length(levels(testSet[[col]])) <=  2){
         cat(paste("Eliminando la columna", col, "debido a menos de dos niveles.\n"))
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
@@ -537,54 +544,13 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
       } 
-    }
-  }
-  return(list(trainSet = trainSet, testSet = testSet))
-}
-
-
-limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
-  trainSet <- dataset[trainIndex, , drop = FALSE]
-  testSet <- dataset[-trainIndex, , drop = FALSE]
-  
-  for (col in colsDesc) {
-    
-    if (col %in% categoricas) {
-      niveles_train <- unique(trainSet[[col]])
-      niveles_test <- unique(testSet[[col]])
-      
-      niveles_faltantes <- setdiff(niveles_test, niveles_train)
-      # Unificar los niveles en el conjunto completo para garantizar la coherencia
-      allLevels <- unique(c(levels(trainSet[[col]]), levels(testSet[[col]])))
-      
-      # Agregar un nivel "Otro" para manejar niveles faltantes
-      allLevels <- c(allLevels, "Otro")
-      
-      # Asegurar que tanto el conjunto de entrenamiento como el de prueba usen todos los niveles
-      trainSet[[col]] <- factor(trainSet[[col]], levels = allLevels)
-      testSet[[col]] <- factor(testSet[[col]], levels = allLevels)
-      
-      # Imputar el nivel "Otro" donde los datos son NA
-      trainSet[[col]][is.na(trainSet[[col]])] <- "Otro"
-      testSet[[col]][is.na(testSet[[col]])] <- "Otro"
-      
-      # Imputar el nivel "Otro" para cualquier nivel faltante que aparezca solo en el conjunto de prueba
-      if (length(niveles_faltantes) > 0) {
-        testSet[[col]][testSet[[col]] %in% niveles_faltantes] <- "Otro"
-      }
     } else {
-      
-      valueToImpute <- median(trainSet[[col]], na.rm = TRUE)
-      
+      # Imputación para variables numéricas
+      valueToImpute <- median(trainSet[[col]], na.rm = TRUE) # O usar mean según sea apropiado
       trainSet[[col]][is.na(trainSet[[col]])] <- valueToImpute
       testSet[[col]][is.na(testSet[[col]])] <- valueToImpute
     }
   }
-  
-  # Asegurarse de incluir el target y el ID
-  trainSet <- subset(trainSet, select = c(colsDesc, target, "ID"))
-  testSet <- subset(testSet, select = c(colsDesc, target, "ID"))
-  
   return(list(trainSet = trainSet, testSet = testSet))
 }
 
@@ -595,6 +561,7 @@ for (modelo in modelos) {
     regresion_model_feats(modelo, variable, trainIndex)
   }
 }
+
 # Regresion con columnas del cuestionario
 for (modelo in modelos) {
   for (variable in target) {
