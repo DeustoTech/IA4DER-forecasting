@@ -15,7 +15,7 @@ foreach(lib = librerias) %do% {
 
 # Leer
 {
-folder <- "Resultados/PrediccionError/"
+folder <- "Resultados/PrediccionError/AllFeats"
 
 
 # Lista de modelos y sus correspondientes archivos
