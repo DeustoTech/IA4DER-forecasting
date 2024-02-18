@@ -129,10 +129,10 @@ feats <- read.csv("allFeatures.csv")
 {
 # features sobre la tarifa
 tarifa <- c("tarifa.tarifa_atr_re","p1_kw","p2_kw", "p3_kw","p4_kw", "p5_kw", "p6_kw",  
-            "cups.direccion_cp",  "cnae") 
+            "cups.direccion_cp",  "cnae.provincia") 
 
 # features sobre el consumo
-consumo <- c("cups.direccion_cp",  "kWhTotal_autum_9.12"  , "kWhTotal_autum_13.16",  "kWhTotal_autum_17.20",
+consumo <- c("cp.provincia",  "kWhTotal_autum_9.12"  , "kWhTotal_autum_13.16",  "kWhTotal_autum_17.20",
              "kWhTotal_autum_21.24" , "kWhTotal_spring_0.4"  , "kWhTotal_spring_5.8" , 
   "kWhTotal_spring_9.12" , "kWhTotal_spring_13.16" ,"kWhTotal_spring_17.20", "kWhTotal_spring_21.24", "kWhTotal_summer_0.4"  , "kWhTotal_summer_5.8"  ,
   "kWhTotal_summer_9.12" , "kWhTotal_summer_13.16", "kWhTotal_summer_17.20", "kWhTotal_summer_21.24", "kWhTotal_winter_0.4"  , "kWhTotal_winter_5.8"  ,
@@ -144,25 +144,25 @@ consumo <- c("cups.direccion_cp",  "kWhTotal_autum_9.12"  , "kWhTotal_autum_13.1
   "kWhTotal_summer_finde" ,"kWhTotal_winter_finde", "kWhMax_autum_finde"  ,  "kWhMax_spring_finde"  , "kWhMax_summer_finde" ,  "kWhMax_winter_finde"  )
 
 # features sobre las descripcion del edificio
-edificio <- c("cups.direccion_cp", "cnae", "main_residence" ,"secondary_residence" ,"energy_accumulators", "shop_office", "common_area",
+edificio <- c("cp.provincia", "cnae.provincia", "main_residence" ,"secondary_residence" ,"energy_accumulators", "shop_office", "common_area",
               "electric_heat", "electric_kitchen","heat_pump","electric_vehicle", "dwelling_type","dwelling_age", "certificate" ,
               "climate", "locality_size", "size")
 
 # features de descripcion socioeconómica
-socio <- c("cups.direccion_cp","dwelling_type","dwelling_age","rent", "indepedent_adults","indepedent_adults_avg_age","independent_women_adult",
+socio <- c("cp.provincia","dwelling_type","dwelling_age","rent", "indepedent_adults","indepedent_adults_avg_age","independent_women_adult",
            "dependent_people", "dependent_people_avg_age", "dependent_women" ,"annual_savings" ,"heating_cost", "fuel_cost", "electrical_cost",
            "climate_awareness","climate_change_actions","energy_tansition_knowledge","citizen_role",
            "energy_community", "education_level", "POWER_TARGET", "TotalEnergyBudget" )
 
 # features habitos de la CUP
-habitos <- c("cups.direccion_cp", "main_residence", "secondary_residence", "energy_accumulators", "shop_office", "common_area", "office_hours", "electric_heat" ,                    
+habitos <- c("cp.provincia", "main_residence", "secondary_residence", "energy_accumulators", "shop_office", "common_area", "office_hours", "electric_heat" ,                    
  "electric_kitchen","heat_pump","electric_vehicle","same_pattern_weekends","weekday_breakfast","weekday_lunch", "weekday_dinner", "weekday_sleep" ,                    
   "weekend_breakfast","weekend_lunch","weekend_dinner","weekend_sleep", "autumn", "winter" ,"spring","summer" ,"long_holidays","weekends", "people_at_home" )
 
-cluster <- c("cups.direccion_cp", "cluster")
+cluster <- c("cp.provincia", "cluster")
 
 # columnas categoricas
-categoricas <- c("tarifa.tarifa_atr_ref","cups.direccion_cp", "cnae", "main_residence", "secondary_residence" ,"energy_accumulators", "shop_office", "common_area", 
+categoricas <- c("tarifa.tarifa_atr_ref","cp.provincia", "cnae.provincia", "main_residence", "secondary_residence" ,"energy_accumulators", "shop_office", "common_area", 
                  "electric_heat", "electric_kitchen","heat_pump","electric_vehicle", "same_pattern_weekends", "autumn", "winter" ,"spring","summer",
                  "long_holidays","weekends","dwelling_type","people_at_home", "dwelling_age", "certificate" ,"climate", "locality_size",
                  "size","annual_savings", "climate_change_actions", "energy_community", "citizen_role", "educational_level", "cluster")
@@ -175,7 +175,7 @@ for (col in colnames(feats)){
 }
 #HASTA AQUI
 
-# SOLO PARA COMBINAR LOS CSV
+# SOLO PARA COMBINAR LOS CSV Y EDITAR CSV
 {
 # features del csv de cruz que ya tenemos nosotros, no las cogemos
 
@@ -184,7 +184,12 @@ feats2.1 <- feats2 %>% select(-dontSelect) # no cogemos esas columnas
 
 
 combined <- merge(feats, feats2.1, by = "ID", all.x = T)
-fwrite(combined, "allFeatures.csv")
+fwrite(feats, "allFeatures.csv")
+
+# añadir columnas de provincia por cp y cnae
+feats$cp.provincia <- substr(feats$cups.direccion_cp, 1, 2)
+feats$cnae.provincia <- substr(feats$cnae, 1, 1)
+
 }
 
 #columnas cuestionario
@@ -390,26 +395,40 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
       nameMAPE <- paste("MAPE", modelo, col_name, model_type, sep = "_")
   
-      results_list[[namePred]] <- predicciones_log
+     
+      mape_values <- c()
      
       for (i in 1:nrow(testSet)) {
-        results_list[[nameMAPE]][i] <- mape(testSet[i, target_variable], predicciones_log[i]) * 100
+        mape_values[i] <- mape(testSet[i, target_variable], predicciones_log[i]) * 100
       }
+      
+      resultados <- data.frame(ID = testID$ID, Real = testSet[[target_variable]], 
+                               Predicciones = predicciones_log, MAPE = mape_values)
+      
+      colnames(resultados) <- c("ID", "Real", namePred, nameMAPE)
+      
+      
+      # Escribir el dataframe en un archivo CSV
+      write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/", modelo, "/Pred_", modelo, "_", model_type, "_", col_name, ".csv", sep = ""), row.names = FALSE)
+      
+      
       name_i = name_i + 1
+      
+      
      
     }
-
-    print(paste("longitud id:", length(testID)))
-    print(paste("longitud real:", length(testSet[[target_variable]])))
-    print(paste("longitud results list:", dim(results_list)))
-    resultados <- data.frame(
-      ID = testID,
-      Real = testSet[[target_variable]],
-      results_list
-    )
-    
-    write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/Pred_", modelo, "_", model_type, ".csv", sep = ""), row.names = F)
-   
+# 
+#     print(paste("longitud id:", length(testID)))
+#     print(paste("longitud real:", length(testSet[[target_variable]])))
+#     print(paste("longitud results list:", dim(results_list)))
+#     resultados <- data.frame(
+#       ID = testID,
+#       Real = testSet[[target_variable]],
+#       results_list
+#     )
+#     
+#     write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/Pred_", modelo, "_", model_type, ".csv", sep = ""), row.names = F)
+#    
     
     return(resultados)
 }
