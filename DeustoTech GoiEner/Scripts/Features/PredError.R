@@ -399,11 +399,15 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
      
     }
 
+    print(paste("longitud id:", length(testID)))
+    print(paste("longitud real:", length(testSet[[target_variable]])))
+    print(paste("longitud results list:", dim(results_list)))
     resultados <- data.frame(
       ID = testID,
       Real = testSet[[target_variable]],
       results_list
     )
+    
     write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/Pred_", modelo, "_", model_type, ".csv", sep = ""), row.names = F)
    
     
@@ -500,7 +504,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
   
 # Lista de modelos
 modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("rf")
+modelos <- c("lm")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
