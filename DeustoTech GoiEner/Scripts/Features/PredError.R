@@ -10,7 +10,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice") 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice", "mltools") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -500,7 +500,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
   
 # Lista de modelos
 modelos <- c("lm", "rf", "gbm", "svm", "nn")
-# modelos <- c("lm", "svm")
+modelos <- c("rf")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
@@ -563,49 +563,38 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
 
 
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
-  # Preseleccionar las columnas relevantes y el ID
+  
   cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), ID)
-  
-  # Asegurar que cada nivel de las variables categóricas esté representado en el conjunto de entrenamiento
-  for (col in colsDesc) {
-    if (col %in% categoricas) {
-      niveles <- unique(cleanSet[[col]])
-      for (nivel in niveles) {
-        observacion <- cleanSet %>% filter(.[[col]] == nivel) %>% slice(1)
-        trainSet <- bind_rows(trainSet, observacion)
-      }
-      print(paste("TrainSet tiene todos los niveles de", col))
-    }
-  }
-  
-  # Aplicar one-hot encoding a las columnas categóricas
-  dummies <- dummyVars(~ ., data = cleanSet, fullRank = TRUE)
-  cleanSetTransformed <- predict(dummies, newdata = cleanSet)
+  cleanSetTransformed <- one_hot(as.data.table(cleanSet), dropUnusedLevels = T)
   cleanSetTransformed <- as.data.frame(cleanSetTransformed)
   
-  # Volver a añadir el ID y el target al conjunto transformado
   cleanSetTransformed$ID <- cleanSet$ID
   cleanSetTransformed[[target]] <- cleanSet[[target]]
   
-  # Dividir en conjuntos de entrenamiento y prueba
-  set.seed(123) # Asegurar reproducibilidad
-  print(round(trainIndex * nrow(cleanSetTransformed)))
-  trainIndexClean <- sample(1:nrow(cleanSetTransformed), size = round(trainIndex * nrow(cleanSetTransformed)))
+  set.seed(123)
+  trainIndexClean <- sample(1:nrow(cleanSetTransformed), size = round(index * nrow(cleanSetTransformed)))
   trainSet <- cleanSetTransformed[trainIndexClean, ]
+  print(head(trainSet))
   testSet <- cleanSetTransformed[-trainIndexClean, ]
   
-  # Imputación para variables numéricas en el conjunto transformado (si es necesario después de one-hot encoding)
-  numericCols <- sapply(trainSet, is.numeric)
-  numericCols <- numericCols & !colnames(trainSet) %in% c("ID", target) # Excluir ID y target
-  for (col in colnames(trainSet)[numericCols]) {
-    valueToImpute <- median(trainSet[[col]], na.rm = TRUE)
-    trainSet[[col]][is.na(trainSet[[col]])] <- valueToImpute
-    testSet[[col]][is.na(testSet[[col]])] <- valueToImpute
+  for (col in colsDesc){
+    if (col %in% categoricas){
+      if (length(levels(trainSet[[col]])) <= 2 || length(levels(testSet[[col]])) <=  2){
+        cat(paste("Eliminando la columna", col, "debido a dos o menos niveles.\n"))
+        trainSet[[col]] <- NULL
+        testSet[[col]] <- NULL
+      }
+    }
+    else {
+      # Imputación para variables numéricas
+      valueToImpute <- median(trainSet[[col]], na.rm = TRUE) # O usar mean según sea apropiado
+      trainSet[[col]][is.na(trainSet[[col]])] <- valueToImpute
+      testSet[[col]][is.na(testSet[[col]])] <- valueToImpute
+    }
   }
   
   return(list(trainSet = trainSet, testSet = testSet))
 }
-
 
 
 # Regresion con columnas de las features
