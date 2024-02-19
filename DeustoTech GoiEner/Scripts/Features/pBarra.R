@@ -27,6 +27,39 @@ model_files <- list(
   svm = list.files(folder, pattern = "_svm.csv$", recursive = TRUE, full.names = TRUE)
 )
 
+
+#CARGA RESULTADOS NUEVOS
+folder <- "Resultados/PrediccionError/AllFeats/"
+
+# Definir una función para buscar archivos por patrón en todas las carpetas de modelos
+buscar_archivos_por_modelo <- function(folder, pattern) {
+  # Obtener una lista de todas las subcarpetas dentro de la carpeta principal
+  subcarpetas <- list.dirs(folder, recursive = FALSE)
+  
+  # Inicializar una lista para guardar los resultados
+  archivos_modelo <- character()
+  
+  # Iterar sobre cada subcarpeta para buscar archivos que coincidan con el patrón
+  for (subcarpeta in subcarpetas) {
+    archivos_encontrados <- list.files(subcarpeta, pattern = pattern, recursive = TRUE, full.names = TRUE)
+    archivos_modelo <- c(archivos_modelo, archivos_encontrados)
+  }
+  
+  return(archivos_modelo)
+}
+
+model_files <- list(
+  # Buscar archivos por cada tipo de modelo
+  lm <- buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$"),
+  rf <- buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
+  gbm <- buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$")
+  #archivos_svm <- buscar_archivos_por_modelo(folder, "_svm_.*\\.csv$")
+  #archivos_nn <- buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
+)
+
+
+
+
 df_list <- c()
 
 for (file in model_files){
@@ -40,7 +73,7 @@ for (file in model_files){
 combined <- df_list %>% reduce(full_join, by = "ID")
 colnames(combined)[colnames(combined) == "Real.x"] <- "Real"
 combined <- combined %>%
-  select(-starts_with("MAE")) %>% select(c("ID","Real", starts_with("Predicted"))) 
+  select(-starts_with("MAPE")) %>% select(c("ID","Real", starts_with("Predicted"))) 
 
 fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
 
