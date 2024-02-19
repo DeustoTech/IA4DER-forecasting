@@ -108,7 +108,7 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   
   
   columns_to_select <- c("ID", mapes)  # Excluimos la primera columna de combined que es "ID"
-  
+
   # Unir los dataframes por la columna "ID"
   df <- merge(feats[columns_to_select], combined, by = "ID", all.x = TRUE)
   df<- df[df$ID %in% combined$ID, ]
@@ -129,9 +129,11 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
         for (modeloOG in modelosOG){
           pred_col <- paste("Predicted", modeloOG, set, modelo, sep = "_")
           mape_col <- paste("mape", modeloOG, "_mediana", sep = "")
-          
+          print(pred_col)
+          print(mape_col)
+          print(colnames(df))
           weighted_sum <- weighted_sum + ifelse(is.na(df[i, mape_col] * df[i, pred_col]), 0, df[i, mape_col] * df[i, pred_col])
-        }
+           }
         
         pBarra_col <- paste("pBarra", set, modelo, sep = "_")
         df[i, pBarra_col] <- (1 / sumMape) * weighted_sum
