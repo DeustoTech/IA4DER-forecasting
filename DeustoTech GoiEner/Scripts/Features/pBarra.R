@@ -63,11 +63,25 @@ model_files <- list(
 df_list <- c()
 
 for (file in model_files){
-  for (i in 1:length(file)){
-  df <- read.csv(file[i])
-  df_list <- append(df_list, list(df))}
+  for (i in 1:length(file)) {
+    df <- read.csv(file[i])
+    
+    # Extrae el nombre del modelo de la cadena entre "Pred_" y "_"
+    nombre_modelo <- gsub(".*Pred_(.*?)_.*", "\\1", file[i])
+    
+    # Cambia el nombre de la columna "Real" a "RealNombreModelo"
+    colname_a_cambiar <- "Real"
+    nuevo_colname <- paste0(colname_a_cambiar, nombre_modelo)
+    names(df)[names(df) == colname_a_cambiar] <- nuevo_colname
+    print(paste("Nuevo nombre: ", nuevo_colname))
+    # Agrega el dataframe modificado a la lista
+    df_list <- append(df_list, list(df))
+  }}
   
-}
+combined <- df_list %>% bind_rows() %>% group_by(ID)
+
+combined <- combined %>% 
+  distinct(ID, .keep_all = TRUE)
 
 
 combined <- df_list %>% reduce(full_join, by = "ID")
@@ -85,7 +99,8 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   feats <- read.csv("featuresPredicciones_3.csv")
   
   modelos <- c("rf", "lm", "svm", "nn", "gbm")
-  featuresets <- c("s1", "s2","s3", "descCG", "descSE", "descEd")
+  modelos <- c("rf", "lm", "gbm")
+  featuresets <- c("habitos", "cluster","edificio", "socio", "consumo", "tarifa")
   
   mapes <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
               "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
@@ -126,6 +141,10 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
     
   }
 
+  
+  for (i in 1:nrow(combined)){
+    
+  }
   
   pbarras <- df %>% select(ID, starts_with("pBarra"))
   
