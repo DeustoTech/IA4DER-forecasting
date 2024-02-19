@@ -115,6 +115,7 @@ SVM <- paste(folder, SVM, sep = "")
   
   # Lista de los nombres de los submodelos para búsqueda
   modelos <- c("Arima", "Ensemble", "ETS", "Media", "Naive", "NN", "SN", "SVM")
+  modelos <- c("SVM")
   
   # Lista de métodos de predicción
   metodos_prediccion <- c("gbm", "lm", "nn", "rf", "svm")
@@ -162,7 +163,7 @@ SVM <- paste(folder, SVM, sep = "")
   # Función para generar gráfico de caja
   generate_boxplot <- function(data, title) {
     # Calcular el cuartil 0.75 para cada conjunto de features y método
-    limits <- data[, .(Q75 = quantile(MAPE, 0.75, na.rm = TRUE)), by = .(feature_set, metodo)]
+    limits <- data[, .(Q75 = quantile(MAPE, 0.30, na.rm = TRUE)), by = .(feature_set, metodo)]
     
     # Unir los límites con el conjunto de datos original para filtrar los outliers
     data <- merge(data, limits, by = c("feature_set", "metodo"))
