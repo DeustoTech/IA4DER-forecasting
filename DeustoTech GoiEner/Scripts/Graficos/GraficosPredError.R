@@ -196,6 +196,62 @@ SVM <- paste(folder, SVM, sep = "")
 
 
 
+library(data.table)
+
+# Definir el directorio donde se encuentran los archivos
+folder <- "Resultados/PrediccionError/AllFeats/"
+
+# Lista de modelos a resumir
+modelos <- c("lm", "rf", "gbm")
+
+# Lista de conjuntos de características
+features_sets <- c("cluster", "consumo", "edificio", "habitos", "socio")
+
+# Función para leer los datos y calcular el resumen
+read_and_summarize <- function(modelo, features_sets) {
+  summaries <- list()
+  for (feature in features_sets) {
+    pattern <- paste0("Pred_.*_", modelo, "_", feature, ".csv$")
+    files <- list.files(paste0(folder, modelo), pattern = pattern, full.names = TRUE)
+    for (file in files) {
+      df <- fread(file)
+      # Asegúrate de que el nombre de la columna es el correcto para el MAPE
+      mape_colname <- grep("MAPE", names(df), value = TRUE)
+      summary <- df[, .(
+        Min = min(get(mape_colname), na.rm = TRUE),
+        Q1 = quantile(get(mape_colname), 0.25, na.rm = TRUE),
+        Median = median(get(mape_colname), na.rm = TRUE),
+        Mean = mean(get(mape_colname), na.rm = TRUE),
+        Q3 = quantile(get(mape_colname), 0.75, na.rm = TRUE),
+        Max = max(get(mape_colname), na.rm = TRUE)
+      )]
+      summary$Feature_Set <- feature
+      summary$Model <- modelo
+      summaries[[length(summaries) + 1]] <- summary
+    }
+  }
+  return(rbindlist(summaries))
+}
+
+# Lista para almacenar los resúmenes de todos los modelos
+all_summaries <- list()
+
+# Leer y resumir los datos de todos los modelos
+for (modelo in modelos) {
+  all_summaries[[modelo]] <- read_and_summarize(modelo, features_sets)
+}
+
+# Combinar todos los resúmenes en una tabla de datos
+final_summary <- rbindlist(all_summaries, use.names = TRUE, fill = TRUE)
+
+# Ver el resumen final
+print(final_summary)
+
+# Opcional: Guardar el resumen final en un archivo CSV
+fwrite(final_summary, "resumen_modelos.csv")
+
+
+
 
 
 
