@@ -2,7 +2,8 @@ library(data.table)
 library(arrow)
 library(doFuture)
 library(stringr)
-library(lubridate)
+library(zoo)
+#library(lubridate)
 
 plan(multisession)
 
@@ -18,11 +19,11 @@ ARROW2DF <- function(SOURCE)
 
 VARS   <- c("FEC_LECTURA","VAL_AI","VAL_AE") # VAL_R1 VAL_R2 VAL_R3 VAL_R4
 
-solar  <- ARROW2DF("../data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/anm_ids03_aut_lec_horaria_val")
-#solar  <- ARROW2DF("../data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/anm_ids03_lec_horaria_val")
+#lec  <- ARROW2DF("../data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/anm_ids03_aut_lec_horaria_val")
+#aut  <- ARROW2DF("../data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/anm_ids03_lec_horaria_val")
 
-#solar  <- ARROW2DF("anm_ids03_lec_horaria_val")
-#poliza <- ARROW2DF("anm_ids03_poliza_autoconsumo")
+lec    <- ARROW2DF("anm_ids03_lec_horaria_val")
+aut    <- ARROW2DF("anm_ids03_aut_lec_horaria_val")
 
 punto    <- ARROW2DF("anm_ids03_punto_suministro")
 contrato <- ARROW2DF("anm_ids03_contrato")
@@ -34,17 +35,33 @@ poliza   <- ARROW2DF("anm_ids03_poliza")
 ROSETA <- merge(punto,contrato,by="COD_PS")
 ROSETA <- merge(ROSETA,poliza,by="COD_CONTRATO")
 
-NAMES <- unique(solar$CUPS)
+NAMES <- intersect(unique(aut$CUPS),unique(lec$CUPS))
 B <- foreach(NAME = NAMES,
              .errorhandling = "remove",
              .combine=merge) %dofuture%
 {
-  aux <- solar[solar$CUPS == NAME,VARS]
-  aux <- zooreg(aux[,c("VAL_AI","VAL_AE")],order.by=unique(aux$FEC_LECTURA))
+  a1 <- lec[lec$CUPS == NAME,VARS]
+  a2 <- aut[aut$CUPS == NAME,VARS]
 
-  fwrite(data.frame(timestamp=index(aux),VAL_AI=aux$VAL_AI, VAL_AE=aux$VAL_AE),
+  a1 <- zooreg(a1[,-1],order.by=unique(as.POSIXct(a1$FEC_LECTURA)))
+  a2 <- zooreg(a2[,-1],order.by=unique(as.POSIXct(a2$FEC_LECTURA)))
+
+  a1$AUTO <- 0
+  a2$AUTO <- 1
+
+  fin <- last(index(a1))
+  if(!last(index(a1)) < first(index(a2)))
+    fin <- index(a2)[1]-60*60
+  aux <- c(window(a1,end=fin),a2)
+
+  fwrite(data.frame(timestamp=index(aux),VAL_AI=aux$VAL_AI,
+                    VAL_AE=aux$VAL_AE, AUTO=aux$AUTO),
          file=paste("post_cooked/SOLAR/",NAME,".csv",sep=""),
          dateTimeAs="write.csv",row.names=F)
+  pdf(paste("post_cooked/SOLAR/",NAME,".pdf",sep=""))
+    plot(aux)
+  dev.off()
+
   aux$VAL_AI
 }
 
