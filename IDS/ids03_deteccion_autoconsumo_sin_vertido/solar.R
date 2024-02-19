@@ -2,6 +2,7 @@ library(data.table)
 library(arrow)
 library(doFuture)
 library(stringr)
+library(lubridate)
 
 plan(multisession)
 
@@ -15,9 +16,23 @@ ARROW2DF <- function(SOURCE)
   return(as.data.frame(at))
 }
 
-VARS  <- c("FEC_LECTURA","VAL_AI","VAL_AE") # VAL_R1 VAL_R2 VAL_R3 VAL_R4
+VARS   <- c("FEC_LECTURA","VAL_AI","VAL_AE") # VAL_R1 VAL_R2 VAL_R3 VAL_R4
 
-solar <- ARROW2DF("data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/anm_ids03_aut_lec_horaria_val")
+solar  <- ARROW2DF("../data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/anm_ids03_aut_lec_horaria_val")
+#solar  <- ARROW2DF("../data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/anm_ids03_lec_horaria_val")
+
+#solar  <- ARROW2DF("anm_ids03_lec_horaria_val")
+#poliza <- ARROW2DF("anm_ids03_poliza_autoconsumo")
+
+punto    <- ARROW2DF("anm_ids03_punto_suministro")
+contrato <- ARROW2DF("anm_ids03_contrato")
+poliza   <- ARROW2DF("anm_ids03_poliza")
+
+# intersect(punto$COD_PS,contrato$COD_PS)
+# intersect(poliza$COD_CONTRATO,contrato$COD_CONTRATO)
+
+ROSETA <- merge(punto,contrato,by="COD_PS")
+ROSETA <- merge(ROSETA,poliza,by="COD_CONTRATO")
 
 NAMES <- unique(solar$CUPS)
 B <- foreach(NAME = NAMES,
@@ -39,3 +54,4 @@ fwrite(data.frame(timestamp=index(B),B),
 pdf(width=100,height=100,file="solar_plots.pdf")
   plot(B)
 dev.off()
+
