@@ -15,7 +15,7 @@ foreach(lib = librerias) %do% {
 
 # LEER archivos
 {
-folder <- "Resultados/PrediccionError/"
+folder <- "Resultados/PrediccionError/AllFeats"
 lm <- list.files(folder, pattern = "_lm.csv$", recursive = T, full.names = F)
 rf <- list.files(folder, pattern = "_rf.csv$", recursive = T, full.names = F)
 gbm <- list.files(folder, pattern = "_gbm.csv$", recursive = T, full.names = F)
@@ -46,6 +46,157 @@ SN <- paste(folder, SN, sep = "")
 SVM <- list.files(folder, pattern = "Pred_SVM_.*\\.csv$", recursive = T, full.names = F)
 SVM <- paste(folder, SVM, sep = "")
 }
+
+
+#LEER NUEVOS ARCHIVOS
+{
+  folder <- "Resultados/PrediccionError/AllFeats/"
+  
+  # Definir una función para buscar archivos por patrón en todas las carpetas de modelos
+  buscar_archivos_por_modelo <- function(folder, pattern) {
+    # Obtener una lista de todas las subcarpetas dentro de la carpeta principal
+    subcarpetas <- list.dirs(folder, recursive = FALSE)
+    
+    # Inicializar una lista para guardar los resultados
+    archivos_modelo <- character()
+    
+    # Iterar sobre cada subcarpeta para buscar archivos que coincidan con el patrón
+    for (subcarpeta in subcarpetas) {
+      archivos_encontrados <- list.files(subcarpeta, pattern = pattern, recursive = TRUE, full.names = TRUE)
+      archivos_modelo <- c(archivos_modelo, archivos_encontrados)
+    }
+    
+    return(archivos_modelo)
+  }
+  
+  # Buscar archivos por cada tipo de modelo
+  archivos_lm <- buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$")
+  archivos_rf <- buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$")
+  archivos_gbm <- buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$")
+  archivos_svm <- buscar_archivos_por_modelo(folder, "_svm_.*\\.csv$")
+  archivos_nn <- buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
+  
+  
+  
+  # Para modelos con prefijo específico en el nombre del archivo
+  Arima <- list.files(paste0(folder, "Arima/"), pattern = "Pred_Arima_.*\\.csv$", recursive = T, full.names = F)
+  Arima <- paste0(folder, "Arima/", Arima)
+  
+  Ensemble <- list.files(paste0(folder, "Ensemble/"), pattern = "Pred_Ensemble_.*\\.csv$", recursive = T, full.names = F)
+  Ensemble <- paste0(folder, "Ensemble/", Ensemble)
+  
+  ETS <- list.files(paste0(folder, "ETS/"), pattern = "Pred_ETS_.*\\.csv$", recursive = T, full.names = F)
+  ETS <- paste0(folder, "ETS/", ETS)
+  
+  Media <- list.files(paste0(folder, "Media/"), pattern = "Pred_Media_.*\\.csv$", recursive = T, full.names = F)
+  Media <- paste0(folder, "Media/", Media)
+  
+  Naive <- list.files(paste0(folder, "Naive/"), pattern = "Pred_Naive_.*\\.csv$", recursive = T, full.names = F)
+  Naive <- paste0(folder, "Naive/", Naive)
+  
+  NN <- list.files(paste0(folder, "NN/"), pattern = "Pred_NN_.*\\.csv$", recursive = T, full.names = F)
+  NN <- paste0(folder, "NN/", NN)
+  
+  SN <- list.files(paste0(folder, "SN/"), pattern = "Pred_SN_.*\\.csv$", recursive = T, full.names = F)
+  SN <- paste0(folder, "SN/", SN)
+  
+  SVM <- list.files(paste0(folder, "SVM/"), pattern = "Pred_SVM_.*\\.csv$", recursive = T, full.names = F)
+  SVM <- paste0(folder, "SVM/", SVM)
+  
+  
+}
+
+
+#LEE ARCHVOS, HACE GRAFICOS Y LOS GUARDA EN FORMATO PNG
+{
+  
+  # Definir el folder principal
+  folder <- "Resultados/PrediccionError/AllFeats/"
+  
+  # Lista de los nombres de los submodelos para búsqueda
+  modelos <- c("Arima", "Ensemble", "ETS", "Media", "Naive", "NN", "SN", "SVM")
+  
+  # Lista de métodos de predicción
+  metodos_prediccion <- c("gbm", "lm", "nn", "rf", "svm")
+  
+  # Lista de conjuntos de features
+  features_sets <- c("cluster", "consumo", "edificio", "habitos", "socio")
+  
+  # Función para leer y combinar archivos de un modelo específico
+  read_and_combine <- function(modelo, metodo, feature) {
+    pattern <- paste0("Pred_", modelo, "_", metodo, "_", feature, ".csv$")
+    files <- list.files(paste0(folder, modelo), pattern = pattern, full.names = TRUE)
+    
+    # Lista para almacenar data frames
+    df_list <- list()
+    
+    # Leer archivos y extraer métrica MAPE
+    for (file in files) {
+      df <- fread(file) # Leer el archivo con data.table por eficiencia
+      # Crear una columna con el valor de MAPE
+      mape_colname <- grep("MAPE", names(df), value = TRUE)
+      df <- df[, .(ID, Real, Predicted = df[[mape_colname]], MAPE = df[[mape_colname]])]
+      df$feature_set <- feature # Añadir el conjunto de características como una nueva columna
+      df$metodo <- metodo # Añadir el método de predicción como una nueva columna
+      df$modelo <- modelo # Añadir el modelo como una nueva columna
+      df_list[[length(df_list) + 1]] <- df
+    }
+    
+    # Combinar todos los data frames en uno solo
+    combined_df <- rbindlist(df_list, fill = TRUE)
+    return(combined_df)
+  }
+  
+  # Lista para almacenar los datos combinados de todos los modelos y métodos
+  combined_data <- list()
+  
+  # Leer y combinar los datos de todos los modelos y métodos
+  for (modelo in modelos) {
+    for (metodo in metodos_prediccion) {
+      for (feature in features_sets) {
+        combined_data[[paste(modelo, metodo, feature, sep = "_")]] <- read_and_combine(modelo, metodo, feature)
+      }
+    }
+  }
+  
+  # Función para generar gráfico de caja
+  generate_boxplot <- function(data, title) {
+    # Calcular el cuartil 0.75 para cada conjunto de features y método
+    limits <- data[, .(Q75 = quantile(MAPE, 0.75, na.rm = TRUE)), by = .(feature_set, metodo)]
+    
+    # Unir los límites con el conjunto de datos original para filtrar los outliers
+    data <- merge(data, limits, by = c("feature_set", "metodo"))
+    data <- data[MAPE <= Q75]
+    
+    # Generar el gráfico de caja sin los outliers
+    p <- ggplot(data, aes(x = feature_set, y = MAPE, fill = metodo)) +
+      geom_boxplot(outlier.shape = NA) + # Excluir puntos atípicos
+      labs(title = title, x = "Conjunto de Features", y = "MAPE") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            legend.position = "bottom")
+    return(p)
+  }
+  
+  # Generar y guardar gráficos para cada modelo
+  for (modelo in modelos) {
+    # Filtrar los datos para el modelo actual
+    datos_modelo <- rbindlist(combined_data[grep(modelo, names(combined_data))], fill = TRUE)
+    
+    # Generar el gráfico
+    p <- generate_boxplot(datos_modelo, paste("MAPE para modelo", modelo))
+    
+    # Guardar el gráfico
+    ggsave(paste0("MAPE_", modelo, "_por_conjunto_de_features.png"), plot = p, width = 11, height = 8, dpi = 300)
+  }
+
+}
+
+
+
+
+
+
 
 # ARIMA
 {
