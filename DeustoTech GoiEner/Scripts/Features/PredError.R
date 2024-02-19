@@ -128,7 +128,7 @@ feats <- read.csv("allFeatures.csv")
 # sets de features a usar 
 {
 # features sobre la tarifa
-tarifa <- c("tarifa.tarifa_atr_re","p1_kw","p2_kw", "p3_kw","p4_kw", "p5_kw", "p6_kw",  
+tarifa <- c("tarifa.tarifa_atr_ref","p1_kw","p2_kw", "p3_kw","p4_kw", "p5_kw", "p6_kw",  
             "cups.direccion_cp",  "cnae.provincia") 
 
 # features sobre el consumo
@@ -327,8 +327,7 @@ s3 <- c("POT_1", "POT_2",
 
 # Función para realizar regresión y generar resultados
 regresion_model_feats <- function(model_type, target_variable, trainIndex) {
-    
-  # TODO limpiar columnas
+
   
     modelo <- gsub("^mape|_mediana$", "", target_variable)
     
@@ -379,6 +378,11 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
                                                   data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
         predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
   
+        
+        # TODO seguramente por valores NA, svm no predice el 
+        # mismo numero de filas que trainset
+        
+        
       } else if (model_type == "nn"){
         
         # Neural Network
@@ -402,8 +406,8 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         mape_values[i] <- mape(testSet[i, target_variable], predicciones_log[i]) * 100
       }
       
-      resultados <- data.frame(ID = testID$ID, Real = testSet[[target_variable]], 
-                               Predicciones = predicciones_log, MAPE = mape_values)
+      resultados <- data.frame(ID = testID$ID[1:length(predicciones_log)], Real = testSet[[target_variable]][1:length(predicciones_log)], 
+                               Predicciones = predicciones_log, MAPE = mape_values[1:length(predicciones_log)])
       
       colnames(resultados) <- c("ID", "Real", namePred, nameMAPE)
       
@@ -492,7 +496,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
       model <- nnet(
         as.formula(paste(log_variable, "~ . - ", target_variable)),
         data = trainSetCuest,
-        size = 2
+        size = 4
       )
       predicciones_log <- exp(predict(model, newdata = testSetCuest)) - 1
     }
@@ -523,7 +527,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
   
 # Lista de modelos
 modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("svm", "nn")
+modelos <- c("svm")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
