@@ -332,8 +332,8 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
   
     modelo <- gsub("^mape|_mediana$", "", target_variable)
     
-    columns <- list(consumo, habitos, socio, edificio, cluster)
-    columns_names <- c("consumo", "habitos", "socio", "edificio", "cluster")
+    columns <- list(consumo, habitos, socio, edificio, cluster, tarifa)
+    columns_names <- c("consumo", "habitos", "socio", "edificio", "cluster", "tarifa")
     results_list <- list()
     name_i = 1
     for (set in columns) {
