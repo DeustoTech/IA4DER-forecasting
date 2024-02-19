@@ -12,7 +12,8 @@ CLEAN_ID <- function(X)
 }
 
 col1 <- fread("collaborator1.csv",    select = c("G3E_FID_CT","G3E_FID_CGP","G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
-col2 <- fread("collaborator2_cp.csv", select = c("G3E_FID_CT","G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
+#col2 <- fread("collaborator2_cp.csv", select = c("G3E_FID_CT","G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
+col2 <- fread("collaborator2a_cp.csv", select = c("G3E_FID_CT","G3E_FID_LBT","FEC_LECTURA","VAL_AI"))
 #LIM  <- fread("features.csv",         select = c("ID","POT_NOM","POT_EST"))
 
 ENG  <- fread("enganches.csv")
@@ -46,7 +47,7 @@ for (i in LBT)
   p1 <- aux
   p2 <- p2$VAL_AI[1:(F_DAYS*24)]
 
-  aux     <- r != 0
+  aux    <- r != 0
   MAPE1  <- 100*median(abs(r[aux]-p1[aux])/r[aux],na.rm=T)
   MAPE2  <- 100*median(abs(r[aux]-p2[aux])/r[aux],na.rm=T)
   RMSE1  <- sqrt(median((r-p1)^2,na.rm=T))
@@ -57,8 +58,8 @@ for (i in LBT)
 
 CT <- Sys.glob(paths="stlf/test/CT/*")
 cat("ID,MAPE1,RMSE1,MAPE2,RMSE2,\n",file="stlf/assess-CT.csv",sep=",")
-C <- foreach(i = CT,.combine=rbind) %do% {
-
+for(i in CT)
+{
   FILE <- strsplit(i,"/")[[1]][4]
   TYPE <- strsplit(i,"/")[[1]][3]
   ID   <- tools::file_path_sans_ext(FILE)
