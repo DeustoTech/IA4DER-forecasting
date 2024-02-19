@@ -32,6 +32,8 @@ pos    <- ARROW2DF("./inputdata/data/anm_ids01_pos_trafo")
 trafo  <- ARROW2DF("./inputdata/data/anm_ids01_trafo")
 ct     <- ARROW2DF("./inputdata/data/anm_ids01_ct")
 
+
+
 ROSETA <- merge(cups,  cgp,   by.x="COD_SIC_SIGRID",    by.y="ID_CAJA")
 ROSETA <- merge(ROSETA,linea, by.x="ID_PADRE_LINEA_BT", by.y="G3E_FID")
 ROSETA <- merge(ROSETA,cuadro,by.x="ID_PADRE_CUADRO_BT",by.y="G3E_FID")
