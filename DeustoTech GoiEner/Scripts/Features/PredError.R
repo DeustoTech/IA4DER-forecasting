@@ -377,16 +377,11 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         # SVM
         model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
                                                   data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-        # predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
-  
-        
-        # TODO seguramente por valores NA, svm no predice el 
-        # mismo numero de filas que trainset
+      
         for (t in 1:nrow(testSet)) {
-          testRow <- testSet[t, , drop = FALSE]  # Asegúrate de que testRow sea un dataframe
+          testRow <- testSet[t, , drop = FALSE]  
           prediccion <- exp(predict(model$best.model, newdata = testRow)) - 1
           
-          # Verifica si la predicción está vacía (length(prediccion) == 0)
           if (length(prediccion) == 0) {
             predicciones_log[t] <- NA
           } else {
@@ -401,11 +396,14 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         model <- nnet(
           as.formula(paste(log_variable, "~ . - ", target_variable)),
           data = trainSet,
-          size = 1
+          size = 5
         )
-        # print(predict(model, newdata = testSet))
-        predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-        
+        for (t in 1:nrow(testSet)){
+          testRow <- testSet[t, , drop = FALSE]  
+          predicciones_log[t] <- exp(predict(model, newdata = testRow)) - 1
+          
+        }
+
       }
   
       namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
@@ -433,19 +431,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       
      
     }
-# 
-#     print(paste("longitud id:", length(testID)))
-#     print(paste("longitud real:", length(testSet[[target_variable]])))
-#     print(paste("longitud results list:", dim(results_list)))
-#     resultados <- data.frame(
-#       ID = testID,
-#       Real = testSet[[target_variable]],
-#       results_list
-#     )
-#     
-#     write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/Pred_", modelo, "_", model_type, ".csv", sep = ""), row.names = F)
-#    
-    
+
     return(resultados)
 }
 
@@ -539,7 +525,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
   
 # Lista de modelos
 modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("svm")
+modelos <- c("nn")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
@@ -550,15 +536,11 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
 set.seed(0)
 index <- 0.75
 feats_nrow <- nrow(feats %>% filter(!is.na(mapeSVM_mediana)))
-# cuest_nrow <- nrow(cuest)
-# trainIndex <- sample(1:feats_nrow, index * feats_nrow) 
-# trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
+
 
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   
-  #resultados <- list()
-  
-  #colsDesc <- colsDesc[colsDesc != "cups.direccion_cp"]
+ 
 
   cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), ID)
   trainSet <- cleanSet[0, ]
@@ -583,10 +565,12 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   
   for (col in colsDesc){
     if (col %in% categoricas){
-      if (length(levels(trainSet[[col]])) <= 2 || length(levels(testSet[[col]])) <=  2){
+      if (length(levels(trainSet[[col]])) < 2 || length(levels(testSet[[col]])) <=  2){
         cat(paste("Eliminando la columna", col, "debido a dos o menos niveles.\n"))
         trainSet[[col]] <- NULL
         testSet[[col]] <- NULL
+      } else{
+        # print(summary(testSet))
       }
     }
     else {
@@ -595,45 +579,12 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
       trainSet[[col]][is.na(trainSet[[col]])] <- valueToImpute
       testSet[[col]][is.na(testSet[[col]])] <- valueToImpute
     }
+    
   }
   
   return(list(trainSet = trainSet, testSet = testSet))
 }
 
-
-limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
-  
-  cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), ID)
-  cleanSetTransformed <- one_hot(as.data.table(cleanSet), dropUnusedLevels = T)
-  cleanSetTransformed <- as.data.frame(cleanSetTransformed)
-  
-  cleanSetTransformed$ID <- cleanSet$ID
-  cleanSetTransformed[[target]] <- cleanSet[[target]]
-  
-  set.seed(123)
-  trainIndexClean <- sample(1:nrow(cleanSetTransformed), size = round(index * nrow(cleanSetTransformed)))
-  trainSet <- cleanSetTransformed[trainIndexClean, ]
-  print(head(trainSet))
-  testSet <- cleanSetTransformed[-trainIndexClean, ]
-  
-  for (col in colsDesc){
-    if (col %in% categoricas){
-      if (length(levels(trainSet[[col]])) <= 2 || length(levels(testSet[[col]])) <=  2){
-        cat(paste("Eliminando la columna", col, "debido a dos o menos niveles.\n"))
-        trainSet[[col]] <- NULL
-        testSet[[col]] <- NULL
-      }
-    }
-    else {
-      # Imputación para variables numéricas
-      valueToImpute <- median(trainSet[[col]], na.rm = TRUE) # O usar mean según sea apropiado
-      trainSet[[col]][is.na(trainSet[[col]])] <- valueToImpute
-      testSet[[col]][is.na(testSet[[col]])] <- valueToImpute
-    }
-  }
-  
-  return(list(trainSet = trainSet, testSet = testSet))
-}
 
 
 # Regresion con columnas de las features
