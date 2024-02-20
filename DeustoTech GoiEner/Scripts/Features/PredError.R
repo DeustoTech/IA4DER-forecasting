@@ -328,6 +328,7 @@ s3 <- c("POT_1", "POT_2",
 # Función para realizar regresión y generar resultados
 regresion_model_feats <- function(model_type, target_variable, trainIndex) {
 
+  predicciones_log <- c()
   
     modelo <- gsub("^mape|_mediana$", "", target_variable)
     
@@ -376,11 +377,22 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         # SVM
         model <- tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
                                                   data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-        predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
+        # predicciones_log <- exp(predict(model$best.model, newdata = testSet)) - 1
   
         
         # TODO seguramente por valores NA, svm no predice el 
         # mismo numero de filas que trainset
+        for (t in 1:nrow(testSet)) {
+          testRow <- testSet[t, , drop = FALSE]  # Asegúrate de que testRow sea un dataframe
+          prediccion <- exp(predict(model$best.model, newdata = testRow)) - 1
+          
+          # Verifica si la predicción está vacía (length(prediccion) == 0)
+          if (length(prediccion) == 0) {
+            predicciones_log[t] <- NA
+          } else {
+            predicciones_log[t] <- prediccion
+          }
+        }
         
         
       } else if (model_type == "nn"){
@@ -537,8 +549,8 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
 
 set.seed(0)
 index <- 0.75
-cuest_nrow <- nrow(cuest)
 feats_nrow <- nrow(feats %>% filter(!is.na(mapeSVM_mediana)))
+# cuest_nrow <- nrow(cuest)
 # trainIndex <- sample(1:feats_nrow, index * feats_nrow) 
 # trainIndexCuest <- sample(1:cuest_nrow, index * cuest_nrow)
 
