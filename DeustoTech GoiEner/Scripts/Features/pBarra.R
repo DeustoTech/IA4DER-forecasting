@@ -83,6 +83,60 @@ svm_df <- combinar_archivos_en_df(svm)
 fwrite(lm_df, "Resultados/PrediccionError/combined_svm.csv")
 nn_df <- combinar_archivos_en_df(nn)
 fwrite(lm_df, "Resultados/PrediccionError/combined_nn.csv")
+colnames(lm_df)
+
+calcular_pBarra <- function(combined_file, features, modelo) {
+  
+  pBarra_list <- list()
+
+  for (feature in features) {
+    
+    needed_file <- combined_file %>% select("ID", starts_with("Real"), contains(feature))
+
+    predicted_values <- needed_file %>% select(starts_with("Predicted"))
+    real_values <- needed_file %>% select(starts_with("Real"))
+ 
+    sum_real_values <- sum(real_values[2:ncol(real_values)], na.rm = T)
+    
+    sum_real_pred_product <- 0
+    names <- names(predicted_values)
+    for (i in 2:length(names)) {
+      predicted_colname <- names[i]
+      sum_real_pred_product <- sum_real_pred_product + sum(real_values[2:ncol(real_values)] * predicted_values[[predicted_colname]], na.rm = TRUE)
+    }
+    
+    # Calcular pBarra para el conjunto de features actual
+    pBarra <- (1 / sum_real_values) * sum_real_pred_product
+    
+    nombreCol <- paste("pBarra", feature, modelo, sep = "_")
+    
+    pBarra_list[[nombreCol]] <- pBarra
+    
+    
+  }
+  
+  resultados <- data.frame(
+    ID = combined_file$ID,
+    pBarra_list
+  )
+  
+  write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/pBarra_",  modelo, ".csv", sep = ""), row.names = FALSE)
+  
+}
+
+
+columns_names <- c("consumo", "habitos", "socio", "edificio", "cluster", "tarifa")
+files <- list(lm_df, rf_df, gbm_df, svm_df, nn_df)
+modelos <- c("lm", "rf", "gbm", "svm", "nn")
+
+i = 1
+for (file in files) {
+  calcular_pBarra(file, columns_names, modelos[i])
+  i = i + 1
+}
+
+
+
 
 
 
