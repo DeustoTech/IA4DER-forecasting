@@ -85,62 +85,6 @@ nn_df <- combinar_archivos_en_df(nn)
 fwrite(lm_df, "Resultados/PrediccionError/combined_nn.csv")
 colnames(lm_df)
 
-calcular_pBarra <- function(combined_file, features, modelo) {
-  
-  pBarra_list <- list()
-
-  for (feature in features) {
-    
-    needed_file <- combined_file %>% select("ID", starts_with("Real"), contains(feature))
-
-    predicted_values <- needed_file %>% select(starts_with("Predicted"))
-    real_values <- needed_file %>% select(starts_with("Real"))
- 
-    sum_real_values <- sum(real_values[2:ncol(real_values)], na.rm = T)
-    
-    sum_real_pred_product <- 0
-    names <- names(predicted_values)
-    for (i in 2:length(names)) {
-      predicted_colname <- names[i]
-      sum_real_pred_product <- sum_real_pred_product + sum(real_values[2:ncol(real_values)] * predicted_values[[predicted_colname]], na.rm = TRUE)
-    }
-    
-    # Calcular pBarra para el conjunto de features actual
-    pBarra <- (1 / sum_real_values) * sum_real_pred_product
-    
-    nombreCol <- paste("pBarra", feature, modelo, sep = "_")
-    
-    pBarra_list[[nombreCol]] <- pBarra
-    
-    
-  }
-  
-  resultados <- data.frame(
-    ID = combined_file$ID,
-    pBarra_list
-  )
-  
-  write.csv(resultados, file = paste("Resultados/PrediccionError/AllFeats/pBarra_",  modelo, ".csv", sep = ""), row.names = FALSE)
-  
-}
-
-
-columns_names <- c("consumo", "habitos", "socio", "edificio", "cluster", "tarifa")
-files <- list(lm_df, rf_df, gbm_df, svm_df, nn_df)
-modelos <- c("lm", "rf", "gbm", "svm", "nn")
-
-i = 1
-for (file in files) {
-  calcular_pBarra(file, columns_names, modelos[i])
-  i = i + 1
-}
-
-
-
-
-
-
-
 
 df_list <- c()
 
@@ -178,25 +122,23 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
 # Calcular p barra 
 {
   combined <- read.csv("Resultados/PrediccionError/combinedPreds.csv")
-  feats <- read.csv("featuresPredicciones_3.csv")
+  feats <- read.csv("allFeatures.csv")
   
   modelos <- c("rf", "lm", "svm", "nn", "gbm")
-  modelos <- c("rf", "lm", "gbm")
   featuresets <- c("habitos", "cluster","edificio", "socio", "consumo", "tarifa")
   
-  mapes <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
-              "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
+  mapes <- c("RealMedia", "RealArima", "RealEnsemble", "RealETS",
+              "RealSVM", "RealNaive", "RealSN", "RealNN")
   modelosOG <- c("Media", "Naive", "Arima", "SN", "NN", "ETS", "SVM", "Ensemble")
   
-  
-  columns_to_select <- c("ID", mapes)  # Excluimos la primera columna de combined que es "ID"
 
   # Unir los dataframes por la columna "ID"
-  df <- merge(feats[columns_to_select], combined, by = "ID", all.x = TRUE)
-  df<- df[df$ID %in% combined$ID, ]
-  sumMapes <- rowSums(df[, mapes], na.rm = T)
-  df <- df[which(sumMapes != 0), ]
+
+  sumMapes <- rowSums(combined[, mapes], na.rm = T)
+  combined <- combined[which(sumMapes != 0), ]
   sumMapes <- sumMapes[which(sumMapes != 0)]
+  
+  df <- combined
   
   for (i in 1:nrow(df)){
     
@@ -210,36 +152,35 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
         
         for (modeloOG in modelosOG){
           pred_col <- paste("Predicted", modeloOG, set, modelo, sep = "_")
-          mape_col <- paste("mape", modeloOG, "_mediana", sep = "")
-          print(pred_col)
-          print(mape_col)
-          print(colnames(df))
-          weighted_sum <- weighted_sum + ifelse(is.na(df[i, mape_col] * df[i, pred_col]), 0, df[i, mape_col] * df[i, pred_col])
-           }
+          mape_col <- paste("Real", modeloOG,sep = "")
+          if (pred_col %in% colnames(df) && mape_col %in% colnames(df) && !is.na(df[i, mape_col]) && !is.na(df[i, pred_col])) {
+            weighted_sum <- weighted_sum + df[i, mape_col] * df[i, pred_col]
+          }          # weighted_sum <- weighted_sum + ifelse(is.na(df[i, mape_col] * df[i, pred_col]), 0, df[i, mape_col] * df[i, pred_col])
+        }
+        
+        
         
         pBarra_col <- paste("pBarra", set, modelo, sep = "_")
-        df[i, pBarra_col] <- (1 / sumMape) * weighted_sum
+        df[i, pBarra_col] <- ifelse(sumMape > 0, (1 / sumMape) * weighted_sum, 0)
       }
     }
     
     
   }
 
-  
-  for (i in 1:nrow(combined)){
-    
-  }
-  
+
+  df <- df %>%
+    mutate(across(starts_with("pBarra_"), ~na_if(.x, 0)))
   pbarras <- df %>% select(ID, starts_with("pBarra"))
   
-  fwrite(pbarras, "sumaPonderada.csv")
+  fwrite(pbarras, "pBarra")
  
   
   columnas_nuevas <- colnames(pbarras)[-which(colnames(pbarras) == "ID")]
   feats <- merge(feats, pbarras, by = "ID", all.x = TRUE, suffixes = c("", ""))
   
   
-  fwrite(feats, "featuresPredicciones_3.csv")
+  fwrite(feats, "allFeats.csv")
   
   # mape del pbarra
   
