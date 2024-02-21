@@ -14,7 +14,7 @@ foreach(lib = librerias) %do% {
 }
 
 # Leer
-{
+
 folder <- "Resultados/PrediccionError/AllFeats"
 
 
@@ -52,10 +52,38 @@ model_files <- list(
   # Buscar archivos por cada tipo de modelo
   lm <- buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$"),
   rf <- buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
-  gbm <- buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$")
-  #archivos_svm <- buscar_archivos_por_modelo(folder, "_svm_.*\\.csv$")
-  #archivos_nn <- buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
+  gbm <- buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$"),
+  svm <- buscar_archivos_por_modelo(folder, "_svm_.*\\.csv$"),
+  nn <- buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
 )
+
+
+# Función para leer archivos y combinarlos en un único dataframe
+combinar_archivos_en_df <- function(archivos_modelo) {
+  # Inicializar una lista para almacenar dataframes
+  lista_de_dfs <- lapply(archivos_modelo, fread)
+  
+  combined <- lista_de_dfs %>% bind_rows() %>% group_by(ID)
+  
+  combined <- combined %>% 
+    distinct(ID, .keep_all = TRUE)
+  
+  return(combined)
+  
+  }
+  
+
+lm_df <- combinar_archivos_en_df(lm)
+fwrite(lm_df, "Resultados/PrediccionError/combined_lm.csv")
+rf_df <- combinar_archivos_en_df(rf)
+fwrite(lm_df, "Resultados/PrediccionError/combined_rf.csv")
+gbm_df <- combinar_archivos_en_df(gbm)
+fwrite(lm_df, "Resultados/PrediccionError/combined_gbm.csv")
+svm_df <- combinar_archivos_en_df(svm)
+fwrite(lm_df, "Resultados/PrediccionError/combined_svm.csv")
+nn_df <- combinar_archivos_en_df(nn)
+fwrite(lm_df, "Resultados/PrediccionError/combined_nn.csv")
+
 
 
 
@@ -77,7 +105,7 @@ for (file in model_files){
     # Agrega el dataframe modificado a la lista
     df_list <- append(df_list, list(df))
   }}
-  
+
 combined <- df_list %>% bind_rows() %>% group_by(ID)
 
 combined <- combined %>% 
@@ -91,7 +119,7 @@ combined <- combined %>%
 
 fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
 
-}
+
 
 # Calcular p barra 
 {
