@@ -359,6 +359,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
   
       print(paste("Trainset: ", nrow(trainSet), "filas. Testset: ", nrow(testSet), "filas."))
       
+      
       if (model_type == "lm") {
         # Regresión Lineal
         model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
@@ -434,7 +435,6 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
 
     return(resultados)
 }
-
 
   
 regression_model_cuest <- function(model_type, target_variable, descSE_columns, descEd_columns, descCG_columns, trainIndexCuest){
