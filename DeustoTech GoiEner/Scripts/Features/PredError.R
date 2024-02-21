@@ -407,6 +407,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
 
       }
   
+      nameReal <- paste("Real", modelo, sep = "_" )
       namePred <- paste("Predicted", modelo, col_name, model_type, sep = "_")
       nameMAPE <- paste("MAPE", modelo, col_name, model_type, sep = "_")
   
@@ -420,7 +421,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       resultados <- data.frame(ID = testID$ID[1:length(predicciones_log)], Real = testSet[[target_variable]][1:length(predicciones_log)], 
                                Predicciones = predicciones_log, MAPE = mape_values[1:length(predicciones_log)])
       
-      colnames(resultados) <- c("ID", "Real", namePred, nameMAPE)
+      colnames(resultados) <- c("ID", nameReal, namePred, nameMAPE)
       
       
       # Escribir el dataframe en un archivo CSV
@@ -525,7 +526,7 @@ regression_model_cuest <- function(model_type, target_variable, descSE_columns, 
   
 # Lista de modelos
 modelos <- c("lm", "rf", "gbm", "svm", "nn")
-modelos <- c("nn")
+#modelos <- c("nn")
 
 # Lista de variables objetivo
 target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
