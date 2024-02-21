@@ -535,7 +535,7 @@ target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeAri
 
 set.seed(0)
 index <- 0.75
-feats_nrow <- nrow(feats %>% filter(!is.na(mapeSVM_mediana)))
+feats_nrow <- nrow(feats %>% filter(!is.na(mapeNN_mediana)))
 
 
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
