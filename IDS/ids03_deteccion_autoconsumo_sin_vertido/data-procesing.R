@@ -35,7 +35,8 @@ poliza   <- ARROW2DF("anm_ids03_poliza")
 ROSETA <- merge(punto,contrato,by="COD_PS")
 ROSETA <- merge(ROSETA,poliza,by="COD_CONTRATO")
 
-NAMES <- intersect(unique(aut$CUPS),unique(lec$CUPS))
+#NAMES <- intersect(unique(aut$CUPS),unique(lec$CUPS))
+NAMES <- union(unique(aut$CUPS),unique(lec$CUPS))
 B <- foreach(NAME = NAMES,
              .errorhandling = "remove",
              .combine=merge) %dofuture%
@@ -46,13 +47,27 @@ B <- foreach(NAME = NAMES,
   a1 <- zooreg(a1[,-1],order.by=unique(as.POSIXct(a1$FEC_LECTURA)))
   a2 <- zooreg(a2[,-1],order.by=unique(as.POSIXct(a2$FEC_LECTURA)))
 
-  a1$AUTO <- 0
-  a2$AUTO <- 1
+  aux <- zooreg()
+  if ((length(a1) != 0) & (length(a2) != 0))
+  {
+    a1$AUTO <- 0
+    a2$AUTO <- 1
 
-  fin <- last(index(a1))
-  if(!last(index(a1)) < first(index(a2)))
-    fin <- index(a2)[1]-60*60
-  aux <- c(window(a1,end=fin),a2)
+    fin <- last(index(a1))
+    if(!last(index(a1)) < first(index(a2)))
+      fin <- index(a2)[1]-60*60
+    aux <- c(window(a1,end=fin),a2)
+  }
+  if (length(a1) != 0)
+  {
+    a1$AUTO <- 0
+    aux     <- a1
+  }
+  if (length(a2) != 0)
+  {
+    a2$AUTO <- 1
+    aux     <- a2
+  }
 
   fwrite(data.frame(timestamp=index(aux),VAL_AI=aux$VAL_AI,
                     VAL_AE=aux$VAL_AE, AUTO=aux$AUTO),
@@ -71,4 +86,13 @@ fwrite(data.frame(timestamp=index(B),B),
 pdf(width=100,height=100,file="solar_plots.pdf")
   plot(B)
 dev.off()
+
+### features
+# longitud
+# estadisticos básicos
+# energia consumida y energia generada
+# numero de 0 y NA
+# fecha de cambio
+# fecha de primera inyeccion
+# entropia
 
