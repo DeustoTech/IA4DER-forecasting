@@ -184,38 +184,32 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   
   # mape del pbarra
   
-
-  # Seleccionar las columnas necesarias de feats
-  feats_subset <- feats[, c("ID", grep("^pBarra", names(feats), value = TRUE))]
+  feats <- read.csv("allFeats.csv")
+  pbarra_columns <- grep("^pBarra", names(feats), value = TRUE)
+  mape_columns <- grep("^mape.*_mediana$", names(feats), value = TRUE)
   
-  # Unir feats_subset con la columna "Real" de combined por la columna "ID"
-  result_df <- merge(feats_subset, combined[c("ID", "Real")], by = "ID")
-
-  result_df <- result_df %>%
-    select(-ends_with(".1"))
+  pbarra <- feats[which(!is.na(feats$mapeEnsemble_mediana)), c("ID", mape_columns, pbarra_columns), drop = FALSE]
   
-  # Obtener el nombre de las columnas "pBarra"
-  pbarra_columns <- grep("^pBarra", names(result_df), value = TRUE)
-  
-  # Iterar sobre las columnas "pBarra" y calcular el MAPE
-  for (pbarra_col in pbarra_columns) {
-    mape_col_name <- paste("mapePbarra", sub("^pBarra_", "", pbarra_col), sep = "_")
-    
-    for(i in 1:nrow(result_df)){
-      result_df[i, mape_col_name] <- mape(result_df$Real[i], result_df[[i,pbarra_col]]) * 100
+  for (real in mape_columns) {
+    # Iterar sobre las columnas "pBarra" y calcular el MAPE
+    for (pbarra_col in pbarra_columns) {
+      # Obtener el nombre de la columna de MAPE específica para la pareja actual
+      mape_col_name <- paste("mapePbarra", sub("^pBarra_", "", pbarra_col), sub("^mape(.+)_mediana$", "\\1", real), sep = "_")
+      
+      # Calcular el MAPE para cada fila
+      for (i in 1:nrow(pbarra)) {
+        pbarra[i, mape_col_name] <- mape(pbarra[[real]][i], pbarra[[i, pbarra_col]]) * 100
+      }
     }
-    
   }
   
-
-  
   # Filtrar columnas de result_df que empiezan por "mape"
-  result_df_subset <- result_df[, c("ID", grep("^mape", names(result_df), value = TRUE))]
+  subset <- pbarra[, c("ID", grep("^mape", names(pbarra), value = TRUE))]
   
   # Fusionar feats y result_df_subset por la columna ID
-  feats <- merge(feats, result_df_subset, by = "ID", all.x = TRUE)
+  feats <- merge(feats, subset, by = "ID", all.x = TRUE)
   
-  fwrite(feats, "featuresPredicciones_3.csv")
+  fwrite(feats, "allFeats.csv")
   
   
 }
