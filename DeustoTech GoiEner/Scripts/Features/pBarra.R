@@ -13,6 +13,7 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
+
 # Leer
 
 folder <- "Resultados/PrediccionError/AllFeats"
