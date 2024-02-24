@@ -204,6 +204,9 @@ for(archivo in archivos) {
   features_total <- calcular_features(serie)
   
   # Para quitar ...numeritos que saca el pivot
+  #
+  # Error in `colnames<-`(`*tmp*`, value = gsub("\\.\\.\\..*$", "", colnames(features_sin_auto))) : 
+  #   attempt to set 'colnames' on an object with less than two dimensions
   
   colnames(features_sin_auto) <- gsub("\\.\\.\\..*$", '', colnames(features_sin_auto))
   colnames(features_con_auto) <- gsub("\\.\\.\\..*$", '', colnames(features_con_auto))
