@@ -50,9 +50,10 @@ horas <- data.frame(
 )
 calcular_features <- function(serie, ID1, firstPanel) {
   
-  # print(paste("DENTRO: ", ID1))
+  # limipiamos valores no finitos
   
-  
+  serie <- serie %>%
+    mutate(VAL_AI = ifelse(!is.finite(VAL_AI), 0, VAL_AI), VAL_AE = ifelse(!is.finite(VAL_AE), 0, VAL_AE))
   # SEASONAL AGGREGATES
   serie$season <- case_when(
     month(serie$timestamp) %in% c(12, 1, 2) ~ "winter",
@@ -79,13 +80,13 @@ calcular_features <- function(serie, ID1, firstPanel) {
   features_semana <- laborable %>%
     group_by(season, day_period) %>%
     summarise(Total = sum(VAL_AI),
-              Max = max(VAL_AI)) %>%
+              Max = max(VAL_AI, na.rm = T)) %>%
     pivot_wider(names_from = c(season, day_period), values_from = c(Total, Max))
   
   features_fin_de_semana <- finde %>%
     group_by(season) %>%
     summarise(Total = sum(VAL_AI),
-              Max = max(VAL_AI))%>%
+              Max = max(VAL_AI, na.rm = T))%>%
     pivot_wider(names_from = season, values_from = c(Total, Max))
   
   
@@ -107,7 +108,7 @@ calcular_features <- function(serie, ID1, firstPanel) {
   
   
   # CONSUMO POR SEMANA Y MES
-  nWeeks <- max(serie$week)
+  nWeeks <- max(serie$week, na.rm = T)
   
   consumption_by_week <- serie %>%
     group_by(week) %>%
