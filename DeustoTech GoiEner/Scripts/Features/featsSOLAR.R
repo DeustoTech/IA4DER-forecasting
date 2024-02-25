@@ -114,11 +114,15 @@ calcular_features <- function(serie, ID1, firstPanel) {
     summarise(total_VAL_AI = sum(VAL_AI, na.rm = TRUE)) %>% pivot_wider(names_from = week, values_from = total_VAL_AI)
   
   colnames(consumption_by_week) <- paste("total_VAL_AI_week", 1:nWeeks,sep = "_")
+
+  
   
   consumption_by_month <- serie %>%
     group_by(month) %>%
     summarise(total_VAL_AI = sum(VAL_AI, na.rm = TRUE)) %>% pivot_wider(names_from = month, values_from = total_VAL_AI)
   colnames(consumption_by_month) <- paste("total_VAL_AI_month", 1:12,sep = "_")
+
+  
   
   
   # INYECCION POR SEMANA Y MES
@@ -126,13 +130,15 @@ calcular_features <- function(serie, ID1, firstPanel) {
     group_by(week) %>%
     summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = week, values_from = total_VAL_AE)
   colnames(inyection_by_week) <- paste("total_VAL_AI_week", 1:nWeeks,sep = "_")   
+
+  
   
   inyection_by_month <- serie %>%
     group_by(month) %>%
     summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = month, values_from = total_VAL_AE)
   colnames(inyection_by_month) <- paste("total_VAL_AI_month", 1:12,sep = "_")
+
   
-  # por alguna razon pone numeros a las columnas, los quitamos luego
   
   # TARIFAS 
   T2.0_VALLE <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
@@ -202,22 +208,14 @@ for(archivo in archivos) {
   features_sin_auto <- if (any(serie$AUTO == 0)) calcular_features(serie = serie %>% filter(AUTO == 0), ID1 = gsub("\\.csv$", "", basename(archivo)), firstPanel)
   features_con_auto <- if (any(serie$AUTO == 1)) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),  firstPanel)
   features_total <- calcular_features(serie)
-  
-  # Para quitar ...numeritos que saca el pivot
-  #
-  # Error in `colnames<-`(`*tmp*`, value = gsub("\\.\\.\\..*$", "", colnames(features_sin_auto))) : 
-  #   attempt to set 'colnames' on an object with less than two dimensions
-  
-  colnames(features_sin_auto) <- gsub("\\.\\.\\..*$", '', colnames(features_sin_auto))
-  colnames(features_con_auto) <- gsub("\\.\\.\\..*$", '', colnames(features_con_auto))
-  colnames(features_total) <- gsub("\\.\\.\\..*$", '', colnames(features_total))
+
   
   # Unir con información de roseta
   info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS) # Excluir CUPS para evitar duplicados
   
-  datos_sin_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_sin_auto, info_serie)
-  datos_con_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_con_auto, info_serie)
-  datos_totales[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_total, info_serie)
+  datos_sin_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_sin_auto, info_serie, .name_repair = "minimal")
+  datos_con_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_con_auto, info_serie, .name_repair = "minimal")
+  datos_totales[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_total, info_serie, .name_repair = "minimal")
 }
 
 df_sin_auto <- bind_rows(datos_sin_auto) 
