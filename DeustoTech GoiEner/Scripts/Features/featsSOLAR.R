@@ -53,7 +53,12 @@ calcular_features <- function(serie, ID1, firstPanel) {
   # limipiamos valores no finitos
   
   serie <- serie %>%
-    mutate(VAL_AI = ifelse(!is.finite(VAL_AI), 0, VAL_AI), VAL_AE = ifelse(!is.finite(VAL_AE), 0, VAL_AE))
+    rowwise() %>%
+    mutate(
+      VAL_AI = ifelse(!is.finite(VAL_AI), 0, VAL_AI),
+      VAL_AE = ifelse(!is.finite(VAL_AE), 0, VAL_AE)
+    )
+  
   # SEASONAL AGGREGATES
   serie$season <- case_when(
     month(serie$timestamp) %in% c(12, 1, 2) ~ "winter",
@@ -219,7 +224,7 @@ for(archivo in archivos) {
   datos_totales[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_total, info_serie, .name_repair = "minimal")
 }
 
-df_sin_auto <- bind_rows(datos_sin_auto) 
+df_sin_auto <- bind_rows(datos_sin_auto, .name_repair = "minimal") 
 df_sin_auto <- df_sin_auto[, 1:246] %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 df_con_auto <- bind_rows(datos_con_auto)
