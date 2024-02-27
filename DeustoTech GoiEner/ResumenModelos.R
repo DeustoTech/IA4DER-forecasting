@@ -116,7 +116,7 @@ svmCT$ID <- basename(svmCT$ID)
 
 
 
-result_df <- mediaCUPS %>%
+result_df <- svmCUPS %>%
   group_by(ID) %>%
   summarise(
     Median_MAPE = median(MAPE, na.rm = TRUE),
@@ -134,7 +134,7 @@ result_df <- mediaCUPS %>%
     
   )
 
-fwrite(result_df, file = "Resultados/CUPS/SummaryMedia.csv", col.names = T, row.names = F)
+fwrite(result_df, file = "Resultados/CUPS/SummarySVM.csv", col.names = T, row.names = F)
 
 
 
