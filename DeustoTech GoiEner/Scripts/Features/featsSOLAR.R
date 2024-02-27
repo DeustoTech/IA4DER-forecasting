@@ -158,7 +158,12 @@ calcular_features <- function(serie, ID1, firstPanel) {
   
   # TODO entropía (??????????)
   # TODO mape del SNaive. el mape del consumo horario de una semana comparado con el consumo horario de la semana pasada. Una por semana
-
+  # TODO numero de 0s
+  # TODO numero de NAs
+  # TODO horas desde la primera inyeccion con 0 hasta el primer 1
+  # TODO longitud
+  # TODO fecha de cambio
+  
   LENGTH <- nrow(serie)
   QQ     <- as.numeric(quantile(serie$VAL_AI,c(0,0.25,0.5,0.75,1),na.rm=T))
   
