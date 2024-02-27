@@ -152,7 +152,7 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
         weighted_sum <- 0
         
         for (modeloOG in modelosOG){
-          pred_col <- paste("Predicted", modeloOG, set, modelo, sep = "_")
+          pred_col <- paste("Predicted", modeloOG, set, modelo, sep = "_") # MAL. PREDICCION DEL MODELO OG
           mape_col <- paste("Real", modeloOG,sep = "")
           if (pred_col %in% colnames(df) && mape_col %in% colnames(df) && !is.na(df[i, mape_col]) && !is.na(df[i, pred_col])) {
             weighted_sum <- weighted_sum + df[i, mape_col] * df[i, pred_col]
