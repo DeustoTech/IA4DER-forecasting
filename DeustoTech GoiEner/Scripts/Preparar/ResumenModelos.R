@@ -22,8 +22,37 @@ result_df <- CUPS %>%
   group_by(ID = CUPS$ID) %>%
   summarise(
 
-    # c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
-    #   "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
+    predMedia_mediana = median(Media_pred, na.rm = TRUE),
+    predMedia_q1 = quantile(Media_pred, 0.25, na.rm = TRUE),
+    predMedia_q2 = quantile(Media_pred, 0.75, na.rm = TRUE), 
+    
+    predNaive_mediana = median(Naive_pred, na.rm = TRUE),
+    predNaive_q1 = quantile(Naive_pred, 0.25, na.rm = TRUE),
+    predNaive_q2 = quantile(Naive_pred, 0.75, na.rm = TRUE), 
+    
+    predSN_mediana = median(SNaive_pred, na.rm = TRUE),
+    predSN_q1 = quantile(SNaive_pred, 0.25, na.rm = TRUE),
+    predSN_q2 = quantile(SNaive_pred, 0.75, na.rm = TRUE), 
+   
+    predArima_mediana = median(Arima_pred, na.rm = TRUE),
+    predArima_q1 = quantile(Arima_pred, 0.25, na.rm = TRUE),
+    predArima_q2 = quantile(Arima_pred, 0.75, na.rm = TRUE), 
+    
+    predETS_mediana = median(ETS_pred, na.rm = TRUE),
+    predETS_q1 = quantile(ETS_pred, 0.25, na.rm = TRUE),
+    predETS_q2 = quantile(ETS_pred, 0.75, na.rm = TRUE), 
+    
+    predNN_mediana = median(NN_pred, na.rm = TRUE),
+    predNN_q1 = quantile(NN_pred, 0.25, na.rm = TRUE),
+    predNN_q2 = quantile(NN_pred, 0.75, na.rm = TRUE),
+    
+    predSVM_mediana = median(SVM_pred, na.rm = TRUE),
+    predSVM_q1 = quantile(SVM_pred, 0.25, na.rm = TRUE),
+    predSVM_q2 = quantile(SVM_pred, 0.75, na.rm = TRUE),
+    
+    predEnsenmble_mediana = median(Ensenmble_pred, na.rm = TRUE),
+    predEnsenmble_q1 = quantile(Ensenmble_pred, 0.25, na.rm = TRUE),
+    predEnsenmble_q2 = quantile(nsenmbleS_pred, 0.75, na.rm = TRUE),
     
     mapeMedia_mediana = median(Media_mape, na.rm = TRUE),
     mapeMedia_q1 = quantile(Media_mape, 0.25, na.rm = TRUE),
@@ -56,9 +85,6 @@ result_df <- CUPS %>%
     mapeEnsemble_mediana = median(Ensenmble_mape, na.rm = TRUE),
     mapeEnsemble_q1 = quantile(Ensenmble_mape, 0.25, na.rm = TRUE),
     mapeEnsemble_q3 = quantile(Ensenmble_mape, 0.75, na.rm = TRUE)
-    
-   
-    
     
   )
 
@@ -120,6 +146,9 @@ svmCT$ID <- basename(svmCT$ID)
 result_df <- mediaCUPS %>%
   group_by(ID) %>%
   summarise(
+    
+    
+    
     Median_MAPE = median(MAPE, na.rm = TRUE),
     Q1_MAPE = quantile(MAPE, 0.25, na.rm = TRUE),
     Q3_MAPE = quantile(MAPE, 0.75, na.rm = TRUE),
