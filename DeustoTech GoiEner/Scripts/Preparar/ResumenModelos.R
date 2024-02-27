@@ -143,26 +143,43 @@ svmCT$ID <- basename(svmCT$ID)
 
 
 
-result_df <- mediaCUPS %>%
+result_df <- a %>%
   group_by(ID) %>%
   summarise(
     
+    pred_Mediana = median(Predicted, na.rm = T),
+    pred_q1 = quantile(Predicted, 0.25, na.rm = TRUE),
+    pred_q3 = quantile(Predicted, 0.75, na.rm = TRUE),
     
+    mape_mediana = median(MAPE, na.rm = TRUE),
+    mape_q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    mape_q3 = quantile(MAPE, 0.75, na.rm = TRUE),
     
-    Median_MAPE = median(MAPE, na.rm = TRUE),
-    Q1_MAPE = quantile(MAPE, 0.25, na.rm = TRUE),
-    Q3_MAPE = quantile(MAPE, 0.75, na.rm = TRUE),
+    sMape_mediana = median(sMAPE, na.rm = TRUE),
+    sMape_q1 = quantile(sMAPE, 0.25, na.rm = TRUE),
+    sMape_q3 = quantile(sMAPE, 0.75, na.rm = TRUE),
     
-    Median_sMAPE = median(sMAPE, na.rm = TRUE),
-    Q1_sMAPE = quantile(sMAPE, 0.25, na.rm = TRUE),
-    Q3_sMAPE = quantile(sMAPE, 0.75, na.rm = TRUE),
-    
-    Median_RMSE = median(RMSE, na.rm = TRUE),
-    Q1_RMSE = quantile(RMSE, 0.25, na.rm = TRUE),
-    Q3_RMSE = quantile(RMSE, 0.75, na.rm = TRUE),
+    rmse_mediana = median(RMSE, na.rm = TRUE),
+    rmse_q1 = quantile(RMSE, 0.25, na.rm = TRUE),
+    rmse_q3 = quantile(RMSE, 0.75, na.rm = TRUE)
     
     
   )
+
+
+
+result_df <- result_df %>%
+  rename_with(~paste0("pred",modelo, "_", .), starts_with("pred_")) %>%
+  rename_with(~paste0("mape",modelo, "_", .), starts_with("mape_")) %>%
+  rename_with(~paste0("sMape",modelo, "_", .), starts_with("sMape_")) %>%
+  rename_with(~paste0("rmse",modelo, "_", .), starts_with("rmse_"))
+
+
+result_df <- result_df %>%
+  rename_with(~sub("_[^_]+_", "_", .), -ID)
+
+
+
 
 fwrite(result_df, file = "Resultados/CUPS/SummaryMedia.csv", col.names = T, row.names = F)
 
