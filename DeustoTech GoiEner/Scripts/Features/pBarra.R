@@ -122,7 +122,7 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
 
 # Calcular p barra 
 {
-  combined <- read.csv("Resultados/PrediccionError/combinedPreds.csv")
+  #combined <- read.csv("Resultados/PrediccionError/combinedPreds.csv")
   feats <- read.csv("Resultados/CUPS/combined_predFeats.csv")
   
   modelos <- c("rf", "lm", "svm", "nn", "gbm")
@@ -130,20 +130,20 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   
   mapes <- c("RealMedia", "RealArima", "RealEnsemble", "RealETS",
               "RealSVM", "RealNaive", "RealSN", "RealNN")
-  modelosOG <- c("Media", "Naive", "Arima", "SN", "NN", "ETS", "SVM", "Ensemble")
+  modelosOG <- c("Media", "Naive", "Arima", "SN", "NN", "ETS", "SVM", "Ensenmble")
   
 
   # Unir los dataframes por la columna "ID"
 
-  sumMapes <- rowSums(combined[, mapes], na.rm = T)
-  combined <- combined[which(sumMapes != 0), ]
-  sumMapes <- sumMapes[which(sumMapes != 0)]
+  #sumMapes <- rowSums(combined[, mapes], na.rm = T)
+  #combined <- combined[which(sumMapes != 0), ]
+  #sumMapes <- sumMapes[which(sumMapes != 0)]
   
-  df <- combined
+  df <- feats
   
   for (i in 1:nrow(df)){
     
-    sumMape <- sumMapes[i]
+    sumMape <- df$real_mediana
     
     for (modelo in modelos){ # lm, gbm, svm, rf y nn
       
@@ -152,17 +152,17 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
         weighted_sum <- 0
         
         for (modeloOG in modelosOG){
-          pred_col <- paste("Predicted", modeloOG, set, modelo, sep = "_") # MAL. PREDICCION DEL MODELO OG
-          mape_col <- paste("Real", modeloOG,sep = "")
-          if (pred_col %in% colnames(df) && mape_col %in% colnames(df) && !is.na(df[i, mape_col]) && !is.na(df[i, pred_col])) {
+          pred_col <- paste("pred", modeloOG, "_mediana", sep = "") # MAL. PREDICCION DEL MODELO OG
+          mape_col <- "real_mediana"
+          if (pred_col %in% colnames(df) && mape_col %in% colnames(df)) { #&& !is.na(df[i, mape_col]) && !is.na(df[i, pred_col])) {
             weighted_sum <- weighted_sum + df[i, mape_col] * df[i, pred_col]
-          }          # weighted_sum <- weighted_sum + ifelse(is.na(df[i, mape_col] * df[i, pred_col]), 0, df[i, mape_col] * df[i, pred_col])
+            }          # weighted_sum <- weighted_sum + ifelse(is.na(df[i, mape_col] * df[i, pred_col]), 0, df[i, mape_col] * df[i, pred_col])
         }
         
         
         
         pBarra_col <- paste("pBarra", set, modelo, sep = "_")
-        df[i, pBarra_col] <- ifelse(sumMape > 0, (1 / sumMape) * weighted_sum, 0)
+        df[i, pBarra_col] <- ifelse(sumMape[i] > 0, (1 / sumMape[i]) * weighted_sum[i], 0)
       }
     }
     
@@ -225,3 +225,6 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   
   
 }
+
+allFeatsNew <- fread("allFeatsNew.csv")
+print(head(allFeatsNew))

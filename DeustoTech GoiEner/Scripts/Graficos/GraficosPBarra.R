@@ -15,7 +15,7 @@ foreach(lib = librerias) %do% {
 
 
 # Leer los datos desde el archivo CSV
-datos <- read.csv("allFeats.csv")
+datos <- fread("allFeatsNew.csv")
 
 # Función para generar gráficos de bigotes
 generar_grafico_pBarra <- function(data, tipo_modelo) {
@@ -32,6 +32,7 @@ generar_grafico_pBarra <- function(data, tipo_modelo) {
   #  mutate(across(all_of(columnas), ~ifelse(. > quantile(., 0.75, na.rm = TRUE), NA, .)))
   
   # Preparar los datos para el gráfico
+  print(data$pBarra_habitos_lm)
   data_melt <- reshape2::melt(data, measure.vars = columnas, na.rm = T)
   
   # Generar el gráfico
