@@ -123,7 +123,7 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
 # Calcular p barra 
 {
   combined <- read.csv("Resultados/PrediccionError/combinedPreds.csv")
-  feats <- read.csv("allFeatures.csv")
+  feats <- read.csv("Resultados/CUPS/combined_predFeats.csv")
   
   modelos <- c("rf", "lm", "svm", "nn", "gbm")
   featuresets <- c("habitos", "cluster","edificio", "socio", "consumo", "tarifa")
@@ -178,14 +178,21 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
  
   
   columnas_nuevas <- colnames(pbarras)[-which(colnames(pbarras) == "ID")]
-  feats <- merge(feats, pbarras, by = "ID", all.x = TRUE, suffixes = c("", ""))
+  
+  pbarra_existing_cols <- setdiff(intersect(names(feats), names(pbarras)), "ID")
+  if (length(pbarra_existing_cols) > 0) {
+    feats <- feats[, !(names(feats) %in% pbarra_existing_cols)]
+  }
+  
+  #feats <- merge(feats, pbarras, by = "ID", all.x = TRUE, suffixes = c("", ""))
+  feats <- merge(feats, pbarras, by = "ID", all.x = TRUE)
   
   
-  fwrite(feats, "allFeats.csv")
+  fwrite(feats, "allFeatsNew.csv")
   
   # mape del pbarra
   
-  feats <- read.csv("allFeats.csv")
+  feats <- read.csv("allFeatsNew.csv")
   pbarra_columns <- grep("^pBarra", names(feats), value = TRUE)
   mape_columns <- grep("^mape.*_mediana$", names(feats), value = TRUE)
   
@@ -208,9 +215,13 @@ fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
   subset <- pbarra[, c("ID", grep("^mape", names(pbarra), value = TRUE))]
   
   # Fusionar feats y result_df_subset por la columna ID
+  pbarra_existing_cols <- setdiff(intersect(names(feats), names(subset)), "ID")
+  if (length(pbarra_existing_cols) > 0) {
+    feats <- feats[, !(names(feats) %in% pbarra_existing_cols)]
+  }
   feats <- merge(feats, subset, by = "ID", all.x = TRUE)
   
-  fwrite(feats, "allFeats.csv")
+  fwrite(feats, "allFeatsNew.csv")
   
   
 }
