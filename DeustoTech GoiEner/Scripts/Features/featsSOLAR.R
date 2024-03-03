@@ -64,10 +64,10 @@ calcular_features <- function(serie, ID1, firstPanel) {
     paste("mean_VAL_AE_weekend", 0:23, sep = "_"),
     paste("total_VAL_AI_week", 1:52, sep = "_"),
     paste("total_VAL_AE_week", 1:52, sep = "_"),
-    paste("total_VAL_AI_month", 1:12, sep = "_"), 
-    paste("total_VAL_AE_month", 1:12, sep = "_"), 
+    paste("total_VAL_AI_month", 1:12, sep = "_"),
+    paste("total_VAL_AE_month", 1:12, sep = "_"),
     "DIFF_HOURS", "INSTALLATION_TIMESTAMP" 
-    # Agrega más nombres según sea necesario
+
   )
   
   # limipiamos valores no finitos
@@ -117,7 +117,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
   
   colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
   
-  column_names <- c(column_names, colnames(features_semana) ,colnames(features_fin_de_semana))
+  # column_names <- c(column_names, colnames(features_semana) ,colnames(features_fin_de_semana))
+  
+  
   
   
   # INICIALIZAR EL DF
@@ -131,51 +133,58 @@ calcular_features <- function(serie, ID1, firstPanel) {
   feats$ID <- as.character(feats$ID)
   
   
-  # INYECCION POR HORAS 
+  # # INYECCION  POR HORAS 
   injection_by_hour_weekdays <- laborable %>%
     group_by(hour) %>%
-    summarise(mean_VAL_AE = mean(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = hour, values_from = mean_VAL_AE)
-  colnames(injection_by_hour_weekdays) <- paste("mean_VAL_AE_weekdays", 0:23, sep = "_")
-  
-  # Calcular la inyección media cada hora en fin de semana
+    summarise(mean_VAL_AE = mean(VAL_AE, na.rm = TRUE))
+
   injection_by_hour_weekend <- finde %>%
     group_by(hour) %>%
-    summarise(mean_VAL_AE = mean(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = hour, values_from = mean_VAL_AE)
+    summarise(mean_VAL_AE = mean(VAL_AE, na.rm = TRUE))
+  for (i in 0:23){
+    weekday_col <- paste("mean_VAL_AE_weekdays", i, sep = "_")
+    weekend_col <- paste("mean_VAL_AE_weekend", i, sep = "_")
+    feats[1, weekday_col] <- injection_by_hour_weekdays$mean_VAL_AE[which(injection_by_hour_weekdays$hour == i)]
+    feats[1, weekend_col] <- injection_by_hour_weekend$mean_VAL_AE[which(injection_by_hour_weekend$hour == i)]
+  }
   
-  colnames(injection_by_hour_weekend) <- paste("mean_VAL_AE_weekend", 0:23,sep = "_")
-  
-  
-  # CONSUMO POR SEMANA Y MES
-  nWeeks <- max(serie$week, na.rm = T)
-  
-  consumption_by_week <- serie %>%
-    group_by(week) %>%
-    summarise(total_VAL_AI = sum(VAL_AI, na.rm = TRUE)) %>% pivot_wider(names_from = week, values_from = total_VAL_AI)
-  
-  colnames(consumption_by_week) <- paste("total_VAL_AI_week", 1:nWeeks,sep = "_")
-
-  
+  # POR MES INYECCION Y CONSUMO
   
   consumption_by_month <- serie %>%
-    group_by(month) %>%
-    summarise(total_VAL_AI = sum(VAL_AI, na.rm = TRUE)) %>% pivot_wider(names_from = month, values_from = total_VAL_AI)
-  colnames(consumption_by_month) <- paste("total_VAL_AI_month", 1:12,sep = "_")
+        group_by(month) %>%
+        summarise(total_VAL_AI = sum(VAL_AI, na.rm = TRUE))
+  
 
-  
-  
-  
-  # INYECCION POR SEMANA Y MES
-  inyection_by_week <- serie %>%
-    group_by(week) %>%
-    summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = week, values_from = total_VAL_AE)
-  colnames(inyection_by_week) <- paste("total_VAL_AE_week", 1:nWeeks,sep = "_")
-
-  
-  
   inyection_by_month <- serie %>%
     group_by(month) %>%
-    summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = month, values_from = total_VAL_AE)
-  colnames(inyection_by_month) <- paste("total_VAL_AE_month", 1:12,sep = "_")
+    summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE))
+  
+  for (i in 1:12){
+    cosumption_col <- paste("total_VAL_AE_month", i, sep = "_")
+    inyection_col <- paste("total_VAL_AE_month", i, sep = "_")
+    feats[1, cosumption_col] <- consumption_by_month$total_VAL_AI[i]
+    feats[1, inyection_col] <-  inyection_by_month$total_VAL_AE[i]
+  }
+  
+  # POR SEMANA INYECCION Y CONSUMO
+  nWeeks <- max(serie$week, na.rm = T)
+  
+  inyection_by_week <- serie %>%
+    group_by(week) %>%
+    summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE))
+
+  consumption_by_week <- serie %>%
+    group_by(week) %>%
+    summarise(total_VAL_AI = sum(VAL_AI, na.rm = TRUE))
+  
+
+  for (i in 1:nWeeks){
+    cosumption_col <- paste("total_VAL_AE_week", i, sep = "_")
+    inyection_col <- paste("total_VAL_AE_week", i, sep = "_")
+    feats[1, cosumption_col] <- consumption_by_week$total_VAL_AI[i]
+    feats[1, inyection_col] <-  inyection_by_week$total_VAL_AE[i]
+  }
+
 
 
   # TARIFAS 
@@ -188,13 +197,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
   T_SOLAR_SPICO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
   T_SOLAR_SLLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
   
-  # TODO entropía (??????????)
+ 
   # TODO mape del SNaive. el mape del consumo horario de una semana comparado con el consumo horario de la semana pasada. Una por semana
-  # TODO numero de 0s
-  # TODO numero de NAs
-  # TODO horas desde la primera inyeccion con 0 hasta el primer 1
-  # TODO longitud
-  # TODO fecha de cambio
+  
   
   LENGTH <- nrow(serie)
   QQ     <- as.numeric(quantile(serie$VAL_AI,c(0,0.25,0.5,0.75,1),na.rm=T))
@@ -207,8 +212,7 @@ calcular_features <- function(serie, ID1, firstPanel) {
   # Calcula la diferencia en horas
   diff_horas <- as.double(difftime(serie$timestamp[primer_uno], serie$timestamp[primer_no_cero], units = "hours"))
   
-  # print(summary(feats))
-  
+
   feats <- feats %>% 
     add_row(
       ID = unique(serie$ID),  # Convertir a caracter
@@ -235,23 +239,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
       INSTALLATION_TIMESTAMP = unique(serie$firstPanel),
       DIFF_HOURS = abs(diff_horas)
     )
-  data <- feats
-  # 
-  # feats <- feats %>% 
-  #   bind_cols(
-  #     as.data.frame(features_semana),
-  #     as.data.frame(features_fin_de_semana),
-  #     as.data.frame(injection_by_hour_weekend),
-  #     as.data.frame(injection_by_hour_weekdays),
-  #     as.data.frame(inyection_by_week),
-  #     as.data.frame(inyection_by_month),
-  #     as.data.frame(consumption_by_week),
-  #     as.data.frame(consumption_by_month),
-  #     as.data.frame(inyection_by_week),
-  #     as.data.frame(inyection_by_month)
-  #   )
-  
-  print(names(feats))
+
+  feats <- cbind(feats, features_semana, features_fin_de_semana)
+  # print(names(feats))
   return(feats)
 }
 
