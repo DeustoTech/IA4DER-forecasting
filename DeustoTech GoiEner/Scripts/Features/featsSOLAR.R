@@ -7,7 +7,8 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice", "mltools") 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice", "tsfeatures",
+               "catch22") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -48,7 +49,26 @@ horas <- data.frame(
     "llano", "llano"
   )
 )
+
+
+
+
 calcular_features <- function(serie, ID1, firstPanel) {
+  
+  # NOMBRES DE COLUMNAS 
+  column_names <- c(
+    "ID", "LENGTH","NAs","ZEROS", "AVG", "SD", "MIN", "Q1", "MEDIAN", "Q3", "MAX", "TOTAL", "VAR","ENTROPY", 
+    "P_T2.0_VALLE", "P_T2.0_LLANO", "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO",
+    "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO",
+    paste("mean_VAL_AE_weekdays", 0:23, sep = "_"),
+    paste("mean_VAL_AE_weekend", 0:23, sep = "_"),
+    paste("total_VAL_AI_week", 1:52, sep = "_"),
+    paste("total_VAL_AE_week", 1:52, sep = "_"),
+    paste("total_VAL_AI_month", 1:12, sep = "_"), 
+    paste("total_VAL_AE_month", 1:12, sep = "_"), 
+    "DIFF_HOURS", "INSTALLATION_TIMESTAMP" 
+    # Agrega más nombres según sea necesario
+  )
   
   # limipiamos valores no finitos
   
@@ -97,6 +117,19 @@ calcular_features <- function(serie, ID1, firstPanel) {
   
   colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
   
+  column_names <- c(column_names, colnames(features_semana) ,colnames(features_fin_de_semana))
+  
+  
+  # INICIALIZAR EL DF
+  
+  feats <- data.frame(matrix(ncol = length(column_names), nrow = 0))
+  colnames(feats) <- column_names
+  
+  numeric_columns <- setdiff(column_names, c("ID", "INSTALLATION_TIMESTAMP"))
+  feats[, numeric_columns] <- lapply(feats[, numeric_columns], as.numeric)
+  feats$INSTALLATION_TIMESTAMP <- as_datetime(feats$INSTALLATION_TIMESTAMP)
+  feats$ID <- as.character(feats$ID)
+  
   
   # INYECCION POR HORAS 
   injection_by_hour_weekdays <- laborable %>%
@@ -135,17 +168,16 @@ calcular_features <- function(serie, ID1, firstPanel) {
   inyection_by_week <- serie %>%
     group_by(week) %>%
     summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = week, values_from = total_VAL_AE)
-  colnames(inyection_by_week) <- paste("total_VAL_AI_week", 1:nWeeks,sep = "_")   
+  colnames(inyection_by_week) <- paste("total_VAL_AE_week", 1:nWeeks,sep = "_")
 
   
   
   inyection_by_month <- serie %>%
     group_by(month) %>%
     summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE)) %>% pivot_wider(names_from = month, values_from = total_VAL_AE)
-  colnames(inyection_by_month) <- paste("total_VAL_AI_month", 1:12,sep = "_")
+  colnames(inyection_by_month) <- paste("total_VAL_AE_month", 1:12,sep = "_")
 
-  
-  
+
   # TARIFAS 
   T2.0_VALLE <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
   T2.0_LLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
@@ -167,39 +199,64 @@ calcular_features <- function(serie, ID1, firstPanel) {
   LENGTH <- nrow(serie)
   QQ     <- as.numeric(quantile(serie$VAL_AI,c(0,0.25,0.5,0.75,1),na.rm=T))
   
-  feats <- data.frame(
-
-    ID = unique(serie$ID),
-    LENGTH= LENGTH,
-    AVG=    mean(serie$VAL_AI,na.rm=T),
-    SD=     sd(serie$VAL_AI,na.rm=T),
-    MIN=    QQ[1],
-    Q1=     QQ[2],
-    MEDIAN= QQ[3],
-    Q3=     QQ[4],
-    MAX=    QQ[5],
-    TOTAL = sum(serie$VAL_AI, na.rm = T),
-    VAR = var(serie$VAL_AI, na.rm = T),
-    
-    P_T2.0_VALLE = T2.0_VALLE,
-    P_T2.0_LLANO = T2.0_LLANO,
-    P_T2.0_PICO = T2.0_PICO,
-    P_T_SOLAR_PICO = T_SOLAR_PICO,
-    P_T_SOLAR_LLANO = T_SOLAR_LLANO,
-    P_T_SOLAR_SPICO = T_SOLAR_SPICO,
-    P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
-    firstPanel_timestamp =  unique(serie$firstPanel)
-    
-  )
+  primer_no_cero <- which(serie$VAL_AE != 0)[1]
   
-  data <- cbind(feats, features_semana, features_fin_de_semana, injection_by_hour_weekend, injection_by_hour_weekdays,
-                inyection_by_week, inyection_by_month, consumption_by_week, consumption_by_month, inyection_by_week, inyection_by_month)
+  # Encuentra el índice del primer 1 en la columna AUTO
+  primer_uno <- which(serie$AUTO == 1)[1]
   
-  return(data)
+  # Calcula la diferencia en horas
+  diff_horas <- as.double(difftime(serie$timestamp[primer_uno], serie$timestamp[primer_no_cero], units = "hours"))
+  
+  # print(summary(feats))
+  
+  feats <- feats %>% 
+    add_row(
+      ID = unique(serie$ID),  # Convertir a caracter
+      LENGTH = LENGTH,
+      ZEROS = sum(serie$VAL_AI == 0) / LENGTH,
+      NAs = sum(is.na(serie$VAL_AI)),
+      AVG = mean(serie$VAL_AI, na.rm = TRUE),
+      SD = sd(serie$VAL_AI, na.rm = TRUE),
+      MIN = QQ[1],
+      Q1 = QQ[2],
+      MEDIAN = QQ[3],
+      Q3 = QQ[4],
+      MAX = QQ[5],
+      TOTAL = sum(serie$VAL_AI, na.rm = TRUE),
+      VAR = var(serie$VAL_AI, na.rm = TRUE),
+      ENTROPY = entropy(serie$VAL_AI),
+      P_T2.0_VALLE = T2.0_VALLE,
+      P_T2.0_LLANO = T2.0_LLANO,
+      P_T2.0_PICO = T2.0_PICO,
+      P_T_SOLAR_PICO = T_SOLAR_PICO,
+      P_T_SOLAR_LLANO = T_SOLAR_LLANO,
+      P_T_SOLAR_SPICO = T_SOLAR_SPICO,
+      P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
+      INSTALLATION_TIMESTAMP = unique(serie$firstPanel),
+      DIFF_HOURS = abs(diff_horas)
+    )
+  data <- feats
+  # 
+  # feats <- feats %>% 
+  #   bind_cols(
+  #     as.data.frame(features_semana),
+  #     as.data.frame(features_fin_de_semana),
+  #     as.data.frame(injection_by_hour_weekend),
+  #     as.data.frame(injection_by_hour_weekdays),
+  #     as.data.frame(inyection_by_week),
+  #     as.data.frame(inyection_by_month),
+  #     as.data.frame(consumption_by_week),
+  #     as.data.frame(consumption_by_month),
+  #     as.data.frame(inyection_by_week),
+  #     as.data.frame(inyection_by_month)
+  #   )
+  
+  print(names(feats))
+  return(feats)
 }
 
 # Bucle para procesar cada archivo
-for(archivo in archivos) {
+for(archivo in archivos[1:7]) {
  
   serie <- fread(archivo)
   serie$timestamp <- ymd_hms(serie$timestamp)# Convertir timestamp a tipo fecha
@@ -220,10 +277,10 @@ for(archivo in archivos) {
   features_con_auto <- if (any(serie$AUTO == 1)) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),  firstPanel)
   features_total <- calcular_features(serie)
 
-  
-  # Unir con información de roseta
+  # 
+  # # Unir con información de roseta
   info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS) # Excluir CUPS para evitar duplicados
-  
+
   datos_sin_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_sin_auto, info_serie, .name_repair = "minimal")
   datos_con_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_con_auto, info_serie, .name_repair = "minimal")
   datos_totales[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_total, info_serie, .name_repair = "minimal")
