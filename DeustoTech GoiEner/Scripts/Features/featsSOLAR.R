@@ -325,12 +325,15 @@ for(archivo in archivos) {
 }
 
 df_sin_auto <- bind_rows(datos_sin_auto) 
+df_sin_auto$ID <- df_sin_auto$ID_SERIE
 df_sin_auto <- df_sin_auto %>%  select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 df_con_auto <- bind_rows(datos_con_auto)
+df_con_auto$ID <- df_con_auto$ID_SERIE
 df_con_auto <- df_con_auto %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 df_totales <- bind_rows(datos_totales)
+df_totales$ID <- df_totales$ID_SERIE
 df_totales <- df_totales %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 
