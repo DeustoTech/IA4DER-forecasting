@@ -218,7 +218,7 @@ calcular_features <- function(serie, ID1, firstPanel) {
     col_name_j <- paste("total_VAL_AI_week", j, sep = "_")
     mape_col_name <- paste("mape_VAL_AI_week", j, "vs", i, sep = "_")
     
-    feats[1, mape_col_name] <- mape(feats[1, col_name_j], feats[1, col_name_j])
+    feats[1, mape_col_name] <- mape(feats[1, col_name_j], feats[1, col_name_i]) * 100
     
   }
 
@@ -278,6 +278,13 @@ calcular_features <- function(serie, ID1, firstPanel) {
     )
 
   # feats <- cbind(feats, features_semana, features_fin_de_semana)
+  
+  for (col_name in names(features_semana)){
+    feats[1, col_name] <- features_semana[1, col_name]
+  }
+  for (col_name in names(features_fin_de_semana)){
+    feats[1, col_name] <- features_fin_de_semana[1, col_name]
+  }
   data <- data.frame(matrix(ncol = length(names(feats)), nrow = 0))
   colnames(data) <- names(feats)
   for (col in names(feats)){
@@ -289,7 +296,7 @@ calcular_features <- function(serie, ID1, firstPanel) {
   }
   
   
-  # print((data))
+  # print(head(data))
   return(data)
 }
 
