@@ -28,7 +28,7 @@ MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","en
 TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT")
 
 FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- character()
-if (length(Sys.glob(paths="tlf/forecast/CUPS/*")) != 0)
+if (length(Sys.glob(paths="stlf/forecast/CUPS/*")) != 0)
 {
   FCUPS <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*"),"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
   FCGP  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
@@ -66,7 +66,7 @@ if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
 
 LIM  <- fread("features.csv")
 
-# ALL <- Sys.glob(paths="post_cooked/*/*")
+ALL <- Sys.glob(paths="post_cooked/*/*")
 # ALL <- Sys.glob(paths="post_cooked/CT/*")
 
 for (TY in TYPES)
@@ -101,16 +101,16 @@ B <- foreach(NAME = ALL,
   POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
   POT_EST <- LIM$POT_EST[LIM$ID == ID]
   
-  ### Cojo los datos reales para CT y LBT y acorto la serie en otro caso
-  if (TYPE %in% c("CT","LBT"))
-  {
-    real <- fread(paste0("stlf/test/",TYPE,"/",ID,".csv",sep=""))
-    real <- zoo(real$SUM_VAL_AI/1000,order.by=real$DIA_LECTURA)
-  } else {
+#   ### Cojo los datos reales para CT y LBT y acorto la serie en otro caso
+#   if (TYPE %in% c("CT","LBT"))
+#   {
+#     real <- fread(paste0("stlf/test/",TYPE,"/",ID,".csv",sep=""))
+#     real <- zoo(real$SUM_VAL_AI/1000,order.by=real$DIA_LECTURA)
+#   } else {
     a    <- a[1:(length(a[[1]])-24*F_DAYS)]
     real <- window(r,start=index(r)[length(r)-24*F_DAYS+1])
     r    <- window(r,end=index(r)[length(r)-24*F_DAYS])
-  }
+#   }
 
   TRAIN_DAYS  <- floor(TRAIN_LIMIT*(length(r)/24))    #### training days
   LENGTH      <- length(a$kWh)

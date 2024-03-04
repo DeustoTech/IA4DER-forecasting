@@ -3,8 +3,17 @@ library(zoo)
 library(forecast)
 library(doFuture)
 library(stringr)
+library(arrow)
 
 plan(multisession)
+
+ARROW2DF <- function(SOURCE)
+{
+  d    <- open_dataset(source=SOURCE)
+  so   <- Scanner$create(d)
+  at   <- so$ToTable()
+  return(as.data.frame(at))
+}
 
 PEGA <- function(CUPS)
 {
@@ -52,14 +61,22 @@ dir.create("mtlf/test/CUA",  showWarnings = F, recursive = T)
 dir.create("mtlf/test/LBT",  showWarnings = F, recursive = T)
 dir.create("mtlf/test/CGP",  showWarnings = F, recursive = T)
 
-#ROSETA <- fread("cups_per_lines_ct-v2.csv",header=T)
-ROSETA <- fread("roseta-v2.csv")
+#ROSETA <- fread("roseta-v2.csv")
 
-CGP <- CLEAN_ID(unique(ROSETA$COD_SIC_SIGRID))
-LBT <- CLEAN_ID(unique(ROSETA$ID_PADRE_LINEA_BT))
-CUA <- CLEAN_ID(unique(ROSETA$ID_PADRE_CUADRO_BT))
-TR  <- CLEAN_ID(unique(ROSETA$ID_PADRE_POS_TRAFO))
-CT  <- CLEAN_ID(unique(ROSETA$ID_PADRE_CT))
+cups   <- ARROW2DF("./inputdata/data/anm_ids01_punto_suministro")
+cgp    <- ARROW2DF("./inputdata/data/anm_ids01_cgp")
+linea  <- ARROW2DF("./inputdata/data/anm_ids01_linea_bt")
+cuadro <- ARROW2DF("./inputdata/data/anm_ids01_cuadro_bt")
+pos    <- ARROW2DF("./inputdata/data/anm_ids01_pos_trafo")
+#trafo  <- ARROW2DF("./inputdata/data/anm_ids01_trafo")
+ct     <- ARROW2DF("./inputdata/data/anm_ids01_ct")
+
+ROSETA <- merge(cups,  cgp,   by.x="COD_SIC_SIGRID",    by.y="ID_CAJA")
+ROSETA <- merge(ROSETA,linea, by.x="ID_PADRE_LINEA_BT", by.y="G3E_FID")
+ROSETA <- merge(ROSETA,cuadro,by.x="ID_PADRE_CUADRO_BT",by.y="G3E_FID")
+ROSETA <- merge(ROSETA,pos,   by.x="ID_PADRE_POS_TRAFO",by.y="G3E_FID")
+#ROSETA <- merge(ROSETA,trafo, by.x="ID_PADRE_POS_TRAFO",by.y="G3E_FID")
+ROSETA <- merge(ROSETA,ct,    by.x="ID_PADRE_CT",       by.y="G3E_FID")
 
 ROSETA$COD_SIC_SIGRID      <- CLEAN_ID(ROSETA$COD_SIC_SIGRID)
 ROSETA$ID_PADRE_LINEA_BT   <- CLEAN_ID(ROSETA$ID_PADRE_LINEA_BT)
@@ -67,35 +84,80 @@ ROSETA$ID_PADRE_CUADRO_BT  <- CLEAN_ID(ROSETA$ID_PADRE_CUADRO_BT)
 ROSETA$ID_PADRE_POS_TRAFO  <- CLEAN_ID(ROSETA$ID_PADRE_POS_TRAFO)
 ROSETA$ID_PADRE_CT         <- CLEAN_ID(ROSETA$ID_PADRE_CT)
 
-z <- foreach(i = CT) %dofuture% {
+z <- foreach(i = unique(ROSETA$ID_PADRE_CT)) %dofuture% {
   CUPS <- ROSETA$CUPS[ROSETA$ID_PADRE_CT == i]
   a <- PEGA(CUPS)
   fwrite(a,file=paste("post_cooked/CT/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
 
-z <- foreach(i = TR) %dofuture% {
+z <- foreach(i = unique(ROSETA$ID_PADRE_POS_TRAFO)) %dofuture% {
   CUPS <- ROSETA$CUPS[ROSETA$ID_PADRE_POS_TRAFO == i]
   a <- PEGA(CUPS)
   fwrite(a,file=paste("post_cooked/TR/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
 
-z <- foreach(i = CUA) %dofuture% {
+z <- foreach(i = unique(ROSETA$ID_PADRE_CUADRO_BT)) %dofuture% {
   CUPS <- ROSETA$CUPS[ROSETA$ID_PADRE_CUADRO_BT == i]
   a <- PEGA(CUPS)
   fwrite(a,file=paste("post_cooked/CUA/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
 
-z <- foreach(i = LBT) %dofuture% {
+z <- foreach(i = unique(ROSETA$ID_PADRE_LINEA_BT)) %dofuture% {
   CUPS <- ROSETA$CUPS[ROSETA$ID_PADRE_LINEA_BT == i]
   a <- PEGA(CUPS)
   fwrite(a,file=paste("post_cooked/LBT/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
 
-z <- foreach(i = CGP) %dofuture% {
+z <- foreach(i = unique(ROSETA$COD_SIC_SIGRID)) %dofuture% {
   CUPS <- ROSETA$CUPS[ROSETA$COD_SIC_SIGRID == i]
   a <- PEGA(CUPS)
   fwrite(a,file=paste("post_cooked/CGP/",i,".csv",sep=""),dateTimeAs="write.csv")
 }
+
+############### TEST stlf ###############
+library(arrow)
+library(dplyr)
+
+ds <- open_dataset("./inputdata/universidad_deusto/anm_ids01_test_lec_horaria_val/")
+
+set_io_thread_count(2)
+write_dataset(dataset = ds %>% select(c("cups","fec_lectura","val_ai")),
+  path = "test",
+  hive_style = F,
+  max_partitions = 2048,
+  partitioning = "cups",
+  format = "csv"
+  )
+
+ds %>% 
+  group_by(cups) %>% 
+    select(c("cups","fec_lectura","val_ai")) %>%
+      write_dataset(  
+        path = "test",
+        hive_style = F,
+        max_partitions = 80000,
+        partitioning = "cups",
+        format = "csv"
+      )
+
+CUPS <- 
+z <- foreach(i = unique(ROSETA$CUPS)) %dofuture% {
+  
+  
+  fwrite(a,file=paste("post_cooked/CGP/",i,".csv",sep=""),dateTimeAs="write.csv")
+}
+
+scan_builder <- ds$NewScan()
+  scan_builder$Project(c("cups"))
+  
+  scanner <- scan_builder$Finish()
+a <- scanner$ToTable()
+
+scan_builder <- ds$NewScan()
+scan_builder$Project(c("fec_lectura","val_ai"))
+#scan_builder$Filter(Expression$field_ref("cups") == i)
+scanner <- scan_builder$Finish()
+a <- scanner$ToTable()
 
 ############### TEST stlf ###############
 
