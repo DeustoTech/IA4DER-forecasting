@@ -46,6 +46,7 @@ B <- foreach(NAME = NAMES,
   a1 <- zooreg(a1[,-1],order.by=unique(as.POSIXct(a1$FEC_LECTURA)))
   a2 <- zooreg(a2[,-1],order.by=unique(as.POSIXct(a2$FEC_LECTURA)))
 
+  col <- "Black"
   aux <- zooreg()
   if ((length(a1) != 0) & (length(a2) != 0))
   {
@@ -60,10 +61,12 @@ B <- foreach(NAME = NAMES,
     {
       a1$AUTO <- 0
       aux     <- a1
+      col     <- "red"
     } else if (length(a2) != 0)
     {
       a2$AUTO <- 1
       aux     <- a2
+      col     <- "blue"
     }
   }
 
@@ -72,7 +75,7 @@ B <- foreach(NAME = NAMES,
          file=paste("post_cooked/SOLAR/",NAME,".csv",sep=""),
          dateTimeAs="write.csv",row.names=F)
   pdf(paste("fig/SOLAR/",NAME,".pdf",sep=""))
-    plot(aux)
+    plot(aux,col=col,main=NAME)
   dev.off()
 
   aux$VAL_AI
