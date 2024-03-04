@@ -117,9 +117,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
   
   colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
   
-  # column_names <- c(column_names, colnames(features_semana) ,colnames(features_fin_de_semana))
+  column_names <- c(column_names, colnames(features_semana) ,colnames(features_fin_de_semana))
   
-  
+  # print(features_fin_de_semana)
   
   
   # INICIALIZAR EL DF
@@ -144,8 +144,15 @@ calcular_features <- function(serie, ID1, firstPanel) {
   for (i in 0:23){
     weekday_col <- paste("mean_VAL_AE_weekdays", i, sep = "_")
     weekend_col <- paste("mean_VAL_AE_weekend", i, sep = "_")
-    feats[1, weekday_col] <- injection_by_hour_weekdays$mean_VAL_AE[which(injection_by_hour_weekdays$hour == i)]
-    feats[1, weekend_col] <- injection_by_hour_weekend$mean_VAL_AE[which(injection_by_hour_weekend$hour == i)]
+    weekday_value <- ifelse(length(which(injection_by_hour_weekdays$hour == i)) > 0,
+                            injection_by_hour_weekdays$mean_VAL_AE[which(injection_by_hour_weekdays$hour == i)],
+                            NA)
+    
+    weekend_value <- ifelse(length(which(injection_by_hour_weekend$hour == i)) > 0,
+                            injection_by_hour_weekend$mean_VAL_AE[which(injection_by_hour_weekend$hour == i)],
+                            NA)
+    feats[1, weekday_col] <- weekday_value
+    feats[1, weekend_col] <- weekend_value
   }
   
   # POR MES INYECCION Y CONSUMO
@@ -160,10 +167,19 @@ calcular_features <- function(serie, ID1, firstPanel) {
     summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE))
   
   for (i in 1:12){
-    cosumption_col <- paste("total_VAL_AE_month", i, sep = "_")
-    inyection_col <- paste("total_VAL_AE_month", i, sep = "_")
-    feats[1, cosumption_col] <- consumption_by_month$total_VAL_AI[i]
-    feats[1, inyection_col] <-  inyection_by_month$total_VAL_AE[i]
+    consumption_col <- paste("total_VAL_AI_month", i, sep = "_")
+    injection_col <- paste("total_VAL_AE_month", i, sep = "_")
+    
+    consumption_value <- ifelse(length(which(!is.na(consumption_by_month$total_VAL_AI[i]))) > 0,
+                                consumption_by_month$total_VAL_AI[i],
+                                NA)
+    
+    injection_value <- ifelse(length(which(!is.na(inyection_by_month$total_VAL_AE[i]))) > 0,
+                              inyection_by_month$total_VAL_AE[i],
+                              NA)
+    
+    feats[1, consumption_col] <- consumption_value
+    feats[1, injection_col] <- injection_value
   }
   
   # POR SEMANA INYECCION Y CONSUMO
@@ -179,10 +195,31 @@ calcular_features <- function(serie, ID1, firstPanel) {
   
 
   for (i in 1:nWeeks){
-    cosumption_col <- paste("total_VAL_AE_week", i, sep = "_")
-    inyection_col <- paste("total_VAL_AE_week", i, sep = "_")
-    feats[1, cosumption_col] <- consumption_by_week$total_VAL_AI[i]
-    feats[1, inyection_col] <-  inyection_by_week$total_VAL_AE[i]
+    consumption_col <- paste("total_VAL_AI_week", i, sep = "_")
+    injection_col <- paste("total_VAL_AE_week", i, sep = "_")
+    
+    consumption_value <- ifelse(length(which(!is.na(consumption_by_week$total_VAL_AI[i]))) > 0,
+                                consumption_by_week$total_VAL_AI[i],
+                                NA)
+    
+    injection_value <- ifelse(length(which(!is.na(inyection_by_week$total_VAL_AE[i]))) > 0,
+                              inyection_by_week$total_VAL_AE[i],
+                              NA)
+    
+    feats[1, consumption_col] <- consumption_value
+    feats[1, injection_col] <- injection_value
+  }
+  
+  for (i in 1:(nWeeks - 1)){
+    j <- i + 1
+    
+    # i semana pasada, j semana de ahora.
+    col_name_i <- paste("total_VAL_AI_week", i, sep = "_")
+    col_name_j <- paste("total_VAL_AI_week", j, sep = "_")
+    mape_col_name <- paste("mape_VAL_AI_week", j, "vs", i, sep = "_")
+    
+    feats[1, mape_col_name] <- mape(feats[1, col_name_j], feats[1, col_name_j])
+    
   }
 
 
@@ -240,13 +277,24 @@ calcular_features <- function(serie, ID1, firstPanel) {
       DIFF_HOURS = abs(diff_horas)
     )
 
-  feats <- cbind(feats, features_semana, features_fin_de_semana)
-  # print(names(feats))
-  return(feats)
+  # feats <- cbind(feats, features_semana, features_fin_de_semana)
+  data <- data.frame(matrix(ncol = length(names(feats)), nrow = 0))
+  colnames(data) <- names(feats)
+  for (col in names(feats)){
+    if (is.numeric(feats[, col])){
+      data[1,col] <- mean(feats[, col], na.rm = T)
+    } else{
+      data[1,col] <- feats[1, col]
+    }
+  }
+  
+  
+  # print((data))
+  return(data)
 }
 
 # Bucle para procesar cada archivo
-for(archivo in archivos[1:7]) {
+for(archivo in archivos) {
  
   serie <- fread(archivo)
   serie$timestamp <- ymd_hms(serie$timestamp)# Convertir timestamp a tipo fecha
