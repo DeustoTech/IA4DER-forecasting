@@ -324,14 +324,14 @@ for(archivo in archivos) {
   datos_totales[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_total, info_serie, .name_repair = "minimal")
 }
 
-df_sin_auto <- bind_rows(datos_sin_auto, .name_repair = "minimal") 
-df_sin_auto <- df_sin_auto[, 1:246] %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
+df_sin_auto <- bind_rows(datos_sin_auto) 
+df_sin_auto <- df_sin_auto %>%  select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 df_con_auto <- bind_rows(datos_con_auto)
-df_con_auto <- df_con_auto[, 1:311] %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
+df_con_auto <- df_con_auto %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 df_totales <- bind_rows(datos_totales)
-df_totales <- df_totales[, 1:338] %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
+df_totales <- df_totales %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 
 
