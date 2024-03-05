@@ -57,7 +57,7 @@ df_list_renamed <- lapply(seq_along(df_list), function(i) {
     rename_duplicated(df_list[[i]], paste0("_", i))
   }
 })
-
+feats2 <- feats %>% select(-contains("pBarra"), -starts_with("mape"))
 # Ahora combinamos usando reduce y full_join sin errores de duplicados
 combined_df_feats <- reduce(df_list_renamed, full_join, by = "ID")
 
@@ -94,8 +94,8 @@ subset_combined_bien2 <- subset_combined_bien2 %>%
 
 
 finalPred <- rbind(summaryPredsFeats, subset_combined_bien2, fill = T)
-
-fwrite(combined_df_feats, "Resultados/CUPS/combined_df_feats.csv")
+finalCombined <- merge(feats2, finalPred, by = "ID", all = T)
+fwrite(finalCombined, "allFeats.csv")
 
 }
 
