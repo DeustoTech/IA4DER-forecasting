@@ -47,6 +47,8 @@ rename_duplicated <- function(df, suffix) {
   return(df)
 }
 
+modelos <- c("Media", "Naive", "SN", "Arima", "ETS", "NN", "SVM")
+
 # Aplicamos la función para renombrar las columnas (excepto en el primero)
 df_list_renamed <- lapply(seq_along(df_list), function(i) {
   if (i == 1) {
@@ -58,7 +60,41 @@ df_list_renamed <- lapply(seq_along(df_list), function(i) {
 
 # Ahora combinamos usando reduce y full_join sin errores de duplicados
 combined_df_feats <- reduce(df_list_renamed, full_join, by = "ID")
-combined_df_feats <- merge(feats, combined_df_feats, by = "ID", all=T)
+
+combined_bien <- combined_df_feats %>% select(ID, real_mediana, real_q1, real_q3, starts_with("mape"), starts_with("pred"))
+colnames(combined_bien) <- sub("_[0-9]+$", "", names(combined_bien))
+
+subset_combined_bien <- combined_bien %>%
+  anti_join(summaryPredsFeats, by = "ID")
+
+medianas <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", "mapeETS_mediana", "mapeNN_mediana", "mapeSVM_mediana") 
+q1 <- c("mapeMedia_q1", "mapeNaive_q1", "mapeSN_q1", "mapeArima_q1", "mapeETS_q1", "mapeNN_q1", "mapeSVM_q1") 
+q3 <- c("mapeMedia_q3", "mapeNaive_q3", "mapeSN_q3", "mapeArima_q3", "mapeETS_q3", "mapeNN_q3", "mapeSVM_q3") 
+
+predmedianas <- c("predMedia_Mediana", "predNaive_Mediana", "predSN_Mediana", "predArima_Mediana", "predETS_Mediana", "predNN_Mediana", "predSVM_Mediana") 
+predq1 <- c("predMedia_q1", "predNaive_q1", "predSN_q1", "predArima_q1", "predETS_q1", "predNN_q1", "predSVM_q1") 
+predq3 <- c("predMedia_q3", "predNaive_q3", "predSN_q3", "predArima_q3", "predETS_q3", "predNN_q3", "predSVM_q3") 
+
+# Calcular la mediana por fila y añadir las nuevas columnas
+subset_combined_bien2 <- subset_combined_bien %>%
+  rowwise() %>%
+  mutate(
+    predEnsemble_mediana = median(c_across(all_of(predmedianas)), na.rm = T),
+    predEnsemble_q1 = median(c_across(all_of(predq1)), na.rm = T),
+    predEnsemble_q3 = median(c_across(all_of(predq3)), na.rm = T),
+    mapeEnsemble_mediana = median(c_across(all_of(medianas)), na.rm = T),
+    mapeEnsemble_q1 = median(c_across(all_of(q1)), na.rm = T),
+    mapeEnsemble_q3 = median(c_across(all_of(q3)), na.rm = T)
+  ) %>%
+  ungroup()
+
+subset_combined_bien2 <- subset_combined_bien2 %>%
+  rename_with(~ gsub("Mediana", "mediana", ., ignore.case = TRUE), ends_with("Mediana"))
+
+
+
+finalPred <- rbind(summaryPredsFeats, subset_combined_bien2, fill = T)
+
 fwrite(combined_df_feats, "Resultados/CUPS/combined_df_feats.csv")
 
 }
@@ -69,5 +105,10 @@ fwrite(combined_df_feats, "Resultados/CUPS/combined_df_feats.csv")
   fwrite(combined_predFeats, "Resultados/CUPS/combined_predFeats.csv")
 }
 
+
+feats2 <- feats %>% select(-contains("pBarra"), -ends_with(".x"))
+
+nuevos_nombres <- sub(".y", "", names(feats2))
+colnames(feats2) <- nuevos_nombres
 
 
