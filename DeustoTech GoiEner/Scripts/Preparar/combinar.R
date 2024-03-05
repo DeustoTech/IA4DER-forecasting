@@ -58,6 +58,7 @@ df_list_renamed <- lapply(seq_along(df_list), function(i) {
 
 # Ahora combinamos usando reduce y full_join sin errores de duplicados
 combined_df_feats <- reduce(df_list_renamed, full_join, by = "ID")
+combined_df_feats <- merge(feats, combined_df_feats, by = "ID", all=T)
 fwrite(combined_df_feats, "Resultados/CUPS/combined_df_feats.csv")
 
 }
