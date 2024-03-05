@@ -86,6 +86,7 @@ nn_df <- combinar_archivos_en_df(nn)
 fwrite(lm_df, "Resultados/PrediccionError/combined_nn.csv")
 colnames(lm_df)
 
+summaryPredsFeats <- fread("Resultados/CUPS/SummaryPredsFeats.csv")
 
 df_list <- c()
 
@@ -116,6 +117,8 @@ colnames(combined)[colnames(combined) == "Real.x"] <- "Real"
 combined <- combined %>%
   select(-starts_with("MAPE")) %>% select(c("ID","Real", starts_with("Predicted"))) 
 
+combined <-  merge(combined, summaryPredsFeats, by = "ID", all=T)
+  
 fwrite(combined, "Resultados/PrediccionError/combinedPreds.csv")
 
 
