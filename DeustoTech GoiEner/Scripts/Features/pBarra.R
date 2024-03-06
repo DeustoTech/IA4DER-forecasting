@@ -81,10 +81,63 @@ fwrite(combinedPreds, "Resultados/PrediccionError/combinedPreds.csv")
 #LEER ARCHIVOS PARA PBARRA
 allFeats <- fread("allFeats.csv")
 combinedPreds <- fread("Resultados/PrediccionError/combinedPreds.csv")
-
 feats <- allFeats %>% select(ID, real_mediana:predEnsemble_q3)
 
+colsY <- grep("\\.y$", names(combinedPreds), value = TRUE)
+combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsY), with = FALSE]
+colsX <- grep("\\.x$", names(combinedPreds), value = TRUE)
+combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsX), with = FALSE]
+
+datosCombinados <- merge(combinedPreds, feats, by = "ID")
+fwrite(datosCombinados, "datosParaPBarra.csv")
+
+
 #CALCULAR P BARRA
+modelosC <- c("Media", "Naive", "SN", "Arima", "ETS", "NN", "SVM", "Ensemble")
+modelosP <- c("lm", "rf", "gbm", "nn", "svm")
+features <- c("habitos", "tarifa", "cluster", "socio", "consumo", "edificio")
+
+columnasPBarra <- paste("PBarra", rep(modelosP, each = length(features)), rep(features, times = length(modelosP)), sep = "_")
+nombresColumnas <- c("ID", columnasPBarra)
+pb <- data.frame(matrix(NA, ncol = length(nombresColumnas), nrow = 1))
+colnames(pb) <- nombresColumnas
+
+
+columnasPBarra <- paste("PBarra", rep(modelosP, each = length(features)), rep(features, times = length(modelosP)), sep = "_")
+pb <- data.frame(matrix(ncol = length(columnasPBarra), nrow = nrow(datosCombinados)))
+names(pb) <- columnasPBarra
+pb$ID <- datosCombinados$ID
+
+for (i in 1:nrow(datosCombinados)) {
+  numerador <- 0
+  denominador <- 0
+  for (modeloP in modelosP) {
+    for (feature in features) {
+      for (modeloC in modelosC) {
+        
+        predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
+        pred_median_column <- paste("pred", modeloC, "_mediana", sep = "")
+        
+        denominador <- denominador + datosCombinados[i, ..predicted_column]
+        numerador <- numerador + (datosCombinados[i, ..predicted_column] * datosCombinados[i, ..pred_median_column])
+      }
+      
+      pBarra_name <- paste("PBarra", modeloP, feature, sep = "_")
+      pb[i, pBarra_name] <- ifelse(denominador != 0, numerador / denominador, NA)  # Evitar división por cero
+    }
+  }
+}
+
+
+fwrite(pb, "Resultados/pBarras.csv")
+
+
+
+
+
+
+
+
 
 
 
