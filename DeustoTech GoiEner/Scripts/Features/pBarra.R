@@ -18,20 +18,6 @@ foreach(lib = librerias) %do% {
 
 folder <- "Resultados/PrediccionError/AllFeats"
 
-
-# Lista de modelos y sus correspondientes archivos
-model_files <- list(
-  lm = list.files(folder, pattern = "_lm.csv$", recursive = TRUE, full.names = TRUE),
-  rf = list.files(folder, pattern = "_rf.csv$", recursive = TRUE, full.names = TRUE),
-  gbm = list.files(folder, pattern = "_gbm.csv$", recursive = TRUE, full.names = TRUE),
-  nn = list.files(folder, pattern = "_nn.csv$", recursive = TRUE, full.names = TRUE),
-  svm = list.files(folder, pattern = "_svm.csv$", recursive = TRUE, full.names = TRUE)
-)
-
-
-#CARGA RESULTADOS NUEVOS
-folder <- "Resultados/PrediccionError/AllFeats/"
-
 # Definir una función para buscar archivos por patrón en todas las carpetas de modelos
 buscar_archivos_por_modelo <- function(folder, pattern) {
   # Obtener una lista de todas las subcarpetas dentro de la carpeta principal
@@ -74,17 +60,34 @@ combinar_archivos_en_df <- function(archivos_modelo) {
   }
   
 
-lm_df <- combinar_archivos_en_df(lm)
+lm_df <- combinar_archivos_en_df(model_files[[1]])
 fwrite(lm_df, "Resultados/PrediccionError/combined_lm.csv")
-rf_df <- combinar_archivos_en_df(rf)
-fwrite(lm_df, "Resultados/PrediccionError/combined_rf.csv")
-gbm_df <- combinar_archivos_en_df(gbm)
-fwrite(lm_df, "Resultados/PrediccionError/combined_gbm.csv")
-svm_df <- combinar_archivos_en_df(svm)
-fwrite(lm_df, "Resultados/PrediccionError/combined_svm.csv")
-nn_df <- combinar_archivos_en_df(nn)
-fwrite(lm_df, "Resultados/PrediccionError/combined_nn.csv")
-colnames(lm_df)
+rf_df <- combinar_archivos_en_df(model_files[[2]])
+fwrite(rf_df, "Resultados/PrediccionError/combined_rf.csv")
+gbm_df <- combinar_archivos_en_df(model_files[[3]])
+fwrite(gbm_df, "Resultados/PrediccionError/combined_gbm.csv")
+svm_df <- combinar_archivos_en_df(model_files[[4]])
+fwrite(svm_df, "Resultados/PrediccionError/combined_svm.csv")
+nn_df <- combinar_archivos_en_df(model_files[[5]])
+fwrite(nn_df, "Resultados/PrediccionError/combined_nn.csv")
+
+
+#columns_to_merge_by <- c("ID", "Real_Arima", "Real_Ensemble", "Real_ETS", "Real_Media", "Real_Naive", "Real_NN", "Real_SN", "Real_SVM")
+
+combinedPreds <- Reduce(function(x, y) merge(x, y, by = "ID"), list(lm_df, rf_df, gbm_df, svm_df, nn_df))
+fwrite(combinedPreds, "Resultados/PrediccionError/combinedPreds.csv")
+
+
+#LEER ARCHIVOS PARA PBARRA
+allFeats <- fread("allFeats.csv")
+combinedPreds <- fread("Resultados/PrediccionError/combinedPreds.csv")
+
+feats <- allFeats %>% select(ID, real_mediana:predEnsemble_q3)
+
+#CALCULAR P BARRA
+
+
+
 
 summaryPredsFeats <- fread("Resultados/CUPS/SummaryPredsFeats.csv")
 
