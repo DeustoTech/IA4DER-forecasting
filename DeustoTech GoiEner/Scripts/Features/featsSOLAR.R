@@ -60,12 +60,12 @@ calcular_features <- function(serie, ID1, firstPanel) {
     "ID", "LENGTH","NAs","ZEROS", "AVG", "SD", "MIN", "Q1", "MEDIAN", "Q3", "MAX", "TOTAL", "VAR","ENTROPY", 
     "P_T2.0_VALLE", "P_T2.0_LLANO", "P_T2.0_PICO", "P_T_SOLAR_PICO", "P_T_SOLAR_LLANO",
     "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO",
-    paste("mean_VAL_AE_weekdays", 0:23, sep = "_"),
-    paste("mean_VAL_AE_weekend", 0:23, sep = "_"),
-    paste("total_VAL_AI_week", 1:52, sep = "_"),
-    paste("total_VAL_AE_week", 1:52, sep = "_"),
-    paste("total_VAL_AI_month", 1:12, sep = "_"),
-    paste("total_VAL_AE_month", 1:12, sep = "_"),
+    paste("mean.AE.weekdays", 0:23, sep = "."),
+    paste("mean.AE.weekend", 0:23, sep = "."),
+    paste("AI.week.", 1:52, sep = "."),
+    paste("AE.week", 1:52, sep = "."),
+    paste("AI.month", 1:12, sep = "."),
+    paste("AE.month", 1:12, sep = "."),
     "DIFF_HOURS", "INSTALLATION_TIMESTAMP" 
 
   )
@@ -114,8 +114,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
               Max = max(VAL_AI, na.rm = T))%>%
     pivot_wider(names_from = season, values_from = c(Total, Max))
   
+
   
-  colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
+  colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = ".")
   
   column_names <- c(column_names, colnames(features_semana) ,colnames(features_fin_de_semana))
   
@@ -142,8 +143,8 @@ calcular_features <- function(serie, ID1, firstPanel) {
     group_by(hour) %>%
     summarise(mean_VAL_AE = mean(VAL_AE, na.rm = TRUE))
   for (i in 0:23){
-    weekday_col <- paste("mean_VAL_AE_weekdays", i, sep = "_")
-    weekend_col <- paste("mean_VAL_AE_weekend", i, sep = "_")
+    weekday_col <- paste("mean.AE.weekdays", i, sep = ".")
+    weekend_col <- paste("mean.AE.weekend", i, sep = ".")
     weekday_value <- ifelse(length(which(injection_by_hour_weekdays$hour == i)) > 0,
                             injection_by_hour_weekdays$mean_VAL_AE[which(injection_by_hour_weekdays$hour == i)],
                             NA)
@@ -167,8 +168,8 @@ calcular_features <- function(serie, ID1, firstPanel) {
     summarise(total_VAL_AE = sum(VAL_AE, na.rm = TRUE))
   
   for (i in 1:12){
-    consumption_col <- paste("total_VAL_AI_month", i, sep = "_")
-    injection_col <- paste("total_VAL_AE_month", i, sep = "_")
+    consumption_col <- paste("AI.month", i, sep = ".")
+    injection_col <- paste("AE.month", i, sep = ".")
     
     consumption_value <- ifelse(length(which(!is.na(consumption_by_month$total_VAL_AI[i]))) > 0,
                                 consumption_by_month$total_VAL_AI[i],
@@ -195,8 +196,8 @@ calcular_features <- function(serie, ID1, firstPanel) {
   
 
   for (i in 1:nWeeks){
-    consumption_col <- paste("total_VAL_AI_week", i, sep = "_")
-    injection_col <- paste("total_VAL_AE_week", i, sep = "_")
+    consumption_col <- paste("AI.week", i, sep = ".")
+    injection_col <- paste("AE.week", i, sep = ".")
     
     consumption_value <- ifelse(length(which(!is.na(consumption_by_week$total_VAL_AI[i]))) > 0,
                                 consumption_by_week$total_VAL_AI[i],
@@ -214,9 +215,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
     j <- i + 1
     
     # i semana pasada, j semana de ahora.
-    col_name_i <- paste("total_VAL_AI_week", i, sep = "_")
-    col_name_j <- paste("total_VAL_AI_week", j, sep = "_")
-    mape_col_name <- paste("mape_VAL_AI_week", j, "vs", i, sep = "_")
+    col_name_i <- paste("AI.week", i, sep = ".")
+    col_name_j <- paste("AI.week", j, sep = ".")
+    mape_col_name <- paste("mape.AI.week.", j, "-", i, sep = "")
     
     feats[1, mape_col_name] <- mape(feats[1, col_name_j], feats[1, col_name_i]) * 100
     
@@ -314,6 +315,8 @@ for(archivo in archivos) {
   firstPanel <- serie %>%
     filter(AUTO == 1) %>%
     slice(1) %>% select(timestamp)
+  
+  firstPanel <- ifelse(is.null(firstPanel) || all(is.na(firstPanel)), NA, firstPanel)
   
   serie$firstPanel <- firstPanel
   serie$ID <- id_serie
