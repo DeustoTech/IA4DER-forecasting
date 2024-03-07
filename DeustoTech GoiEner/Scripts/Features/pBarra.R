@@ -89,18 +89,15 @@ colsX <- grep("\\.x$", names(combinedPreds), value = TRUE)
 combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsX), with = FALSE]
 
 datosCombinados <- merge(combinedPreds, feats, by = "ID")
-fwrite(datosCombinados, "datosParaPBarra.csv")
+#fwrite(datosCombinados, "datosParaPBarra.csv")
+#datosCombinados <- fread("datosParaPBarra.csv")
 
 
 #CALCULAR P BARRA
+
 modelosC <- c("Media", "Naive", "SN", "Arima", "ETS", "NN", "SVM", "Ensemble")
 modelosP <- c("lm", "rf", "gbm", "nn", "svm")
 features <- c("habitos", "tarifa", "cluster", "socio", "consumo", "edificio")
-
-columnasPBarra <- paste("PBarra", rep(modelosP, each = length(features)), rep(features, times = length(modelosP)), sep = "_")
-nombresColumnas <- c("ID", columnasPBarra)
-pb <- data.frame(matrix(NA, ncol = length(nombresColumnas), nrow = 1))
-colnames(pb) <- nombresColumnas
 
 
 columnasPBarra <- paste("PBarra", rep(modelosP, each = length(features)), rep(features, times = length(modelosP)), sep = "_")
@@ -108,6 +105,8 @@ pb <- data.frame(matrix(ncol = length(columnasPBarra), nrow = nrow(datosCombinad
 names(pb) <- columnasPBarra
 pb$ID <- datosCombinados$ID
 
+
+#FORMA 1 DE HACER PBARRA: NO MANEJA VALORES NA POR LO QUE SALE TODO NA
 for (i in 1:nrow(datosCombinados)) {
   numerador <- 0
   denominador <- 0
@@ -127,6 +126,47 @@ for (i in 1:nrow(datosCombinados)) {
     }
   }
 }
+
+fwrite(pb, "Resultados/pBarras.csv")
+
+#FORMA 2 DE HACER PBARRA: CREO QUE LO HACE BIEN PERO EN MUCHAS FILAS SALE EL MISMO VALOR
+for (i in 1:nrow(datosCombinados)) {
+  for (modeloP in modelosP) {
+    for (feature in features) {
+      # Restablecer numerador y denominador para cada combinación de modeloP y feature
+      numerador <- 0
+      denominador <- 0
+      for (modeloC in modelosC) {
+        
+        predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
+        pred_median_column <- paste("pred", modeloC, "_mediana", sep = "")
+        
+        predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
+        pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
+        
+        # Sumar al denominador, ignorando NA
+        if (!is.na(predicted_value)) {
+          denominador <- denominador + predicted_value
+        }
+        
+        # Sumar al numerador, solo si ambos valores no son NA
+        if (!is.na(predicted_value) && !is.na(pred_median_value)) {
+          numerador <- numerador + (predicted_value * pred_median_value)
+        }
+      }
+      
+      pBarra_name <- paste("PBarra", modeloP, feature, sep = "_")
+      
+      # Asignar el valor calculado de pBarra en pb
+      if(denominador != 0) {
+        pb[i, pBarra_name] <- numerador / denominador
+      } else {
+        pb[i, pBarra_name] <- NA  # Asignar NA si el denominador es cero
+      }
+    }
+  }
+}
+
 
 
 fwrite(pb, "Resultados/pBarras.csv")
