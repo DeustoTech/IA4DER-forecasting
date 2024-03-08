@@ -62,7 +62,7 @@ calcular_features <- function(serie, ID1, firstPanel) {
     "P_T_SOLAR_SPICO", "P_T_SOLAR_SLLANO",
     paste("mean.AE.weekdays", 0:23, sep = "."),
     paste("mean.AE.weekend", 0:23, sep = "."),
-    paste("AI.week.", 1:52, sep = "."),
+    paste("AI.week", 1:52, sep = "."),
     paste("AE.week", 1:52, sep = "."),
     paste("AI.month", 1:12, sep = "."),
     paste("AE.month", 1:12, sep = "."),
