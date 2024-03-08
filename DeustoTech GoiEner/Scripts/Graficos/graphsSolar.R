@@ -8,7 +8,7 @@ librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
                'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm',
-               "randomForest", "mice", "tsfeatures") 
+               "randomForest", "mice", "tsfeatures", "gridExtra") 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
@@ -32,6 +32,7 @@ despues$grupo <- "Despues"
 combinado <- bind_rows(antes, despues)
 folder <- "SOLAR/Graficos/"
 archivo_pdf <- "SOLAR/graficos.pdf"
+pdf(archivo_pdf, width = 10, height = 8)
 
 
 
@@ -42,15 +43,19 @@ for (columna in colnames(antes)) {
       geom_boxplot() +
       labs(title = columna) + ylim(NA, quantile(combinado[[columna]], 0.8, na.rm = TRUE))
 
+    plot(p)
     fileName <- paste(folder, gsub(" ", "_", columna), ".png", sep = "")
     print(paste("Guardando",fileName))
-    ggsave(fileName, plot = p, device = "png", width = 8, height = 6, units = "in")
+
+    # Descomentar la siguiente linea si se quiere guardar cada grafico en png
+    # ggsave(fileName, plot = p, device = "png", width = 8, height = 6, units = "in")
     
     # Mostrar el gráfico
     # print(p)
     
   }
 }
+
 dev.off() # TODO probar para guardarlo en un pdf
 
 
