@@ -14,7 +14,7 @@ foreach(lib = librerias) %do% {
 }
 
 antes <- fread("SOLAR/features_sin_autoconsumo.csv")
-despues <- fread("SOLAR/features_sin_autoconsumo.csv")
+despues <- fread("SOLAR/features_con_autoconsumo.csv")
 
 dontselect <- c("COD_CONTRATO", "COD_PS", "TIP_SUMINISTRO", "FEC_ALTA_PUN_SUM", "FEC_BAJA_PUN_SUM", 
               "COD_CLIENTE"       ,"TIP_CONTRATO", "FEC_ALTA_CONTRATO" ,"D_COD_POLIZA","COD_CNAE" 
@@ -31,6 +31,8 @@ despues$grupo <- "Despues"
 
 combinado <- bind_rows(antes, despues)
 folder <- "SOLAR/Graficos/"
+archivo_pdf <- "SOLAR/graficos.pdf"
+
 
 
 for (columna in colnames(antes)) {
@@ -39,7 +41,7 @@ for (columna in colnames(antes)) {
     p <- ggplot(combinado, aes(x = grupo, y = !!as.name(columna))) +
       geom_boxplot() +
       labs(title = columna) + ylim(NA, quantile(combinado[[columna]], 0.8, na.rm = TRUE))
-    
+
     fileName <- paste(folder, gsub(" ", "_", columna), ".png", sep = "")
     print(paste("Guardando",fileName))
     ggsave(fileName, plot = p, device = "png", width = 8, height = 6, units = "in")
@@ -49,6 +51,6 @@ for (columna in colnames(antes)) {
     
   }
 }
-
+dev.off() # TODO probar para guardarlo en un pdf
 
 
