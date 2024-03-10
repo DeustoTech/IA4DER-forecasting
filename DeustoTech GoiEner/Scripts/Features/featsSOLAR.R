@@ -28,6 +28,9 @@ foreach(lib = librerias) %do% {
 datos_sin_auto <- list()
 datos_con_auto <- list()
 datos_totales <- list()
+entropy_sin_auto <- data.frame()
+entropy_con_auto <- data.frame()
+entropy_total <- data.frame()
 
 horas <- data.frame(
   hora = 0:23,
@@ -52,8 +55,10 @@ horas <- data.frame(
 
 
 
-
-calcular_features <- function(serie, ID1, firstPanel) {
+calcular_features <- function(serie, ID1, firstPanel, val_pot) {
+  
+  serie$VAL_AI <- serie$VAL_AI / val_pot
+  serie$VAL_AE <- serie$VAL_AE / val_pot
   
   # NOMBRES DE COLUMNAS 
   column_names <- c(
@@ -66,10 +71,11 @@ calcular_features <- function(serie, ID1, firstPanel) {
     paste("AE.week", 1:52, sep = "."),
     paste("AI.month", 1:12, sep = "."),
     paste("AE.month", 1:12, sep = "."),
-    "DIFF_HOURS", "INSTALLATION_TIMESTAMP" 
+    "DIFF_HOURS", "INSTALLATION_TIMESTAMP" , "mean.mape.week", "mean.mape.month"
 
   )
   
+  namesEntropy <- c(paste("Entropy.w", 1:52, sep = "."))
   # limipiamos valores no finitos
   
   serie <- serie %>%
@@ -126,7 +132,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
   # INICIALIZAR EL DF
   
   feats <- data.frame(matrix(ncol = length(column_names), nrow = 0))
+  entropyDf <- data.frame(matrix(ncol = length(namesEntropy), nrow = 0))
   colnames(feats) <- column_names
+  colnames(entropyDf) <- namesEntropy
   
   numeric_columns <- setdiff(column_names, c("ID", "INSTALLATION_TIMESTAMP"))
   feats[, numeric_columns] <- lapply(feats[, numeric_columns], as.numeric)
@@ -194,11 +202,21 @@ calcular_features <- function(serie, ID1, firstPanel) {
     group_by(week) %>%
     summarise(total_VAL_AI = sum(VAL_AI, na.rm = TRUE))
   
+  entropy_by_week <- serie %>% group_by(week) %>% 
+    summarise(entropy = entropy(VAL_AI))
+  # print(entropy_by_week)
 
+  for (i in 1:nrow(entropy_by_week)){
+    entropyCol <- paste("Entropy.w", i, sep = ".")
+    entropyVal <- entropy_by_week$entropy[i]
+    entropyDf[1, entropyCol] <- entropyVal
+    
+  }
+  
   for (i in 1:nWeeks){
     consumption_col <- paste("AI.week", i, sep = ".")
     injection_col <- paste("AE.week", i, sep = ".")
-    
+
     consumption_value <- ifelse(length(which(!is.na(consumption_by_week$total_VAL_AI[i]))) > 0,
                                 consumption_by_week$total_VAL_AI[i],
                                 NA)
@@ -207,10 +225,19 @@ calcular_features <- function(serie, ID1, firstPanel) {
                               inyection_by_week$total_VAL_AE[i],
                               NA)
     
+    
     feats[1, consumption_col] <- consumption_value
     feats[1, injection_col] <- injection_value
+    
   }
   
+  entropyDf$ID <- ID1
+  
+  
+  # print(entropyDf)
+  
+  # Mape by week and mean week mape
+  colsMapeW <- c()
   for (i in 1:(nWeeks - 1)){
     j <- i + 1
     
@@ -219,10 +246,22 @@ calcular_features <- function(serie, ID1, firstPanel) {
     col_name_j <- paste("AI.week", j, sep = ".")
     mape_col_name <- paste("mape.AI.week.", j, "-", i, sep = "")
     
-    feats[1, mape_col_name] <- mape(feats[1, col_name_j], feats[1, col_name_i]) * 100
-    
+    mapeVal <- mape(feats[1, col_name_j], feats[1, col_name_i]) * 100
+    feats[1, mape_col_name] <- mapeVal
+    colsMapeW[i] <- mapeVal
+  }
+  
+  # Mean month mape
+  
+  colsMapeM <- c()
+  for (i in 1:11){
+    j <- i + 1
+    col_name_i <- paste("AI.month", i, sep = ".")
+    col_name_j <- paste("AI.month", j, sep = ".")
+    colsMapeM[i] <- mape(feats[1, col_name_j], feats[1, col_name_i]) * 100
   }
 
+  
 
 
   # TARIFAS 
@@ -236,8 +275,7 @@ calcular_features <- function(serie, ID1, firstPanel) {
   T_SOLAR_SLLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
   
  
-  # TODO mape del SNaive. el mape del consumo horario de una semana comparado con el consumo horario de la semana pasada. Una por semana
-  # TODO añadir seasonal aggregates a feats
+  
   
   LENGTH <- nrow(serie)
   QQ     <- as.numeric(quantile(serie$VAL_AI,c(0,0.25,0.5,0.75,1),na.rm=T))
@@ -253,7 +291,7 @@ calcular_features <- function(serie, ID1, firstPanel) {
 
   feats <- feats %>% 
     add_row(
-      ID = unique(serie$ID),  # Convertir a caracter
+      ID = ID1,  # Convertir a caracter
       LENGTH = LENGTH,
       ZEROS = sum(serie$VAL_AI == 0) / LENGTH,
       NAs = sum(is.na(serie$VAL_AI)),
@@ -275,7 +313,9 @@ calcular_features <- function(serie, ID1, firstPanel) {
       P_T_SOLAR_SPICO = T_SOLAR_SPICO,
       P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
       INSTALLATION_TIMESTAMP = unique(serie$firstPanel),
-      DIFF_HOURS = abs(diff_horas)
+      DIFF_HOURS = abs(diff_horas),
+      mean.mape.week = mean(colsMapeW, na.rm = T),
+      mean.mape.month = mean(colsMapeM, na.rm = T)
     )
 
   # feats <- cbind(feats, features_semana, features_fin_de_semana)
@@ -296,10 +336,21 @@ calcular_features <- function(serie, ID1, firstPanel) {
     }
   }
   
-  
-  # print(head(data))
-  return(data)
+  # print(head(entropyDf))
+  return(list(data = data, entropyDf = entropyDf))
 }
+
+
+# Para vaciar si ya se han ejecutado cosas
+datos_sin_auto <- list()
+datos_con_auto <- list()
+datos_totales <- list()
+entropy_sin_auto <- data.frame()
+entropy_con_auto <- data.frame()
+entropy_total <- data.frame()
+
+
+
 
 # Bucle para procesar cada archivo
 for(archivo in archivos) {
@@ -320,14 +371,33 @@ for(archivo in archivos) {
   
   serie$firstPanel <- firstPanel
   serie$ID <- id_serie
-  
-  features_sin_auto <- if (any(serie$AUTO == 0)) calcular_features(serie = serie %>% filter(AUTO == 0), ID1 = gsub("\\.csv$", "", basename(archivo)), firstPanel)
-  features_con_auto <- if (any(serie$AUTO == 1)) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),  firstPanel)
-  features_total <- calcular_features(serie)
 
-  # 
-  # # Unir con información de roseta
+  sin_auto <- if (any(serie$AUTO == 0)) calcular_features(serie = serie %>% filter(AUTO == 0), ID1 = gsub("\\.csv$", "", basename(archivo)),
+                                                                   firstPanel, val_pot = info_serie$VAL_POT_AUTORIZADA)
+  con_auto <- if (any(serie$AUTO == 1)) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),
+                                                                   firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
+  total <-  calcular_features(serie = serie, ID1 = gsub("\\.csv$", "", basename(archivo)),
+                                       firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
+
+  
   info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS) # Excluir CUPS para evitar duplicados
+  
+  features_sin_auto <- sin_auto$data
+  features_con_auto <- con_auto$data
+  features_total <- total$data
+  
+  entsin <- intersect(colnames(entropy_sin_auto), colnames(sin_auto))
+  entropy_sin_auto <- rbind(entropy_sin_auto[entsin], sin_auto$entropy[entsin])
+  
+  entcon <- intersect(colnames(entropy_con_auto), colnames(con_auto))
+  entropy_con_auto <- rbind(entropy_con_auto[entcon], con_auto$entropy[entcon])
+  
+  
+  entTot <- intersect(colnames(entropy_total), colnames(entropy_total))
+  entropy_total <- rbind(entropy_total[entTot], total$entropy[entTot])
+  
+   
+  # Unir con información de roseta
 
   datos_sin_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_sin_auto, info_serie, .name_repair = "minimal")
   datos_con_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_con_auto, info_serie, .name_repair = "minimal")
@@ -351,6 +421,12 @@ df_totales <- df_totales %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 fwrite(df_sin_auto, "SOLAR/features_sin_autoconsumo.csv")
 fwrite(df_con_auto, "SOLAR/features_con_autoconsumo.csv")
 fwrite(df_totales, "SOLAR/features_totales.csv")
+
+
+fwrite(entropy_sin_auto, "SOLAR/Entropy_sin_autoconsumo.csv")
+fwrite(entropy_con_auto, "SOLAR/Entropy_con_autoconsumo.csv")
+fwrite(entropy_total, "SOLAR/Entropy_totales.csv")
+
 # Combina todos los datos en un data.frame (este paso depende de cómo quieras estructurar tus datos finales)
 datos_combinados <- bind_rows(lapply(datos_finales, bind_rows), .id = "ID_SERIE")
 

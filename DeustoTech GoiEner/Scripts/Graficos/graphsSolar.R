@@ -35,7 +35,6 @@ archivo_pdf <- "SOLAR/graficos.pdf"
 pdf(archivo_pdf, width = 10, height = 8)
 
 
-
 for (columna in colnames(antes)) {
   if (is.numeric(antes[[columna]])) {
     # Crear boxplot usando ggplot2
@@ -57,5 +56,8 @@ for (columna in colnames(antes)) {
 }
 
 dev.off() # TODO probar para guardarlo en un pdf
+
+
+
 
 
