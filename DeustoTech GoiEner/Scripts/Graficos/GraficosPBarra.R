@@ -15,17 +15,17 @@ foreach(lib = librerias) %do% {
 
 
 # Leer los datos desde el archivo CSV
-datos <- fread("allFeatsNew.csv")
+datos <- fread("Resultados/pBarras.csv")
 
 # Función para generar gráficos de bigotes
 generar_grafico_pBarra <- function(data, tipo_modelo) {
   # Definimos las columnas basadas en el tipo de modelo
   columnas <- switch(tipo_modelo,
-                     "lm" = c("pBarra_habitos_lm", "pBarra_cluster_lm", "pBarra_edificio_lm", "pBarra_socio_lm", "pBarra_consumo_lm", "pBarra_tarifa_lm"),
-                     "rf" = c("pBarra_habitos_rf", "pBarra_cluster_rf", "pBarra_edificio_rf", "pBarra_socio_rf", "pBarra_consumo_rf", "pBarra_tarifa_rf"),
-                     "gbm" = c("pBarra_habitos_gbm", "pBarra_cluster_gbm", "pBarra_edificio_gbm", "pBarra_socio_gbm", "pBarra_consumo_gbm", "pBarra_tarifa_gbm"),
-                     "nn" = c("pBarra_habitos_nn", "pBarra_cluster_nn", "pBarra_edificio_nn", "pBarra_socio_nn", "pBarra_consumo_nn", "pBarra_tarifa_nn"),
-                     "svm" = c("pBarra_habitos_svm", "pBarra_cluster_svm", "pBarra_edificio_svm", "pBarra_socio_svm", "pBarra_consumo_svm", "pBarra_tarifa_svm"),
+                     "lm" = c("PBarra_lm_habitos", "PBarra_lm_cluster", "PBarra_lm_edificio", "PBarra_lm_socio", "PBarra_lm_consumo", "PBarra_lm_tarifa"),
+                     "rf" = c("PBarra_rf_habitos", "PBarra_rf_cluster", "PBarra_rf_edificio", "PBarra_rf_socio", "PBarra_rf_consumo", "PBarra_rf_tarifa"),
+                     "gbm" = c("PBarra_gbm_habitos", "PBarra_gbm_cluster", "PBarra_gbm_edificio", "PBarra_gbm_socio", "PBarra_gbm_consumo", "PBarra_gbm_tarifa"),
+                     "nn" = c("PBarra_nn_habitos", "PBarra_nn_cluster", "PBarra_nn_edificio", "PBarra_nn_socio", "PBarra_nn_consumo", "PBarra_nn_tarifa"),
+                     "svm" = c("PBarra_svm_habitos", "PBarra_svm_cluster", "PBarra_svm_edificio", "PBarra_svm_socio", "PBarra_svm_consumo", "PBarra_svm_tarifa"),
                      stop("Tipo de modelo no reconocido"))
   
   #data_filtrado <- data %>%
@@ -50,7 +50,42 @@ generar_grafico_pBarra(datos, "gbm")
 generar_grafico_pBarra(datos, "nn")
 generar_grafico_pBarra(datos, "svm")
 
+#DATOS MAPE
+datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
 
+# Función para generar gráficos de bigotes
+generar_grafico_pBarra <- function(data, tipo_modelo) {
+  # Definimos las columnas basadas en el tipo de modelo
+  columnas <- switch(tipo_modelo,
+                     "lm" = c("PBarra_lm_habitos_MAPE", "PBarra_lm_cluster_MAPE", "PBarra_lm_edificio_MAPE", "PBarra_lm_socio_MAPE", "PBarra_lm_consumo_MAPE", "PBarra_lm_tarifa_MAPE"),
+                     "rf" = c("PBarra_rf_habitos_MAPE", "PBarra_rf_cluster_MAPE", "PBarra_rf_edificio_MAPE", "PBarra_rf_socio_MAPE", "PBarra_rf_consumo_MAPE", "PBarra_rf_tarifa_MAPE"),
+                     "gbm" = c("PBarra_gbm_habitos_MAPE", "PBarra_gbm_cluster_MAPE", "PBarra_gbm_edificio_MAPE", "PBarra_gbm_socio_MAPE", "PBarra_gbm_consumo_MAPE", "PBarra_gbm_tarifa_MAPE"),
+                     "nn" = c("PBarra_nn_habitos_MAPE", "PBarra_nn_cluster_MAPE", "PBarra_nn_edificio_MAPE", "PBarra_nn_socio_MAPE", "PBarra_nn_consumo_MAPE", "PBarra_nn_tarifa_MAPE"),
+                     "svm" = c("PBarra_svm_habitos_MAPE", "PBarra_svm_cluster_MAPE", "PBarra_svm_edificio_MAPE", "PBarra_svm_socio_MAPE", "PBarra_svm_consumo_MAPE", "PBarra_svm_tarifa_MAPE"),
+                     stop("Tipo de modelo no reconocido"))
+  
+  #data_filtrado <- data %>%
+  #  mutate(across(all_of(columnas), ~ifelse(. > quantile(., 0.75, na.rm = TRUE), NA, .)))
+  
+  # Preparar los datos para el gráfico
+  print(data$pBarra_habitos_lm)
+  data_melt <- reshape2::melt(data, measure.vars = columnas, na.rm = T)
+  
+  # Generar el gráfico
+  ggplot(data_melt, aes(x = variable, y = value)) +
+    geom_boxplot() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    labs(title = paste("PBarra del modelo", tipo_modelo),
+         x = "Variable",
+         y = "Valor")
+}
+
+
+generar_grafico_pBarra(datosMAPE, "lm")
+generar_grafico_pBarra(datosMAPE, "rf")
+generar_grafico_pBarra(datosMAPE, "gbm")
+generar_grafico_pBarra(datosMAPE, "nn")
+generar_grafico_pBarra(datosMAPE, "svm")
 
 filtrarDataFrameMAPE <- function(data, modelo) {
 
