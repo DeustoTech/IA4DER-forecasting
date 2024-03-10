@@ -104,6 +104,16 @@ columnasPBarra <- paste("PBarra", rep(modelosP, each = length(features)), rep(fe
 pb <- data.frame(matrix(ncol = length(columnasPBarra), nrow = nrow(datosCombinados)))
 names(pb) <- columnasPBarra
 pb$ID <- datosCombinados$ID
+pb$real_mediana <- datosCombinados$real_mediana
+pb$Real_Media <- datosCombinados$Real_Media
+pb$Real_Naive <- datosCombinados$Real_Naive
+pb$Real_SN <- datosCombinados$Real_SN
+pb$Real_Arima <- datosCombinados$Real_Arima
+pb$Real_ETS <- datosCombinados$Real_ETS
+pb$Real_NN <- datosCombinados$Real_NN
+pb$Real_SVM <- datosCombinados$Real_SVM
+pb$Real_Ensemble <- datosCombinados$Real_Ensemble
+
 
 
 #FORMA 1 DE HACER PBARRA: NO MANEJA VALORES NA POR LO QUE SALE TODO NA
@@ -173,9 +183,25 @@ fwrite(pb, "Resultados/pBarras.csv")
 
 
 
+#MAPES DE PBARRA
+pBarra_df <- fread("Resultados/pBarras.csv")
 
 
+calculate_mape <- function(actual, predicted) {
+  error <- abs((actual - predicted) / actual)
+  ifelse(is.nan(error) | is.infinite(error), 0, error)  # Manejo de divisiones por cero
+}
 
+pBarra_df <- as.data.frame(pBarra_df)
+
+pbarra_columns <- grep("PBarra", names(pBarra_df), value=TRUE)
+for (col in pbarra_columns) {
+  pBarra_df[paste0(col, "_MAPE")] <- calculate_mape(pBarra_df$real_mediana, pBarra_df[[col]])
+}
+
+pBarra_df <- as.data.table(pBarra_df)
+
+write.csv(pBarra_df, 'Resultados/pBarrasMAPE.csv', row.names = FALSE)
 
 
 
