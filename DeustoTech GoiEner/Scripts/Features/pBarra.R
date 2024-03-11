@@ -115,33 +115,7 @@ pb$Real_SVM <- datosCombinados$Real_SVM
 pb$Real_Ensemble <- datosCombinados$Real_Ensemble
 
 
-
-#FORMA 1 DE HACER PBARRA: NO MANEJA VALORES NA POR LO QUE SALE TODO NA
-for (i in 1:nrow(datosCombinados)) {
-  numerador <- 0
-  
-  denominador <- 0
-  for (modeloP in modelosP) {
-    for (feature in features) {
-      for (modeloC in modelosC) {
-        
-        predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
-        pred_median_column <- paste("pred", modeloC, "_mediana", sep = "")
-        
-        denominador <- denominador + datosCombinados[i, ..predicted_column]
-        numerador <- numerador + (datosCombinados[i, ..predicted_column] * datosCombinados[i, ..pred_median_column])
-      }
-      
-      pBarra_name <- paste("PBarra", modeloP, feature, sep = "_")
-      pb[i, pBarra_name] <- ifelse(denominador != 0, numerador / denominador, NA)  # Evitar división por cero
-    }
-  }
-}
-
-fwrite(pb, "Resultados/pBarras.csv")
-
-#FORMA 2 DE HACER PBARRA: CREO QUE LO HACE BIEN 
-
+#BUCLE QUE HACE PBARRA
 for (i in 1:nrow(datosCombinados)) {
   for (modeloP in modelosP) {
     for (feature in features) {
