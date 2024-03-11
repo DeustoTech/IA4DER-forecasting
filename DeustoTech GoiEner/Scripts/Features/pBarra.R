@@ -139,7 +139,8 @@ for (i in 1:nrow(datosCombinados)) {
 
 fwrite(pb, "Resultados/pBarras.csv")
 
-#FORMA 2 DE HACER PBARRA: CREO QUE LO HACE BIEN PERO EN MUCHAS FILAS SALE EL MISMO VALOR
+#FORMA 2 DE HACER PBARRA: CREO QUE LO HACE BIEN 
+
 for (i in 1:nrow(datosCombinados)) {
   for (modeloP in modelosP) {
     for (feature in features) {
@@ -188,7 +189,7 @@ pBarra_df <- fread("Resultados/pBarras.csv")
 
 
 calculate_mape <- function(actual, predicted) {
-  error <- abs((actual - predicted) / actual)
+  error <- abs((actual - predicted) / actual) * 100
   ifelse(is.nan(error) | is.infinite(error), 0, error)  # Manejo de divisiones por cero
 }
 
@@ -203,8 +204,9 @@ pBarra_df <- as.data.table(pBarra_df)
 
 write.csv(pBarra_df, 'Resultados/pBarrasMAPE.csv', row.names = FALSE)
 
+pBarrasMAPE <- fread("Resultados/pBarrasMAPE.csv")
 
-
+summary(pBarrasMAPE)
 
 
 

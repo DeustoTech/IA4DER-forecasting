@@ -64,12 +64,12 @@ generar_grafico_pBarra <- function(data, tipo_modelo) {
                      "svm" = c("PBarra_svm_habitos_MAPE", "PBarra_svm_cluster_MAPE", "PBarra_svm_edificio_MAPE", "PBarra_svm_socio_MAPE", "PBarra_svm_consumo_MAPE", "PBarra_svm_tarifa_MAPE"),
                      stop("Tipo de modelo no reconocido"))
   
-  #data_filtrado <- data %>%
-  #  mutate(across(all_of(columnas), ~ifelse(. > quantile(., 0.75, na.rm = TRUE), NA, .)))
+  data_filtrado <- data %>%
+    mutate(across(all_of(columnas), ~ifelse(. > quantile(., 0.75, na.rm = TRUE), NA, .)))
   
   # Preparar los datos para el gráfico
-  print(data$pBarra_habitos_lm)
-  data_melt <- reshape2::melt(data, measure.vars = columnas, na.rm = T)
+  #print(data_filtrado$pBarra_habitos_lm)
+  data_melt <- reshape2::melt(data_filtrado, measure.vars = columnas, na.rm = T)
   
   # Generar el gráfico
   ggplot(data_melt, aes(x = variable, y = value)) +
