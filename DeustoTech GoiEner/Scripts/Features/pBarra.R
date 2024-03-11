@@ -119,6 +119,7 @@ pb$Real_Ensemble <- datosCombinados$Real_Ensemble
 #FORMA 1 DE HACER PBARRA: NO MANEJA VALORES NA POR LO QUE SALE TODO NA
 for (i in 1:nrow(datosCombinados)) {
   numerador <- 0
+  
   denominador <- 0
   for (modeloP in modelosP) {
     for (feature in features) {
@@ -149,6 +150,7 @@ for (i in 1:nrow(datosCombinados)) {
       denominador <- 0
       for (modeloC in modelosC) {
         
+        #en vez de predicted column hay que poner el mape de verdad
         predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
         pred_median_column <- paste("pred", modeloC, "_mediana", sep = "")
         
