@@ -62,6 +62,7 @@ generar_grafico_pBarra <- function(data, tipo_modelo) {
                      "gbm" = c("PBarra_gbm_habitos_MAPE", "PBarra_gbm_cluster_MAPE", "PBarra_gbm_edificio_MAPE", "PBarra_gbm_socio_MAPE", "PBarra_gbm_consumo_MAPE", "PBarra_gbm_tarifa_MAPE"),
                      "nn" = c("PBarra_nn_habitos_MAPE", "PBarra_nn_cluster_MAPE", "PBarra_nn_edificio_MAPE", "PBarra_nn_socio_MAPE", "PBarra_nn_consumo_MAPE", "PBarra_nn_tarifa_MAPE"),
                      "svm" = c("PBarra_svm_habitos_MAPE", "PBarra_svm_cluster_MAPE", "PBarra_svm_edificio_MAPE", "PBarra_svm_socio_MAPE", "PBarra_svm_consumo_MAPE", "PBarra_svm_tarifa_MAPE"),
+                     "Ensemble" = c("PBarra_Ensemble_habitos_MAPE", "PBarra_Ensemble_cluster_MAPE", "PBarra_Ensemble_edificio_MAPE", "PBarra_Ensemble_socio_MAPE", "PBarra_Ensemble_consumo_MAPE", "PBarra_Ensemble_tarifa_MAPE"),
                      stop("Tipo de modelo no reconocido"))
   
   data_filtrado <- data %>%
@@ -86,6 +87,9 @@ generar_grafico_pBarra(datosMAPE, "rf")
 generar_grafico_pBarra(datosMAPE, "gbm")
 generar_grafico_pBarra(datosMAPE, "nn")
 generar_grafico_pBarra(datosMAPE, "svm")
+generar_grafico_pBarra(datosMAPE, "Ensemble")
+
+
 
 filtrarDataFrameMAPE <- function(data, modelo) {
 
