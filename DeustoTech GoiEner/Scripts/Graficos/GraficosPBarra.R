@@ -223,6 +223,7 @@ dev.off()
 
 
 
+
 filtrarDataFrameMAPE <- function(data, modelo) {
 
   features <- c("habitos", "cluster", "edificio", "socio", "consumo", "tarifa")
