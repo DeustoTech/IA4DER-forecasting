@@ -15,17 +15,18 @@ library(arrow)
 
 plan(multisession)
 
-SAMPLE      <- 400   ### number of elements to assess per each type
-COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
-TRAIN_LIMIT <- 0.75  ### length of the training period
-F_DAYS      <- 7     ### number of days to forecast for STLF
-T_DAYS      <- 21    ### number of days to use in the training widnow for AI methods for STLF
-MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
-MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
-MCTARGET    <- MCNAMES[1]
-
-MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
-TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR")
+SAMPLE       <- 400   ### number of elements to assess per each type
+FIXED_TEST   <- F     ### control if we wanted to test only on a fixed date or in random dates
+COMPLETE     <- 0.10  ### amount of data imputed allowed in the dataset
+TRAIN_LIMIT  <- 0.75  ### length of the training period
+F_DAYS       <- 7     ### number of days to forecast for STLF
+T_DAYS       <- 21    ### number of days to use in the training widnow for AI methods for STLF
+MIN_TRAINING <- (T_DAYS+F_DAYS*2)*24
+MC           <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
+MCNAMES      <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
+MCTARGET     <- MCNAMES[1]
+MODELS       <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
+TYPES        <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR")
 
 for (TY in TYPES)
 {
@@ -106,30 +107,31 @@ B <- foreach(NAME = ALL,
   {
     a <- fread(NAME)
     if (length(names(a)) == 4) names(a) <- c("time","kWh","VAL_AE","AUTO")
-    r <- zoo(a$kWh, order.by = seq(from = as.POSIXct(first(a$time), tz="CET"),
-                                    to  =  as.POSIXct(last(a$time), tz="CET"), by="hour"))
-
-    POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
-    POT_EST <- LIM$POT_EST[LIM$ID == ID]
+    if (!FIXED_TEST) a <- a[1:min(sample(MIN_TRAINING:length(a$kWh),1),length(a$kWh)),]
     
-    TRAIN_DAYS  <- floor(TRAIN_LIMIT*(length(r)/24))    #### training days
-    LENGTH      <- length(a$kWh)
-    ZEROS       <- sum(a$kWh==0)/LENGTH
-    IMPUTED     <- sum(a$issue)/LENGTH
-
+    LENGTH  <- length(a$kWh)
+    ZEROS   <- sum(a$kWh==0)/LENGTH
+    IMPUTED <- sum(a$issue)/LENGTH
+    
     ### If we have enough data which is non zero and non imputed values in the time serie,
     ### then we continue with the assessment
-    if( (IMPUTED < COMPLETE) & (ZEROS < COMPLETE) & (LENGTH > (T_DAYS+F_DAYS*2)*24))
+    if( (IMPUTED < COMPLETE) & (ZEROS < COMPLETE) & (LENGTH > MIN_TRAINING))
     {
+      POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
+      POT_EST <- LIM$POT_EST[LIM$ID == ID]
+      
   #   ### Cojo los datos reales para CT y LBT y acorto la serie en otro caso
   #   if (TYPE %in% c("CT","LBT"))
   #   {
   #     real <- fread(paste0("stlf/test/",TYPE,"/",ID,".csv",sep=""))
   #     real <- zoo(real$SUM_VAL_AI/1000,order.by=real$DIA_LECTURA)
   #   } else {
-        a    <- a[1:(length(a[[1]])-24*F_DAYS)]
-        real <- window(r,start=index(r)[length(r)-24*F_DAYS+1])
-        r    <- window(r,end=index(r)[length(r)-24*F_DAYS])
+ 
+      r    <- zoo(a$kWh, order.by = seq(from = as.POSIXct(first(a$time),tz="CET"),
+                                        to   = as.POSIXct(last(a$time), tz="CET"), by="hour"))
+      real <- window(r,start=index(r)[length(r)-24*F_DAYS+1])
+      r    <- window(r,end=index(r)[length(r)-24*F_DAYS])
+      rm(a)
   #   }
 
       f     <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
