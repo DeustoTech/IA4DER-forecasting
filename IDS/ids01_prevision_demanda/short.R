@@ -15,67 +15,18 @@ library(arrow)
 
 plan(multisession)
 
-SAMPLE      <- 400   ### number of elements to assess per each type
-COMPLETE    <- 0.10  ### amount of data imputed allowed in the dataset
-TRAIN_LIMIT <- 0.75  ### length of the training period
-F_DAYS      <- 7     ### number of days to forecast for STLF
-T_DAYS      <- 21    ### number of days to use in the training widnow for AI methods for STLF
-MC          <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
-MCNAMES     <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
-MCTARGET    <- MCNAMES[1]
-
-MODELS      <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
-TYPES       <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR")
-
-DONE        <- Sys.glob(paths="stlf/forecast/*/*")
-ALL         <- Sys.glob(paths="post_cooked/*/*")
-
-{
-  FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- FSOL <- character()
-  if (length(Sys.glob(paths="stlf/forecast/CUPS/*")) != 0)
-  {
-    FCUPS <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
-    FCGP  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
-    FLBT  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
-    FCUA  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
-    FTR   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")   ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
-    FCT   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")   ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
-    FSOL  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/SOLAR/*"),"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
-  }
-
-  ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*") ,"/")),nrow=3)[3,])
-  ECGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CGP/*")  ,"/")),nrow=3)[3,])
-  ELBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/LBT/*")  ,"/")),nrow=3)[3,])
-  ECUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUA/*")  ,"/")),nrow=3)[3,])
-  ETR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/TR/*")   ,"/")),nrow=3)[3,])
-  ECT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CT/*")   ,"/")),nrow=3)[3,])
-  ESOL  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/SOLAR/*"),"/")),nrow=3)[3,])
-
-  CUPS   <- paste0("post_cooked/CUPS/", setdiff(ECUPS,FCUPS),".csv",sep="")
-  CGP    <- paste0("post_cooked/CGP/",  setdiff(ECGP,FCGP),  ".csv",sep="")
-  LBT    <- paste0("post_cooked/LBT/",  setdiff(ELBT,FLBT),  ".csv",sep="")
-  CUA    <- paste0("post_cooked/CUA/",  setdiff(ECUA,FCUA),  ".csv",sep="")
-  TR     <- paste0("post_cooked/TR/",   setdiff(ETR ,FTR ),  ".csv",sep="")
-  CT     <- paste0("post_cooked/CT/",   setdiff(ECT ,FCT ),  ".csv",sep="")
-  SOLAR  <- paste0("post_cooked/SOLAR/",setdiff(ESOL,FSOL),  ".csv",sep="")
-
-  ALL  <- union(sample(CUPS,SAMPLE),sample(CGP,SAMPLE))
-  ALL  <- union(ALL,sample(LBT,SAMPLE))
-
-  if (SAMPLE < length(CUA)){ ALL  <- union(ALL,sample(CUA,SAMPLE))
-  } else                   { ALL  <- union(ALL,CUA) }
-
-  if (SAMPLE < length(TR)) { ALL  <- union(ALL,sample(TR,SAMPLE))
-  } else                   { ALL  <- union(ALL,TR) }
-
-  if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
-  } else                   { ALL  <- union(ALL,CT) }
-}
-
-rm(CGP,CUPS,ECGP,ECUPS)
-gc()
-
-LIM  <- fread("features.csv",select=c("ID","POT_NOM","POT_EST"))
+SAMPLE       <- 400   ### number of elements to assess per each type
+FIXED_TEST   <- F     ### control if we wanted to test only on a fixed date or in random dates
+COMPLETE     <- 0.10  ### amount of data imputed allowed in the dataset
+TRAIN_LIMIT  <- 0.75  ### length of the training period
+F_DAYS       <- 7     ### number of days to forecast for STLF
+T_DAYS       <- 21    ### number of days to use in the training widnow for AI methods for STLF
+MIN_TRAINING <- (T_DAYS+F_DAYS*2)*24
+MC           <- c(0.25,0.5,0.8,0.90,0.95) ### quantiles to use in the monotona creciente error
+MCNAMES      <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
+MCTARGET     <- MCNAMES[1]
+MODELS       <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
+TYPES        <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR")
 
 for (TY in TYPES)
 {
@@ -90,7 +41,53 @@ for (TY in TYPES)
   dir.create(paste("stlf/mase/",    TY,sep="/"),showWarnings = F, recursive = T)
 }
 
+LIM  <- fread("features.csv",select=c("ID","POT_NOM","POT_EST"))
+DONE <- Sys.glob(paths="stlf/forecast/*/*")
 ALL  <- Sys.glob(paths="post_cooked/*/*")
+ALL  <- sample(ALL)
+
+# {
+#   FCUPS <- FCGP  <- FLBT  <- FCUA  <- FTR  <- FCT <- FSOL <- character()
+#   if (length(Sys.glob(paths="stlf/forecast/CUPS/*")) != 0)
+#   {
+#     FCUPS <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUPS/*") ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+#     FCGP  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CGP/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+#     FLBT  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/LBT/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+#     FCUA  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CUA/*")  ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+#     FTR   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/TR/*")   ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+#     FCT   <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/CT/*")   ,"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+#     FSOL  <- tryCatch(tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="stlf/forecast/SOLAR/*"),"/")),nrow=4)[4,]),warning=function(w){},error=function(e){},finally={})
+#   }
+# 
+#   ECUPS <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUPS/*") ,"/")),nrow=3)[3,])
+#   ECGP  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CGP/*")  ,"/")),nrow=3)[3,])
+#   ELBT  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/LBT/*")  ,"/")),nrow=3)[3,])
+#   ECUA  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CUA/*")  ,"/")),nrow=3)[3,])
+#   ETR   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/TR/*")   ,"/")),nrow=3)[3,])
+#   ECT   <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/CT/*")   ,"/")),nrow=3)[3,])
+#   ESOL  <- tools::file_path_sans_ext(matrix(unlist(strsplit(Sys.glob(paths="post_cooked/SOLAR/*"),"/")),nrow=3)[3,])
+# 
+#   CUPS   <- paste0("post_cooked/CUPS/", setdiff(ECUPS,FCUPS),".csv",sep="")
+#   CGP    <- paste0("post_cooked/CGP/",  setdiff(ECGP,FCGP),  ".csv",sep="")
+#   LBT    <- paste0("post_cooked/LBT/",  setdiff(ELBT,FLBT),  ".csv",sep="")
+#   CUA    <- paste0("post_cooked/CUA/",  setdiff(ECUA,FCUA),  ".csv",sep="")
+#   TR     <- paste0("post_cooked/TR/",   setdiff(ETR ,FTR ),  ".csv",sep="")
+#   CT     <- paste0("post_cooked/CT/",   setdiff(ECT ,FCT ),  ".csv",sep="")
+#   SOLAR  <- paste0("post_cooked/SOLAR/",setdiff(ESOL,FSOL),  ".csv",sep="")
+
+#   ALL  <- union(sample(CUPS,SAMPLE),sample(CGP,SAMPLE))
+#   ALL  <- union(ALL,sample(LBT,SAMPLE))
+# 
+#   if (SAMPLE < length(CUA)){ ALL  <- union(ALL,sample(CUA,SAMPLE))
+#   } else                   { ALL  <- union(ALL,CUA) }
+# 
+#   if (SAMPLE < length(TR)) { ALL  <- union(ALL,sample(TR,SAMPLE))
+#   } else                   { ALL  <- union(ALL,TR) }
+# 
+#   if (SAMPLE < length(CT)) { ALL  <- union(ALL,sample(CT,SAMPLE))
+#   } else                   { ALL  <- union(ALL,CT) }
+# rm(CGP,CUPS,ECGP,ECUPS)
+# gc()
 
 # CT: edxKl+t2YUOUV1679x4MEuUKWTy0sdqJMaOqa2NNgm933TCP+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g==
 #NAME <- "post_cooked/CT/edxKl+t2YUOUV1679x4MEuUKWTy0sdqJMaOqa2NNgm9.csv"
@@ -105,43 +102,45 @@ B <- foreach(NAME = ALL,
   TYPE <- strsplit(NAME,"/")[[1]][2]
   ID   <- tools::file_path_sans_ext(FILE)
 
+  ### If we have not carried out the forecasting yet
   if (!paste0("stlf/forecast/",TYPE,"/",FILE) %in% DONE)
   {
     a <- fread(NAME)
     if (length(names(a)) == 4) names(a) <- c("time","kWh","VAL_AE","AUTO")
-    r <- zoo(a$kWh, order.by = seq(from = as.POSIXct(first(a$time), tz="CET"),
-                                    to  =  as.POSIXct(last(a$time), tz="CET"), by="hour"))
-
-    POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
-    POT_EST <- LIM$POT_EST[LIM$ID == ID]
-
+    if (!FIXED_TEST) a <- a[1:min(sample(MIN_TRAINING:length(a$kWh),1),length(a$kWh)),]
+    
+    LENGTH  <- length(a$kWh)
+    ZEROS   <- sum(a$kWh==0)/LENGTH
+    IMPUTED <- sum(a$issue)/LENGTH
+    
+    ### If we have enough data which is non zero and non imputed values in the time serie,
+    ### then we continue with the assessment
+    if( (IMPUTED < COMPLETE) & (ZEROS < COMPLETE) & (LENGTH > MIN_TRAINING))
+    {
+      POT_NOM <- LIM$POT_NOM[LIM$ID == ID]
+      POT_EST <- LIM$POT_EST[LIM$ID == ID]
+      
   #   ### Cojo los datos reales para CT y LBT y acorto la serie en otro caso
   #   if (TYPE %in% c("CT","LBT"))
   #   {
   #     real <- fread(paste0("stlf/test/",TYPE,"/",ID,".csv",sep=""))
   #     real <- zoo(real$SUM_VAL_AI/1000,order.by=real$DIA_LECTURA)
   #   } else {
-      a    <- a[1:(length(a[[1]])-24*F_DAYS)]
+ 
+      r    <- zoo(a$kWh, order.by = seq(from = as.POSIXct(first(a$time),tz="CET"),
+                                        to   = as.POSIXct(last(a$time), tz="CET"), by="hour"))
       real <- window(r,start=index(r)[length(r)-24*F_DAYS+1])
       r    <- window(r,end=index(r)[length(r)-24*F_DAYS])
+      rm(a)
   #   }
 
-    TRAIN_DAYS  <- floor(TRAIN_LIMIT*(length(r)/24))    #### training days
-    LENGTH      <- length(a$kWh)
-    ZEROS       <- sum(a$kWh==0)/LENGTH
-    IMPUTED     <- sum(a$issue)/LENGTH
+      f     <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
+      MASE  <- MAPE  <- RMSE  <- TIME    <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
+      RISKA <- RISKB  <- MCA  <- MCB     <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
+      colnames(MASE)  <- colnames(MAPE)  <- colnames(RMSE) <- colnames(TIME) <- colnames(f) <- MODELS
+      colnames(RISKA) <- colnames(RISKB) <- colnames(MCA)  <- colnames(MCB)  <- MODELS
+      rownames(RISKA) <- rownames(RISKB) <- rownames(MCA)  <- rownames(MCB)  <- MCNAMES
 
-    f     <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
-    MASE  <- MAPE  <- RMSE  <- TIME    <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
-    RISKA <- RISKB  <- MCA  <- MCB     <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
-    colnames(MASE)  <- colnames(MAPE)  <- colnames(RMSE) <- colnames(TIME) <- colnames(f) <- MODELS
-    colnames(RISKA) <- colnames(RISKB) <- colnames(MCA)  <- colnames(MCB)  <- MODELS
-    rownames(RISKA) <- rownames(RISKB) <- rownames(MCA)  <- rownames(MCB)  <- MCNAMES
-
-    ### If we have enough data which is non zero and non imputed values in the time serie,
-    ### then we continue with the assessment
-    if( (IMPUTED < COMPLETE) & (ZEROS < COMPLETE) & (LENGTH > (T_DAYS+F_DAYS*2)*24))
-    {
       f["real"]  <- real
       f["mean"]  <- as.numeric(rep(mean(r),24*F_DAYS))
       f["rw"]    <- rep(as.numeric(window(r,start=index(r)[length(r)-23])),F_DAYS)
