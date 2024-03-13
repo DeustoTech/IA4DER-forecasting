@@ -160,9 +160,23 @@ fwrite(pb, "Resultados/pBarras.csv")
 
 
 
-#MAPES DE PBARRA
+#AÑADIR ENSEMBLE
 pBarra_df <- fread("Resultados/pBarras.csv")
 
+# Calculamos PBarra_Ensemble para cada conjunto de features
+features <- c("habitos", "tarifa", "cluster", "socio", "consumo", "edificio")
+modelos <- c("lm", "rf", "gbm", "nn", "svm")
+
+for(feature in features){
+  columnas <- paste0("PBarra_", modelos, "_", feature) # Nombres de las columnas actuales para la feature
+  pBarra_df[, paste0("PBarra_Ensemble_", feature) := rowMeans(.SD, na.rm = TRUE), .SDcols = columnas] # Calcula la media y añade la nueva columna
+}
+
+fwrite(pBarra_df, "Resultados/pBarras.csv", row.names = FALSE)
+
+
+#CALCULAR MAPE
+pBarra_df <- fread("Resultados/pBarras.csv")
 
 calculate_mape <- function(actual, predicted) {
   error <- abs((actual - predicted) / actual) * 100
