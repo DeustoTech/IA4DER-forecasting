@@ -90,7 +90,7 @@ for (TY in TYPES)
   dir.create(paste("stlf/mase/",    TY,sep="/"),showWarnings = F, recursive = T)
 }
 
-ALL  <- Sys.glob(paths="post_cooked/SOLAR/*")
+ALL  <- Sys.glob(paths="post_cooked/*/*")
 
 # CT: edxKl+t2YUOUV1679x4MEuUKWTy0sdqJMaOqa2NNgm933TCP+/G1i/4PIPVyZJkeRIas7gj6nbPBAjEfZ0td9g==
 #NAME <- "post_cooked/CT/edxKl+t2YUOUV1679x4MEuUKWTy0sdqJMaOqa2NNgm9.csv"
@@ -108,7 +108,7 @@ B <- foreach(NAME = ALL,
   if (!paste0("stlf/forecast/",TYPE,"/",FILE) %in% DONE)
   {
     a <- fread(NAME)
-    if (length(names(a)) == 4) <- c("time","kWh","VAL_AE","AUTO")
+    if (length(names(a)) == 4) names(a) <- c("time","kWh","VAL_AE","AUTO")
     r <- zoo(a$kWh, order.by = seq(from = as.POSIXct(first(a$time), tz="CET"),
                                     to  =  as.POSIXct(last(a$time), tz="CET"), by="hour"))
 
@@ -160,8 +160,8 @@ B <- foreach(NAME = ALL,
       tryCatch({LM     <- lm(real~past,data=TRAINSET)},warning=function(w) {},error=function(e) {print(e)},finally = {})
       tryCatch({ARIMA  <- auto.arima(r)},              warning=function(w) {},error=function(e) {print(e)},finally = {})
       tryCatch({ES     <- ses(r,h=24*F_DAYS)},         warning=function(w) {},error=function(e) {print(e)},finally = {})
-      tryCatch({NN     <- nnetar(window(r,start=index(r)[length(r)-24*30*6]))},                                    warning=function(w) {},error=function(e) {print(e)},finally = {})
-      tryCatch({SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2), cost=seq(1,100,10)))},warning=function(w) {},error=function(e) {print(e)},finally = {})
+      tryCatch({NN     <- nnetar(window(r,start=index(r)[length(r)-24*T_DAYS-23]))},                              warning=function(w) {},error=function(e) {print(e)},finally = {})
+      tryCatch({SVM    <- tune(svm,real~past,data=TRAINSET,ranges=list(elsilon=seq(0,1,0.2),cost=seq(1,100,10)))},warning=function(w) {},error=function(e) {print(e)},finally = {})
 
       tryCatch({f["lr"]    <- as.numeric(forecast(LM,PREDICT)$mean)},       warning=function(w) {},error= function(e) {print(e)},finally = {})
       tryCatch({f["arima"] <- as.numeric(forecast(ARIMA,h=24*F_DAYS)$mean)},warning=function(w) {},error= function(e) {print(e)},finally = {})
