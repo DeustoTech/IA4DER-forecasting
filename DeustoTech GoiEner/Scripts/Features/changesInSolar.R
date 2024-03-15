@@ -23,6 +23,27 @@ IDs <-  gsub("\\.csv$", "", basename(archivos)) # All the IDs in the solar folde
 
 
 valPots <- roseta %>% filter(CUPS %in% IDs) %>% select(VAL_POT_AUTORIZADA, CUPS) %>% distinct()
+horas <- data.frame(
+  hora = 0:23,
+  TARIFA_2.0 = c(
+    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
+    "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano", "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano"
+  ),
+  TARIFA_SOLAR = c(
+    "valle", "valle", "valle", "valle", "valle", "valle", "valle", "valle",
+    "llano", "llano",
+    "solar pico", "solar pico", "solar pico", "solar pico",
+    "solar llano", "solar llano",
+    "llano", "llano",
+    "pico", "pico", "pico", "pico",
+    "llano", "llano"
+  )
+)
+
 
 summary_functions <- list(ENTROPY = entropy, 
                           AVG = mean, 
@@ -30,13 +51,29 @@ summary_functions <- list(ENTROPY = entropy,
                           MEDIAN = median, 
                           Q3 = function(x) quantile(x, probs = 0.75, na.rm = TRUE), 
                           VAR = var, 
-                          SD = sd)
+                          SD = sd,
+                          TOTAL = sum,
+                          T2.0_VALLE = function(x) sum(x[horas$TARIFA_2.0 == "valle"]),
+                          T2.0_LLANO = function(x) sum(x[horas$TARIFA_2.0 == "llano"]),
+                          T2.0_PICO = function(x) sum(x[horas$TARIFA_2.0 == "pico"]),
+                          T_SOLAR_SLLANO = function(x) sum(x[horas$TARIFA_2.0 == "llano"]),
+                          T_SOLAR_PICO = function(x) sum(x[horas$TARIFA_2.0 == "pico"]),
+                          T_SOLAR_SPICO = function(x) sum(x[horas$TARIFA_2.0 == "solar pico"]),
+                          T_SOLAR_SLLANO = function(x) sum(x[horas$TARIFA_2.0 == "solar llano"]))
 
 
+# T2.0_VALLE <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
+# T2.0_LLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
+# T2.0_PICO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
+# 
+# T_SOLAR_LLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "llano"]])
+# T_SOLAR_PICO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
+# T_SOLAR_SPICO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
+# T_SOLAR_SLLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
 
 
 getWeeklyFeature <- function(serie, val_pot, summary_function){
-  
+  serie$hour <- hour(serie$timestamp)
   start_date <- min(serie$timestamp)
   
   # Week function repeats week TS is longer than a year, so we calculate the number of weeks by hand
