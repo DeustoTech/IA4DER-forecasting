@@ -130,7 +130,7 @@ for (i in 1:plots_needed) {
   p <- ggplot(vars_subset, aes(x = Variable, y = MAPE)) +
     geom_boxplot() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(title = paste("Distribución de MAPE hasta el 3er Cuartil - Grupo", i), x = "", y = "MAPE")
+    labs(title = paste("MAPE del PBarra"), x = "", y = "MAPE")
   
   print(p)
   
