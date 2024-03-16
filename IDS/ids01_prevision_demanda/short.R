@@ -27,6 +27,7 @@ MCNAMES      <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
 MCTARGET     <- MCNAMES[1]
 MODELS       <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 TYPES        <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR")
+TYPES        <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR","goi4_in","goi4_pre","goi4_pst")
 
 for (TY in TYPES)
 {
@@ -107,6 +108,7 @@ B <- foreach(NAME = ALL,
   {
     a <- fread(NAME)
     if (length(names(a)) == 4) names(a) <- c("time","kWh","VAL_AE","AUTO")
+    if (length(names(a)) == 3) names(a) <- c("time","kWh","issue")
     if (!FIXED_TEST) a <- a[1:min(sample(MIN_TRAINING:length(a$kWh),1),length(a$kWh)),]
     
     LENGTH  <- length(a$kWh)

@@ -18,15 +18,18 @@ ARROW2DF <- function(SOURCE)
   return(as.data.frame(at))
 }
 
-base     <- "../data/ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/"
+base     <- "data/"
 
 VARS     <- c("FEC_LECTURA","VAL_AI","VAL_AE") # VAL_R1 VAL_R2 VAL_R3 VAL_R4
 
-lec      <- ARROW2DF(paste0(base,"anm_ids03_aut_lec_horaria_val"))
-aut      <- ARROW2DF(paste0(base,"anm_ids03_lec_horaria_val"))
+lec      <- ARROW2DF(paste0(base,"anm_ids03_lecturas_horaria"))
+aut      <- ARROW2DF(paste0(base,"anm_ids03_lecturas_horarias_autoconsumos"))
 punto    <- ARROW2DF(paste0(base,"anm_ids03_punto_suministro"))
 contrato <- ARROW2DF(paste0(base,"anm_ids03_contrato"))
 poliza   <- ARROW2DF(paste0(base,"anm_ids03_poliza"))
+
+lec      <- lec[,c("CUPS",VARS)]
+aut      <- aut[,c("CUPS",VARS)]
 
 # intersect(punto$COD_PS,contrato$COD_PS)
 # intersect(poliza$COD_CONTRATO,contrato$COD_CONTRATO)
@@ -75,7 +78,7 @@ B <- foreach(NAME = NAMES,
          file=paste("post_cooked/SOLAR/",NAME,".csv",sep=""),
          dateTimeAs="write.csv",row.names=F)
   pdf(paste("fig/SOLAR/",NAME,".pdf",sep=""))
-    plot(aux,col=col,main=NAME)
+    try(plot(aux,col=col,main=NAME))
   dev.off()
 
   aux$VAL_AI
@@ -85,7 +88,16 @@ names(B) <- NAMES
 fwrite(data.frame(timestamp=index(B),B),
        file="all_solar.csv",dateTimeAs="write.csv",row.names=F)
 pdf(width=100,height=100,file="solar_plots.pdf")
-  plot(B)
+  plot(B[,001:100])
+  plot(B[,101:200])
+  plot(B[,201:300])
+  plot(B[,301:400])
+  plot(B[,401:500])
+  plot(B[,501:600])
+  plot(B[,601:700])
+  plot(B[,701:800])
+  plot(B[,801:900])
+  plot(B[,901:983])
 dev.off()
 
 ### features
@@ -97,3 +109,15 @@ dev.off()
 # fecha de primera inyeccion
 # entropia
 
+# library(arrow)
+# library(dplyr)
+# 
+# ds <- open_dataset("./inputdata/universidad_deusto/anm_ids01_test_lec_horaria_val/")
+# 
+# write_dataset(dataset = ds %>% select(all_of(c("CUPS",VARS))),
+# path = "test",
+# hive_style = F,
+# max_partitions = 2048,
+# partitioning = "CUPS",
+# format = "csv"
+# )
