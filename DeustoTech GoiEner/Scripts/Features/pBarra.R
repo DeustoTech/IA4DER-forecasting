@@ -155,6 +155,40 @@ for (i in 1:nrow(datosCombinados)) {
 }
 
 
+for (i in 1:nrow(datosCombinados)) {
+      # Restablecer numerador y denominador para cada combinación de modeloP y feature
+      numerador <- 0
+      denominador <- 0
+      for (modeloC in modelosC) {
+        
+        #en vez de predicted column hay que poner el mape de verdad
+        predicted_column <- paste("mape", modeloC, "_mediana", sep = "")
+        pred_median_column <- paste("pred", modeloC, "_mediana", sep = "")
+        
+        predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
+        pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
+        
+        # Sumar al denominador, ignorando NA
+        if (!is.na(predicted_value)) {
+          denominador <- denominador + predicted_value
+        }
+        
+        # Sumar al numerador, solo si ambos valores no son NA
+        if (!is.na(predicted_value) && !is.na(pred_median_value)) {
+          numerador <- numerador + (predicted_value * pred_median_value)
+        }
+      }
+      
+      pBarra_name <- paste("PBarra_errorMape")
+      
+      # Asignar el valor calculado de pBarra en pb
+      if(denominador != 0) {
+        pb[i, pBarra_name] <- numerador / denominador
+      } else {
+        pb[i, pBarra_name] <- NA  # Asignar NA si el denominador es cero
+      }
+}
+
 
 fwrite(pb, "Resultados/pBarras.csv")
 

@@ -104,10 +104,16 @@ allFeats_long <- allFeats %>%
 
 combined_long <- bind_rows(datosMAPE_long, allFeats_long)
 
+# Calcular NAs antes de filtrar
+nas_count <- combined_long %>%
+  group_by(Variable) %>%
+  summarise(NAs = sum(is.na(MAPE)), .groups = 'drop')
+
+# Filtrar por el Q3
 combined_long_filtered <- combined_long %>%
   group_by(Variable) %>%
-  mutate(Q3 = quantile(MAPE, 0.75, na.rm = T)) %>%
-  filter(MAPE <= Q3) %>%
+  mutate(Q3 = quantile(MAPE, 0.75, na.rm = TRUE)) %>%
+  filter(MAPE <= Q3 | is.na(MAPE)) %>%
   ungroup()
 
 total_vars <- n_distinct(combined_long_filtered$Variable)
@@ -128,14 +134,20 @@ for (i in 1:plots_needed) {
   
   print(p)
   
-  # Asegura una nueva página en el PDF para la tabla
+  # Nueva página para la tabla
   grid.newpage()
   
-  # Calcular y mostrar tabla de resumen
+  # Preparar tabla de resumen con conteo de NAs
   summary_table <- vars_subset %>%
     group_by(Variable) %>%
-    summarise(Min = min(MAPE), Q1 = quantile(MAPE, 0.25), Median = median(MAPE), Mean = mean(MAPE), 
-              Q3 = quantile(MAPE, 0.75), Max = max(MAPE), .groups = 'drop')
+    summarise(Min = min(MAPE, na.rm = TRUE), 
+              Q1 = quantile(MAPE, 0.25, na.rm = TRUE), 
+              Median = median(MAPE, na.rm = TRUE), 
+              Mean = mean(MAPE, na.rm = TRUE), 
+              Q3 = quantile(MAPE, 0.75, na.rm = TRUE), 
+              Max = max(MAPE, na.rm = TRUE), 
+              .groups = 'drop') %>%
+    left_join(nas_count, by = "Variable")  # Añadir conteo de NAs
   
   # Mostrar tabla de resumen
   grid.table(summary_table)
@@ -143,6 +155,9 @@ for (i in 1:plots_needed) {
 
 # Cerrar el archivo PDF
 dev.off()
+
+
+
 
 
 
