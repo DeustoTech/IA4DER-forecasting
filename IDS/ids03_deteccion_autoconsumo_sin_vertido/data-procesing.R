@@ -8,6 +8,8 @@ library(zoo)
 plan(multisession)
 
 dir.create("post_cooked/SOLAR", showWarnings = F, recursive = T)
+dir.create("post_cooked/NOPV",  showWarnings = F, recursive = T)
+dir.create("post_cooked/PV",    showWarnings = F, recursive = T)
 dir.create("fig/SOLAR", showWarnings = F, recursive = T)
 
 ARROW2DF <- function(SOURCE)
@@ -43,8 +45,8 @@ B <- foreach(NAME = NAMES,
              .errorhandling = "remove",
              .combine=merge) %dofuture%
 {
-  a1 <- aut[aut$CUPS == NAME,VARS]
-  a2 <- lec[lec$CUPS == NAME,VARS]
+  a1 <- lec[lec$CUPS == NAME,VARS]
+  a2 <- aut[aut$CUPS == NAME,VARS]
 
   a1 <- zooreg(a1[,-1],order.by=unique(as.POSIXct(a1$FEC_LECTURA)))
   a2 <- zooreg(a2[,-1],order.by=unique(as.POSIXct(a2$FEC_LECTURA)))
@@ -60,16 +62,35 @@ B <- foreach(NAME = NAMES,
     if(!last(index(a1)) < first(index(a2)))
       fin <- index(a2)[1]-60*60
     aux <- c(window(a1,end=fin),a2)
+
+    fwrite(data.frame(timestamp=index(a1),VAL_AI=a1$VAL_AI,
+                      VAL_AE=a1$VAL_AE, AUTO=a1$AUTO),
+          file=paste("post_cooked/NOPV/",NAME,".csv",sep=""),
+          dateTimeAs="write.csv",row.names=F)
+    fwrite(data.frame(timestamp=index(a2),VAL_AI=a2$VAL_AI,
+                      VAL_AE=a2$VAL_AE, AUTO=a2$AUTO),
+          file=paste("post_cooked/PV/",NAME,".csv",sep=""),
+          dateTimeAs="write.csv",row.names=F)
+
   } else { if (length(a1) != 0)
     {
       a1$AUTO <- 0
       aux     <- a1
       col     <- "red"
+      fwrite(data.frame(timestamp=index(a1),VAL_AI=a1$VAL_AI,
+                        VAL_AE=a1$VAL_AE, AUTO=a1$AUTO),
+            file=paste("post_cooked/NOPV/",NAME,".csv",sep=""),
+            dateTimeAs="write.csv",row.names=F)
+          
     } else if (length(a2) != 0)
     {
       a2$AUTO <- 1
       aux     <- a2
       col     <- "blue"
+      fwrite(data.frame(timestamp=index(a2),VAL_AI=a2$VAL_AI,
+                        VAL_AE=a2$VAL_AE, AUTO=a2$AUTO),
+            file=paste("post_cooked/PV/",NAME,".csv",sep=""),
+            dateTimeAs="write.csv",row.names=F)
     }
   }
 

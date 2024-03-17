@@ -27,7 +27,7 @@ MCNAMES      <- sapply(MC,function(q) { paste(100*q,"%",sep="")})
 MCTARGET     <- MCNAMES[1]
 MODELS       <- c("mean","rw","naive","simple","lr","ann","svm","arima","ses","ens")
 TYPES        <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR")
-TYPES        <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR","goi4_in","goi4_pre","goi4_pst")
+TYPES        <- c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR","PV","NOPV","goi4_in","goi4_pre","goi4_pst")
 
 for (TY in TYPES)
 {
