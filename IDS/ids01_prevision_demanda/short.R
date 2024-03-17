@@ -137,7 +137,7 @@ B <- foreach(NAME = ALL,
   #   }
 
       f     <- data.frame(matrix(ncol = length(MODELS), nrow = 24*F_DAYS))
-      MASE  <- MAPE  <- RMSE  <- TIME    <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
+      MASE  <- MAPE   <- RMSE <- TIME    <- data.frame(matrix(ncol = length(MODELS), nrow = 1))
       RISKA <- RISKB  <- MCA  <- MCB     <- data.frame(matrix(ncol = length(MODELS), nrow = length(MC)))
       colnames(MASE)  <- colnames(MAPE)  <- colnames(RMSE) <- colnames(TIME) <- colnames(f) <- MODELS
       colnames(RISKA) <- colnames(RISKB) <- colnames(MCA)  <- colnames(MCB)  <- MODELS
@@ -193,25 +193,25 @@ B <- foreach(NAME = ALL,
 
         TIME[1,j] <- median(abs(auxtime-aux_f),na.rm=T)
 
-        RISKA[,j] <- (max(real) < POT_NOM*MC) == (max(f[,j]) < POT_NOM*MC)
-        RISKB[,j] <- (max(real) < POT_EST*MC) == (max(f[,j]) < POT_EST*MC)
+ #       RISKA[,j] <- (max(real) < POT_NOM*MC) == (max(f[,j]) < POT_NOM*MC)
+ #       RISKB[,j] <- (max(real) < POT_EST*MC) == (max(f[,j]) < POT_EST*MC)
 
         MCA <- MCB <- NA
-        if (!any(is.na(f[,j])))
-        {
-          QQF       <- ecdf(f[,j])
-          MCA[,j]   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
-          MCB[,j]   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
-        }
+#        if (!any(is.na(f[,j])))
+#        {
+#          QQF       <- ecdf(f[,j])
+#          MCA[,j]   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
+#          MCB[,j]   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
+#        }
       }
 
       write.csv(MAPE, file=paste("stlf/mape", TYPE,FILE,sep="/"))
       write.csv(RMSE, file=paste("stlf/rmse", TYPE,FILE,sep="/"))
       write.csv(TIME, file=paste("stlf/time", TYPE,FILE,sep="/"))
-      write.csv(MCA,  file=paste("stlf/mca",  TYPE,FILE,sep="/"))
-      write.csv(MCB,  file=paste("stlf/mcb",  TYPE,FILE,sep="/"))
-      write.csv(RISKA,file=paste("stlf/riska",TYPE,FILE,sep="/"))
-      write.csv(RISKB,file=paste("stlf/riskb",TYPE,FILE,sep="/"))
+#      write.csv(MCA,  file=paste("stlf/mca",  TYPE,FILE,sep="/"))
+#      write.csv(MCB,  file=paste("stlf/mcb",  TYPE,FILE,sep="/"))
+#      write.csv(RISKA,file=paste("stlf/riska",TYPE,FILE,sep="/"))
+#      write.csv(RISKB,file=paste("stlf/riskb",TYPE,FILE,sep="/"))
       write.csv(MASE, file=paste("stlf/mase", TYPE,FILE,sep="/"))
     } ### if that test if the time series has data
   }   ### if that test if we have already done the forecast
