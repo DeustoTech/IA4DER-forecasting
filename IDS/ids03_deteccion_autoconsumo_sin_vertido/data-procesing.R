@@ -6,6 +6,7 @@ library(zoo)
 #library(lubridate)
 
 plan(multisession)
+options(future.globals.maxSize= 891289600)
 
 dir.create("post_cooked/SOLAR", showWarnings = F, recursive = T)
 dir.create("post_cooked/NOPV",  showWarnings = F, recursive = T)
