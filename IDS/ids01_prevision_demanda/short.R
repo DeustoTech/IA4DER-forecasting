@@ -196,9 +196,13 @@ B <- foreach(NAME = ALL,
         RISKA[,j] <- (max(real) < POT_NOM*MC) == (max(f[,j]) < POT_NOM*MC)
         RISKB[,j] <- (max(real) < POT_EST*MC) == (max(f[,j]) < POT_EST*MC)
 
-        QQF       <- ecdf(f[,j])
-        MCA[,j]   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
-        MCB[,j]   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
+        MCA <- MCB <- NA
+        if (!any(is.na(f[,j])))
+        {
+          QQF       <- ecdf(f[,j])
+          MCA[,j]   <- QQF(MC*POT_NOM) ## QQR(MC*POT_NOM)-QQF(MC*POT_NOM)
+          MCB[,j]   <- QQF(MC*POT_EST) ## QQR(MC*POT_EST)-QQF(MC*POT_EST)
+        }
       }
 
       write.csv(MAPE, file=paste("stlf/mape", TYPE,FILE,sep="/"))
