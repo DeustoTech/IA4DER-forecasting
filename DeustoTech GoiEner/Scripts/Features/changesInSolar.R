@@ -44,7 +44,7 @@ horas <- data.frame(
   )
 )
 
-
+# Functions to compute the features we want to get
 summary_functions <- list(ENTROPY = entropy, 
                           AVG = mean, 
                           Q1 = function(x) quantile(x, probs = 0.25, na.rm = TRUE), 
@@ -65,7 +65,6 @@ summary_functions <- list(ENTROPY = entropy,
 
 # Weekly 
 {
-
 
 getWeeklyFeature <- function(serie, val_pot, summary_function){
   serie$hour <- hour(serie$timestamp)
@@ -197,6 +196,64 @@ for (funcname in names(summary_functions)){
 
 
 # Monthly
+{
+
+getMonthlyFeature <- function(serie, val_pot, summary_function){
+  serie$hour <- hour(serie$timestamp)
+  start_date <- min(serie$timestamp)
+  
+  # Week function repeats week TS is longer than a year, so we calculate the number of weeks by hand
+  serie$month <- ceiling(as.numeric(difftime(serie$timestamp, start_date, units = "days")) / 30)
+  
+  serie$VAL_AI <- serie$VAL_AI / val_pot # Normalize the consumption
+  
+  
+  monthlyValues <- serie %>% group_by(month) %>%
+    summarise(Value = summary_function(VAL_AI))
+  
+  return(monthlyValues)
+}
+
+
+# Run this code to get the max number of weeks in the time series
+{
+  max_months <- 0
+  
+  for (archivo in archivos) {
+    serie <- fread(archivo)
+    num_months <- nmonths(serie$timestamp)
+    
+    if (num_months > max_months) {
+      max_months <- num_months
+    }
+  }
+  
+}
 
 
 
+
+
+for (funcname in names(summary_functions)){
+  
+  func <- summary_functions[[funcname]]
+  monthlyDf <- data.frame(matrix(NA, nrow = max_months, ncol = length(IDs)))
+  colnames(monthlyDf) <- IDs
+  
+  for (archivo in archivos) {
+    # Leer el archivo y obtener su ID
+    serie <- fread(archivo)
+    id_serie <- gsub("\\.csv$", "", basename(archivo))
+    
+    # Obtener el valor potencial autorizado para esa serie
+    vs <- valPots$VAL_POT_AUTORIZADA[which(valPots$CUPS == id_serie)]
+    
+    # Calcular las características semanales
+    monthlyValues <- getMonthlyFeature(serie, vs, summary_function = func)
+    
+    monthlyDf[1:nrow(monthlyValues), id_serie] <- monthlyValues$Value
+  }
+  fwrite(monthlyDf, paste("SOLAR/Variation/Monthly/Monthly_",funcname, ".csv", sep =""))
+}
+
+}
