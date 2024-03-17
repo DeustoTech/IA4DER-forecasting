@@ -62,14 +62,9 @@ summary_functions <- list(ENTROPY = entropy,
                           T_SOLAR_SLLANO = function(x) sum(x[horas$TARIFA_2.0 == "solar llano"]))
 
 
-# T2.0_VALLE <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
-# T2.0_LLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
-# T2.0_PICO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
-# 
-# T_SOLAR_LLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "llano"]])
-# T_SOLAR_PICO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
-# T_SOLAR_SPICO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
-# T_SOLAR_SLLANO <- sum(serie$VAL_AI[serie$hour %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
+
+# Weekly 
+{
 
 
 getWeeklyFeature <- function(serie, val_pot, summary_function){
@@ -129,7 +124,79 @@ for (funcname in names(summary_functions)){
   
     weeklyDf[1:nrow(weeklyValues), id_serie] <- weeklyValues$Value
     }
-  fwrite(weeklyDf, paste("SOLAR/Variation/Weekly/",funcname, ".csv", sep =""))
+  fwrite(weeklyDf, paste("SOLAR/Variation/Weekly/Weekly_",funcname, ".csv", sep =""))
 }
+}
+
+# Monthly
+{
+  
+}
+
+# Daily
+{
+  getDailyFeature <- function(serie, val_pot, summary_function){
+    serie$hour <- hour(serie$timestamp)
+    start_date <- min(serie$timestamp)
+    
+    
+    serie$day <- ceiling(as.numeric(difftime(serie$timestamp, start_date, units = "days")))
+    
+    serie$VAL_AI <- serie$VAL_AI / val_pot # Normalize the consumption
+    
+    
+    dailyValues <- serie %>% group_by(day) %>%
+      summarise(Value = summary_function(VAL_AI))
+    
+    return(dailyValues)
+  }
+  
+  
+  
+  # Run this code to get the max number of weeks in the time series
+  {
+    max_days <- 0
+    
+    for (archivo in archivos) {
+      serie <- fread(archivo)
+      num_days <- ndays(serie$timestamp)
+      
+      if (num_days > max_days) {
+        max_days <- num_days
+      }
+    }
+    
+  }
+  
+  
+  
+  for (funcname in names(summary_functions)){
+    
+    func <- summary_functions[[funcname]]
+    dailyDf <- data.frame(matrix(NA, nrow = max_days, ncol = length(IDs)))
+    colnames(dailyDf) <- IDs
+    
+    for (archivo in archivos) {
+      # Leer el archivo y obtener su ID
+      serie <- fread(archivo)
+      id_serie <- gsub("\\.csv$", "", basename(archivo))
+      
+      
+      # Obtener el valor potencial autorizado para esa serie
+      vs <- valPots$VAL_POT_AUTORIZADA[which(valPots$CUPS == id_serie)]
+      
+      # Calcular las características semanales
+      dailyValues <- getDailyFeature(serie, vs, summary_function = func)
+      
+      dailyDf[1:nrow(dailyValues), id_serie] <- dailyValues$Value
+    }
+    fwrite(dailyDf, paste("SOLAR/Variation/Daily/Daily_",funcname, ".csv", sep =""))
+  }
+}
+
+
+
+# Monthly
+
 
 
