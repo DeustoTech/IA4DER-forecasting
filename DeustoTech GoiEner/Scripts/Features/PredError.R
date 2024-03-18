@@ -109,11 +109,11 @@ L_p2 <- 0.200549
 L_p3 <- 0.185471
 }
 #EJECUTAR
-model_names <- c("Media", "Naive", "SN", "Arima", "ETS", "SVM", "NN", "Ensemble")
+model_names <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 
 # Target: columna que vamos a predecir: error mediano de cada modelo
-target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana",
-            "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
+target <- c("mean_error", "rw_error", "naive_error", "simple_error",
+            "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 
 # Carga fichero con todas las features
 {
@@ -168,6 +168,7 @@ categoricas <- c("tarifa.tarifa_atr_ref","cp.provincia", "cnae.provincia", "main
                  "size","annual_savings", "climate_change_actions", "energy_community", "citizen_role", "educational_level", "cluster")
 
 }
+
 for (col in colnames(feats)){
   if (col %in% categoricas){
     feats[[col]] <- as.factor(feats[[col]])
