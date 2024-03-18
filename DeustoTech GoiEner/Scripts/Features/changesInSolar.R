@@ -17,7 +17,7 @@ foreach(lib = librerias) %do% {
 }
 
 roseta <- fread("SOLAR/roseta.csv")
-archivos <- list.files("SOLAR/SOLAR", full.names = TRUE, pattern = "\\.csv$")
+archivos <- list.files("SOLAR/Iberdrola Limpio/SOLAR/", full.names = TRUE, pattern = "\\.csv$")
 
 IDs <-  gsub("\\.csv$", "", basename(archivos)) # All the IDs in the solar folder
 
@@ -127,10 +127,6 @@ for (funcname in names(summary_functions)){
 }
 }
 
-# Monthly
-{
-  
-}
 
 # Daily
 {
