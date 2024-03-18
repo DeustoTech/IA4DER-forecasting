@@ -111,4 +111,41 @@ feats2 <- feats %>% select(-contains("pBarra"), -ends_with(".x"))
 nuevos_nombres <- sub(".y", "", names(feats2))
 colnames(feats2) <- nuevos_nombres
 
+#combinar csvs de cruz
+
+load_and_process_files <- function(folder_path, type) {
+  
+  # Lista de archivos CSV en la carpeta
+  file_list <- list.files(folder_path, pattern = "*.csv", full.names = TRUE)
+  
+  # Cargar y unir todos los archivos en un dataframe
+  do.call(rbind, lapply(file_list, function(file_name) {
+    data <- fread(file_name)
+    
+    # Extraer el ID del nombre del archivo
+    id <- tools::file_path_sans_ext(basename(file_name))
+    
+    # Añadir columna ID
+    data <- mutate(data, id = id)
+    
+    # Renombrar columnas para indicar tipo (predicción o error)
+    if (type != "real") {
+      colnames(data) <- ifelse(colnames(data) == "id", "id", paste0(colnames(data), "_", type))
+    }
+    
+    return(data)
+  }))
+}
+
+# Cargar y procesar archivos
+mape_data <- load_and_process_files("NUEVOS DATOS/goi4_pst_mape", "error")
+preds_data <- load_and_process_files("NUEVOS DATOS/goi4_pst_preds", "pred")
+
+# Unir los dataframes por ID
+combined_data <- merge(mape_data, preds_data, by = "id")
+
+# Escribir el dataframe combinado en un nuevo archivo CSV
+fwrite(combined_data, "NUEVOS DATOS/combined_data.csv")
+
+# Nota: Este código asume que las estructuras de los archivos son consistentes y que se pueden unir directamente.
 
