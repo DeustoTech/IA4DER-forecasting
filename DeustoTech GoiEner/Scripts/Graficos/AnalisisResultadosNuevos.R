@@ -7,6 +7,7 @@ library(forecast)
 library(purrr)
 library(data.table)
 library(tidyverse)
+library(RColorBrewer)
 
 
 
@@ -15,6 +16,30 @@ CT <- fread("ResultadosNuevosCT.csv")
 CUPS <- fread("ResultadosNuevosCUPS.csv")
 
 #graficos 
+
+# predicciones de cruz
+
+# Calcular el cuantil 8 para cada columna
+error_data <- as.data.frame(fread("errors.csv")) %>% select(-id)
+colores <- Pastel2(ncol(error_data))
+
+
+# Calcular el cuantil 8 para cada columna
+cuantil_8 <- apply(error_data, 2, quantile, probs = 0.8, na.rm = T)
+
+# Filtrar los datos hasta el cuantil 8 para cada columna
+error_data_cuantil_8 <- lapply(1:ncol(error_data), function(i) error_data[error_data[, i] <= cuantil_8[i], i])
+
+# Crear el boxplot con los datos filtrados hasta el cuantil 8
+bp <- boxplot(error_data_cuantil_8,  main = "Errores de los modelos de predicción hasta el cuantil 8",
+ylab = "Error", xlab = "Modelos",
+names = c("Mean", "RW", "Naive", "Simple", 
+          "LR", "ANN", "SVM", "ARIMA", "SES", "ENS")) 
+
+
+
+
+
 
 ############# CENTROS DE TRANSFORMACION ##############
 nObs <- min(table(CT$Modelo), na.rm = T)
