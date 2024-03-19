@@ -25,7 +25,7 @@ c4$Tipo.Material[c4$Tipo.Material       == 210] <- 40
 c4$Función.Especial[c4$Función.Especial == 0]   <- 98
 c4$Función.Especial[c4$Función.Especial == 6]   <- 5
 
-cat("Colaborador","Accuracy","Individual",file="resultados.csv")
+cat("Colaborador","Accuracy","Individual","\n",file="resultados.csv",sep=",")
 for (t in names(r)[-1])
 {
   #a1 <- confusionMatrix(data=factor(c1[,t]),reference=factor(r[,t]))
@@ -35,9 +35,9 @@ for (t in names(r)[-1])
   a5 <- confusionMatrix(data=factor(c5[,t]),reference=factor(r[,t]))
 
   #cat("colaborador_1",a1$overall[1],min(a1$byClass[,6]),"\n",file="resultados.csv",append=T)
-  cat("colaborador_2",a2$overall[1],min(a2$byClass[,6]),"\n",file="resultados.csv",append=T)
-  cat("colaborador_3",a3$overall[1],min(a3$byClass[,6]),"\n",file="resultados.csv",append=T)
-  cat("colaborador_4",a4$overall[1],min(a4$byClass[,6]),"\n",file="resultados.csv",append=T)
-  cat("colaborador_5",a5$overall[1],min(a5$byClass[,6]),"\n",file="resultados.csv",append=T)
+  cat("colaborador_2",a2$overall[1],min(a2$byClass[,6]),"\n",file="resultados.csv",append=T,sep=",")
+  cat("colaborador_3",a3$overall[1],min(a3$byClass[,6]),"\n",file="resultados.csv",append=T,sep=",")
+  cat("colaborador_4",a4$overall[1],min(a4$byClass[,6]),"\n",file="resultados.csv",append=T,sep=",")
+  cat("colaborador_5",a5$overall[1],min(a5$byClass[,6]),"\n",file="resultados.csv",append=T,sep=",")
 }
 
