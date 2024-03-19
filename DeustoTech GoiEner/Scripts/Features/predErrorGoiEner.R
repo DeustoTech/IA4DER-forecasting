@@ -18,9 +18,15 @@ foreach(lib = librerias) %do% {
 
 #EJECUTAR
 combined_data <- fread("errors.csv")
-metadataNew <- fread("NUEVOS DATOS/metadata.csv")
+metadataNew <- fread("metadata.csv")
 metadataNew$id <- metadataNew$user
 metadataNew <- metadataNew %>% select(-user)
+metadataNew <- metadataNew %>%
+  mutate(across(
+    .cols = starts_with("p") & matches("^p[0-9]$"), # seleccionar solo las columnas que comienzan con "p" y tienen un único número
+    .fns = ~ifelse(is.na(.), 0, .) # reemplazar los valores NA por 0
+  ))
+
 
 datos <- merge(combined_data, metadataNew, by = "id")
 datos$cp.provincia <- substr(datos$zip_code, 1, 2)
@@ -33,7 +39,7 @@ for (col in colnames(datos)){
   }
 }
 
-tarifa <- c("cnae", "zip_code","p1", "p2","p3","p4","p5","p6","contracted_tariff")
+tarifa <- c("cnae.provincia", "cp.provincia","p1", "p2","p3","p4","p5","p6","contracted_tariff")
 
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   
@@ -70,13 +76,7 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
         # print(summary(testSet))
       }
     }
-    else {
-      # Imputación para variables numéricas
-      valueToImpute <- median(trainSet[[col]], na.rm = TRUE) # O usar mean según sea apropiado
-      trainSet[[col]][is.na(trainSet[[col]])] <- valueToImpute
-      testSet[[col]][is.na(testSet[[col]])] <- valueToImpute
-    }
-    
+ 
   }
   
   return(list(trainSet = trainSet, testSet = testSet))
@@ -92,7 +92,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
   
   modelo <- gsub("_.*$", "",target_variable)
   
-  columns <- list( tarifa)
+  columns <- list(tarifa)
   columns_names <- c("tarifa")
   results_list <- list()
   name_i = 1
@@ -188,6 +188,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     
     
     # Escribir el dataframe en un archivo CSV
+
     write.csv(resultados, file = paste("Resultados/PrediccionErrorNew/", "PredError_", modelo, "_", model_type, "_", col_name, ".csv", sep = ""), row.names = FALSE)
     
     
