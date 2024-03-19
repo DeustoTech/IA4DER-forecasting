@@ -84,6 +84,7 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
 
 
 
+
 # Función para realizar regresión y generar resultados
 regresion_model_feats <- function(model_type, target_variable, trainIndex) {
   
