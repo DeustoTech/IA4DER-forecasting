@@ -99,7 +99,7 @@ B <- foreach(NAME = NAMES,
                     VAL_AE=aux$VAL_AE, AUTO=aux$AUTO),
          file=paste("post_cooked/SOLAR/",NAME,".csv",sep=""),
          dateTimeAs="write.csv",row.names=F)
-  pdf(paste("fig/SOLAR/",NAME,".pdf",sep=""))
+  pdf(width=10,paste("fig/SOLAR/",NAME,".pdf",sep=""),)
     try(plot(aux,col=col,main=NAME))
   dev.off()
 
