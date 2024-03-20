@@ -62,6 +62,7 @@ generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
                      "rf" = c("PBarra_rf_tarifa_MAPE"),
                      "gbm" = c("PBarra_gbm_tarifa_MAPE"),
                      "Ensemble" = c("PBarra_Ensemble_tarifa_MAPE"),
+                     "RealError" = c("PBarra_errorMape_MAPE"),
                      stop("Tipo de modelo no reconocido"))
   
   data_filtrado <- data %>%
@@ -84,20 +85,20 @@ generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
 generar_grafico_pBarraMAPE(datosMAPE, "lm")
 generar_grafico_pBarraMAPE(datosMAPE, "rf")
 generar_grafico_pBarraMAPE(datosMAPE, "gbm")
-generar_grafico_pBarraMAPE(datosMAPE, "nn")
-generar_grafico_pBarraMAPE(datosMAPE, "svm")
+#generar_grafico_pBarraMAPE(datosMAPE, "nn")
+#generar_grafico_pBarraMAPE(datosMAPE, "svm")
 generar_grafico_pBarraMAPE(datosMAPE, "Ensemble")
-
+generar_grafico_pBarraMAPE(datosMAPE, "RealError")
 
 #GRAFICOS CON MAPES NORMALES Y MAPES DEL PBARRA
-allFeats <- fread("allFeats.csv")
+allFeats <- fread("NUEVOS DATOS/combined_data.csv")
 
 datosMAPE_long <- datosMAPE %>%
   select(contains("MAPE")) %>%
   pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 
 allFeats_long <- allFeats %>%
-  select(contains("mape") & ends_with("mediana")) %>%
+  select(contains("error")) %>%
   pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 
 combined_long <- bind_rows(datosMAPE_long, allFeats_long)
@@ -178,10 +179,10 @@ model_groups <- list(
   lm = grep("lm", combined_long$Variable, value = TRUE),
   rf = grep("rf", combined_long$Variable, value = TRUE),
   gbm = grep("gbm", combined_long$Variable, value = TRUE),
-  nn = grep("nn", combined_long$Variable, value = TRUE),
-  svm = grep("svm", combined_long$Variable, value = TRUE),
+  #nn = grep("nn", combined_long$Variable, value = TRUE),
+  #svm = grep("svm", combined_long$Variable, value = TRUE),
   ensemble = grep("Ensemble", combined_long$Variable, value = TRUE),
-  mediana = grep("mape.*(Media|Naive|SN|Arima|ETS|NN|SVM|Ensemble)_mediana", combined_long$Variable, value = TRUE)
+  mediana = grep("mape.*(Media|Naive|SN|Arima|ETS|NN|SVM|Ensemble)_error", combined_long$Variable, value = TRUE)
 )
 
 for (group_name in names(model_groups)) {
