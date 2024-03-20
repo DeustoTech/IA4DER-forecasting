@@ -7,7 +7,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "purrr") 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "purrr", "matrixStats") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -220,6 +220,8 @@ calculate_mape <- function(actual, predicted) {
 }
 
 pBarra_df <- as.data.frame(pBarra_df)
+pBarra_df <- pBarra_df %>%
+  mutate(real_mediana = rowMedians(as.matrix(select(., starts_with("Real_"))), na.rm = TRUE))
 
 pbarra_columns <- grep("PBarra", names(pBarra_df), value=TRUE)
 for (col in pbarra_columns) {
