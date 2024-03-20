@@ -10,7 +10,8 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice", "mltools") 
+               'quantmod', 'car', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
+               "randomForest", "mice", "mltools", "zoo") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -76,13 +77,11 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
         # print(summary(testSet))
       }
     }
- 
+    
   }
   
   return(list(trainSet = trainSet, testSet = testSet))
 }
-
-
 
 
 # Función para realizar regresión y generar resultados
@@ -101,6 +100,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     print(paste("Procesando columnas del set", col_name))
     datos <- as.data.frame(datos)
     datos <- datos %>% select(all_of(c(set, "id", target_variable)))
+    datos <- datos[datos$contracted_tariff != "6.2TD", ]
     #datos <- datos[, c(set, "id", target_variable), drop = FALSE]
     datos <- datos[which(!is.na(datos[[target_variable]])), ] %>% as.data.frame()
     sets_limpios <- limpiarColumnas(trainIndex, set, target_variable, datos)
@@ -123,12 +123,13 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       # Regresión Lineal
       model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
       predicciones_log <- exp(predict(model, newdata = testSet)) - 1
-      
+      predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
     } else if (model_type == "rf") {
       # Random Forest
       # print(names(trainSet))
       model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
       predicciones_log <- exp(predict(model, newdata = testSet)) - 1
+      predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
     } else if (model_type == "gbm") {
       # Gradient Boosting
       model <- gbm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
@@ -148,7 +149,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
           predicciones_log[t] <- prediccion
         }
       }
-      
+      predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
       
     } else if (model_type == "nn"){
       
@@ -163,7 +164,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
         predicciones_log[t] <- exp(predict(model, newdata = testRow)) - 1
         
       }
-      
+      predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
     }
     
     nameReal <- paste("Real", modelo, sep = "_" )
@@ -208,7 +209,7 @@ trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 
 modelos <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 model_names <- c("lm", "rf", "gbm", "svm", "nn")
-model_names <- c("lm")
+#model_names <- c("lm")
 target <- c("mean_error", "rw_error", "naive_error", "simple_error",
             "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 
@@ -219,3 +220,5 @@ for (modelo in model_names) {
     regresion_model_feats(modelo, variable, trainIndex)
   }
 }
+
+
