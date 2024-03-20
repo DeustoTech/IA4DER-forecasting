@@ -58,6 +58,7 @@ combinar_archivos_en_df <- function(archivos_modelo) {
   }
   
 
+
 lm_df <- combinar_archivos_en_df(model_files[[1]])
 fwrite(lm_df, "Resultados/PrediccionErrorNew/combined_lm.csv")
 rf_df <- combinar_archivos_en_df(model_files[[2]])

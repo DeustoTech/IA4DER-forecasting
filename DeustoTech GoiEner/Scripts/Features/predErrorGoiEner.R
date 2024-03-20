@@ -18,7 +18,7 @@ foreach(lib = librerias) %do% {
 }
 
 #EJECUTAR
-combined_data <- fread("errors.csv")
+combined_data <- fread("NUEVOS DATOS/combined_data.csv")
 metadataNew <- fread("metadata.csv")
 metadataNew$id <- metadataNew$user
 metadataNew <- metadataNew %>% select(-user)
@@ -32,7 +32,9 @@ metadataNew <- metadataNew %>%
 datos <- merge(combined_data, metadataNew, by = "id")
 datos$cp.provincia <- substr(datos$zip_code, 1, 2)
 datos$cnae.provincia <- substr(datos$cnae, 1, 1)
-categoricas <- c("cnae", "zip_code", "contracted_tariff", "self_consumption_type", "province", "municipality", "cp.provincia", "cnae.provincia")
+datos[, (names(datos)[sapply(datos, is.numeric)]) := lapply(.SD, function(x) ifelse(is.na(x), mean(x, na.rm = TRUE), x)), .SDcols = sapply(datos, is.numeric)]
+datos[, (names(datos)[sapply(datos, is.character)]) := lapply(.SD, as.factor), .SDcols = sapply(datos, is.character)]
+categoricas <- c( "contracted_tariff", "self_consumption_type", "province", "municipality")
 
 for (col in colnames(datos)){
   if (col %in% categoricas){
@@ -84,6 +86,23 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
 }
 
 
+limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
+  
+  
+  
+  cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), id)
+  clean_nrow <- nrow(cleanSet)
+  trainIndexClean <- sample(1:clean_nrow, index * clean_nrow)
+  
+  trainSet <- cleanSet[trainIndexClean, ]
+  testSet <- cleanSet[-trainIndexClean, ]
+  
+  
+  return(list(trainSet = trainSet, testSet = testSet))
+}
+
+
+
 # Función para realizar regresión y generar resultados
 regresion_model_feats <- function(model_type, target_variable, trainIndex) {
   
@@ -101,6 +120,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     datos <- as.data.frame(datos)
     datos <- datos %>% select(all_of(c(set, "id", target_variable)))
     datos <- datos[datos$contracted_tariff != "6.2TD", ]
+    datos$cp.provincia <- as.integer(datos$cp.provincia)
     #datos <- datos[, c(set, "id", target_variable), drop = FALSE]
     datos <- datos[which(!is.na(datos[[target_variable]])), ] %>% as.data.frame()
     sets_limpios <- limpiarColumnas(trainIndex, set, target_variable, datos)
@@ -121,7 +141,7 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
     
     if (model_type == "lm") {
       # Regresión Lineal
-      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
+      model <- lm(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet)
       predicciones_log <- exp(predict(model, newdata = testSet)) - 1
       predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
     } else if (model_type == "rf") {
@@ -209,8 +229,8 @@ trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 
 modelos <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 model_names <- c("lm", "rf", "gbm", "svm", "nn")
-#model_names <- c("lm")
-target <- c("mean_error", "rw_ºerror", "naive_error", "simple_error",
+model_names <- c("gbm")
+target <- c("mean_error", "rw_error", "naive_error", "simple_error",
             "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 
 
