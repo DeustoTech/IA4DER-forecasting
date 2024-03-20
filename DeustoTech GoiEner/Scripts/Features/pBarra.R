@@ -16,7 +16,7 @@ foreach(lib = librerias) %do% {
 
 # Leer
 
-folder <- "Resultados/PrediccionError/AllFeats"
+folder <- "Resultados/PrediccionErrorNew"
 
 # Definir una función para buscar archivos por patrón en todas las carpetas de modelos
 buscar_archivos_por_modelo <- function(folder, pattern) {
@@ -39,9 +39,9 @@ model_files <- list(
   # Buscar archivos por cada tipo de modelo
   lm <- buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$"),
   rf <- buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
-  gbm <- buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$"),
-  svm <- buscar_archivos_por_modelo(folder, "_svm_.*\\.csv$"),
-  nn <- buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
+  gbm <- buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$")
+  #svm <- buscar_archivos_por_modelo(folder, "_svm_.*\\.csv$"),
+  #nn <- buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
 )
 
 
@@ -49,39 +49,39 @@ model_files <- list(
 combinar_archivos_en_df <- function(archivos_modelo) {
   # Inicializar una lista para almacenar dataframes
   lista_de_dfs <- lapply(archivos_modelo, fread)
-  
-  combined <- lista_de_dfs %>% bind_rows() %>% group_by(ID)
-  
-  combined <- combined %>% 
-    distinct(ID, .keep_all = TRUE)
-  
+  #combined <- lista_de_dfs %>% bind_rows() %>% group_by(ID)
+  #combined <- combined %>% 
+  #  distinct(ID, .keep_all = TRUE)
+  combined <- Reduce(function(x, y) merge(x, y, by = "ID", all = T), lista_de_dfs[1:10])
   return(combined)
   
   }
   
 
 lm_df <- combinar_archivos_en_df(model_files[[1]])
-fwrite(lm_df, "Resultados/PrediccionError/combined_lm.csv")
+fwrite(lm_df, "Resultados/PrediccionErrorNew/combined_lm.csv")
 rf_df <- combinar_archivos_en_df(model_files[[2]])
-fwrite(rf_df, "Resultados/PrediccionError/combined_rf.csv")
+fwrite(rf_df, "Resultados/PrediccionErrorNew/combined_rf.csv")
 gbm_df <- combinar_archivos_en_df(model_files[[3]])
-fwrite(gbm_df, "Resultados/PrediccionError/combined_gbm.csv")
-svm_df <- combinar_archivos_en_df(model_files[[4]])
-fwrite(svm_df, "Resultados/PrediccionError/combined_svm.csv")
-nn_df <- combinar_archivos_en_df(model_files[[5]])
-fwrite(nn_df, "Resultados/PrediccionError/combined_nn.csv")
+fwrite(gbm_df, "Resultados/PrediccionErrorNew/combined_gbm.csv")
+#svm_df <- combinar_archivos_en_df(model_files[[4]])
+#fwrite(svm_df, "Resultados/PrediccionErrorNew/combined_svm.csv")
+#nn_df <- combinar_archivos_en_df(model_files[[5]])
+#fwrite(nn_df, "Resultados/PrediccionErrorNew/combined_nn.csv")
 
 
 #columns_to_merge_by <- c("ID", "Real_Arima", "Real_Ensemble", "Real_ETS", "Real_Media", "Real_Naive", "Real_NN", "Real_SN", "Real_SVM")
 
-combinedPreds <- Reduce(function(x, y) merge(x, y, by = "ID"), list(lm_df, rf_df, gbm_df, svm_df, nn_df))
-fwrite(combinedPreds, "Resultados/PrediccionError/combinedPreds.csv")
+combinedPreds <- Reduce(function(x, y) merge(x, y, by = "ID"), list(lm_df, rf_df, gbm_df))
+fwrite(combinedPreds, "Resultados/PrediccionErrorNew/combinedPreds.csv")
 
 
 #LEER ARCHIVOS PARA PBARRA
-allFeats <- fread("allFeats.csv")
-combinedPreds <- fread("Resultados/PrediccionError/combinedPreds.csv")
-feats <- allFeats %>% select(ID, real_mediana:predEnsemble_q3)
+allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+combinedPreds <- fread("Resultados/PrediccionErrorNew/combinedPreds.csv")
+feats <- allFeats 
+feats$ID <- feats$id
+feats <- feats %>% select(-id, -V1_error)
 
 colsY <- grep("\\.y$", names(combinedPreds), value = TRUE)
 combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsY), with = FALSE]
@@ -95,24 +95,25 @@ datosCombinados <- merge(combinedPreds, feats, by = "ID")
 
 #CALCULAR P BARRA
 
-modelosC <- c("Media", "Naive", "SN", "Arima", "ETS", "NN", "SVM", "Ensemble")
-modelosP <- c("lm", "rf", "gbm", "nn", "svm")
-features <- c("habitos", "tarifa", "cluster", "socio", "consumo", "edificio")
+modelosC <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
+modelosP <- c("lm", "rf", "gbm")
+features <- c("tarifa")
 
 
 columnasPBarra <- paste("PBarra", rep(modelosP, each = length(features)), rep(features, times = length(modelosP)), sep = "_")
 pb <- data.frame(matrix(ncol = length(columnasPBarra), nrow = nrow(datosCombinados)))
 names(pb) <- columnasPBarra
 pb$ID <- datosCombinados$ID
-pb$real_mediana <- datosCombinados$real_mediana
-pb$Real_Media <- datosCombinados$Real_Media
-pb$Real_Naive <- datosCombinados$Real_Naive
-pb$Real_SN <- datosCombinados$Real_SN
-pb$Real_Arima <- datosCombinados$Real_Arima
-pb$Real_ETS <- datosCombinados$Real_ETS
-pb$Real_NN <- datosCombinados$Real_NN
-pb$Real_SVM <- datosCombinados$Real_SVM
-pb$Real_Ensemble <- datosCombinados$Real_Ensemble
+pb$Real_mean <- datosCombinados$Real_mean
+pb$Real_rw <- datosCombinados$Real_rw
+pb$Real_naive <- datosCombinados$Real_naive
+pb$Real_simple <- datosCombinados$Real_simple
+pb$Real_lr <- datosCombinados$Real_lr
+pb$Real_ann <- datosCombinados$Real_ann
+pb$Real_svm <- datosCombinados$Real_svm
+pb$Real_arima <- datosCombinados$Real_arima
+pb$Real_ses <- datosCombinados$Real_ses
+pb$Real_ens <- datosCombinados$Real_ens
 
 
 #BUCLE QUE HACE PBARRA
@@ -126,7 +127,7 @@ for (i in 1:nrow(datosCombinados)) {
         
         #en vez de predicted column hay que poner el mape de verdad
         predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
-        pred_median_column <- paste("pred", modeloC, "_mediana", sep = "")
+        pred_median_column <- paste(modeloC, "_pred", sep = "")
         
         predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
         pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
@@ -162,8 +163,8 @@ for (i in 1:nrow(datosCombinados)) {
       for (modeloC in modelosC) {
         
         #en vez de predicted column hay que poner el mape de verdad
-        predicted_column <- paste("mape", modeloC, "_mediana", sep = "")
-        pred_median_column <- paste("pred", modeloC, "_mediana", sep = "")
+        predicted_column <- paste(modeloC, "_error", sep = "")
+        pred_median_column <- paste(modeloC, "_pred", sep = "")
         
         predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
         pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
@@ -198,8 +199,8 @@ fwrite(pb, "Resultados/pBarras.csv")
 pBarra_df <- fread("Resultados/pBarras.csv")
 
 # Calculamos PBarra_Ensemble para cada conjunto de features
-features <- c("habitos", "tarifa", "cluster", "socio", "consumo", "edificio")
-modelos <- c("lm", "rf", "gbm", "nn", "svm")
+features <- c("tarifa")
+modelos <- c("lm", "rf", "gbm")
 
 for(feature in features){
   columnas <- paste0("PBarra_", modelos, "_", feature) # Nombres de las columnas actuales para la feature
@@ -226,11 +227,13 @@ for (col in pbarra_columns) {
 
 pBarra_df <- as.data.table(pBarra_df)
 
-write.csv(pBarra_df, 'Resultados/pBarrasMAPE.csv', row.names = FALSE)
+fwrite(pBarra_df, 'Resultados/pBarrasMAPE.csv', row.names = FALSE)
 
 pBarrasMAPE <- fread("Resultados/pBarrasMAPE.csv")
 
 summary(pBarrasMAPE)
+
+
 
 
 

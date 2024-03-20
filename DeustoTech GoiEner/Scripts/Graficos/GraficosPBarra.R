@@ -58,12 +58,10 @@ datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
 generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
   # Definimos las columnas basadas en el tipo de modelo
   columnas <- switch(tipo_modelo,
-                     "lm" = c("PBarra_lm_habitos_MAPE", "PBarra_lm_cluster_MAPE", "PBarra_lm_edificio_MAPE", "PBarra_lm_socio_MAPE", "PBarra_lm_consumo_MAPE", "PBarra_lm_tarifa_MAPE"),
-                     "rf" = c("PBarra_rf_habitos_MAPE", "PBarra_rf_cluster_MAPE", "PBarra_rf_edificio_MAPE", "PBarra_rf_socio_MAPE", "PBarra_rf_consumo_MAPE", "PBarra_rf_tarifa_MAPE"),
-                     "gbm" = c("PBarra_gbm_habitos_MAPE", "PBarra_gbm_cluster_MAPE", "PBarra_gbm_edificio_MAPE", "PBarra_gbm_socio_MAPE", "PBarra_gbm_consumo_MAPE", "PBarra_gbm_tarifa_MAPE"),
-                     "nn" = c("PBarra_nn_habitos_MAPE", "PBarra_nn_cluster_MAPE", "PBarra_nn_edificio_MAPE", "PBarra_nn_socio_MAPE", "PBarra_nn_consumo_MAPE", "PBarra_nn_tarifa_MAPE"),
-                     "svm" = c("PBarra_svm_habitos_MAPE", "PBarra_svm_cluster_MAPE", "PBarra_svm_edificio_MAPE", "PBarra_svm_socio_MAPE", "PBarra_svm_consumo_MAPE", "PBarra_svm_tarifa_MAPE"),
-                     "Ensemble" = c("PBarra_Ensemble_habitos_MAPE", "PBarra_Ensemble_cluster_MAPE", "PBarra_Ensemble_edificio_MAPE", "PBarra_Ensemble_socio_MAPE", "PBarra_Ensemble_consumo_MAPE", "PBarra_Ensemble_tarifa_MAPE"),
+                     "lm" = c("PBarra_lm_tarifa_MAPE"),
+                     "rf" = c("PBarra_rf_tarifa_MAPE"),
+                     "gbm" = c("PBarra_gbm_tarifa_MAPE"),
+                     "Ensemble" = c("PBarra_Ensemble_tarifa_MAPE"),
                      stop("Tipo de modelo no reconocido"))
   
   data_filtrado <- data %>%
