@@ -141,8 +141,13 @@ load_and_process_files <- function(folder_path, type) {
 mape_data <- load_and_process_files("NUEVOS DATOS/goi4_pst_mape", "error")
 preds_data <- load_and_process_files("NUEVOS DATOS/goi4_pst_preds", "pred")
 
+preds_data2 <- preds_data %>%
+  group_by(id) %>%
+  sample_n(size = 1) %>%
+  ungroup()
+
 # Unir los dataframes por ID
-combined_data <- merge(mape_data, preds_data, by = "id")
+combined_data <- merge(mape_data, preds_data2, by = "id")
 
 # Escribir el dataframe combinado en un nuevo archivo CSV
 fwrite(combined_data, "NUEVOS DATOS/combined_data.csv")
