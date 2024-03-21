@@ -159,7 +159,8 @@ dev.off()
 
 
 
-
+datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
+allFeats <- fread("NUEVOS DATOS/combined_data.csv")
 
 combined_long <- bind_rows(
   datosMAPE %>%
@@ -170,19 +171,25 @@ combined_long <- bind_rows(
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 )
 
-
+combined_long <- filter(combined_long, Variable != "V1_error")
 # Iniciar el archivo PDF para los gráficos y tablas
 pdf("MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5)
 
 # Definir los grupos de modelos
+#model_groups <- list(
+#  lm = grep("lm", combined_long$Variable, value = TRUE),
+#  rf = grep("rf", combined_long$Variable, value = TRUE),
+#  gbm = grep("gbm", combined_long$Variable, value = TRUE),
+#  #nn = grep("nn", combined_long$Variable, value = TRUE),
+#  #svm = grep("svm", combined_long$Variable, value = TRUE),
+#  ensemble = grep("Ensemble", combined_long$Variable, value = TRUE),
+#  realError = grep("errorMape", combined_long$Variable, value = TRUE),
+#  mediana = grep("_error$", combined_long$Variable, value = TRUE)
+#)
+
 model_groups <- list(
-  lm = grep("lm", combined_long$Variable, value = TRUE),
-  rf = grep("rf", combined_long$Variable, value = TRUE),
-  gbm = grep("gbm", combined_long$Variable, value = TRUE),
-  #nn = grep("nn", combined_long$Variable, value = TRUE),
-  #svm = grep("svm", combined_long$Variable, value = TRUE),
-  ensemble = grep("Ensemble", combined_long$Variable, value = TRUE),
-  realError = grep("errorMape", combined_long$Variable, value = TRUE),
+  tarifa = grep("tarifa", combined_long$Variable, value = TRUE),
+  realError = grep("errorMape_MAPE", combined_long$Variable, value = TRUE),
   mediana = grep("_error$", combined_long$Variable, value = TRUE)
 )
 
