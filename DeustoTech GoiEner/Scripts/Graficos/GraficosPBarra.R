@@ -158,7 +158,7 @@ dev.off()
 
 
 
-
+#GRÁFICO NORMAL CON TODOS LOS MAPES DE TODAS LAS PREDICCIONES
 datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
 allFeats <- fread("NUEVOS DATOS/combined_data.csv")
 
@@ -172,6 +172,90 @@ combined_long <- bind_rows(
 )
 
 combined_long <- filter(combined_long, Variable != "V1_error")
+combined_long <- filter(combined_long, Variable != "PBarra_errorMape")
+
+combined_long <- combined_long %>% 
+  mutate(Q3 = quantile(MAPE, 0.75, na.rm = TRUE)) %>%
+  filter(MAPE <= Q3) 
+
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+# 2. Selecciona los 4 con la mediana más baja
+variables_baja_mediana <- head(medianas$Variable, 5)
+
+# 3. Crea una nueva variable en tu dataframe para indicar si está entre los 4 más bajos
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+# 4. Utiliza esta nueva variable para colorear las cajas en tu gráfico
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = paste("MAPE -", group_name), x = "", y = "MAPE") +
+  guides(fill = FALSE) # Para no mostrar la leyenda
+
+#GRAFICO NORMAL CON LOS MAPES DE LAS PREDICCIONES ENSEMBLE
+datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
+allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+
+datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_errorMape_MAPE, PBarra_Ensemble_tarifa_MAPE)
+allFeats <- allFeats %>% select(ens_error)
+
+combined_long <- bind_rows(
+  datosMAPE %>%
+    select(contains("MAPE")) %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
+  allFeats %>%
+    select(contains("error")) %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
+)
+
+combined_long <- filter(combined_long, Variable != "V1_error")
+
+combined_long <- combined_long %>% 
+  mutate(Q3 = quantile(MAPE, 0.75, na.rm = TRUE)) %>%
+  filter(MAPE <= Q3) 
+
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+# 2. Selecciona los 4 con la mediana más baja
+variables_baja_mediana <- head(medianas$Variable, 1)
+
+# 3. Crea una nueva variable en tu dataframe para indicar si está entre los 4 más bajos
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+# 4. Utiliza esta nueva variable para colorear las cajas en tu gráfico
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = paste("MAPE -", group_name), x = "", y = "MAPE") +
+  guides(fill = FALSE) # Para no mostrar la leyenda
+
+
+#GENERAR PDF
+datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
+allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+
+combined_long <- bind_rows(
+  datosMAPE %>%
+    select(contains("MAPE")) %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
+  allFeats %>%
+    select(contains("error")) %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
+)
+
+combined_long <- filter(combined_long, Variable != "V1_error")
+combined_long <- filter(combined_long, Variable != "PBarra_errorMape")
+
+
 # Iniciar el archivo PDF para los gráficos y tablas
 pdf("MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5)
 
