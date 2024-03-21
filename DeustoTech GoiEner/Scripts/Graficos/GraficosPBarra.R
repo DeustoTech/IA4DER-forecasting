@@ -166,7 +166,7 @@ combined_long <- bind_rows(
     select(contains("MAPE")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
   allFeats %>%
-    select(contains("mape") & contains("_mediana")) %>%
+    select(contains("error")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 )
 
@@ -182,7 +182,8 @@ model_groups <- list(
   #nn = grep("nn", combined_long$Variable, value = TRUE),
   #svm = grep("svm", combined_long$Variable, value = TRUE),
   ensemble = grep("Ensemble", combined_long$Variable, value = TRUE),
-  mediana = grep("mape.*(Media|Naive|SN|Arima|ETS|NN|SVM|Ensemble)_error", combined_long$Variable, value = TRUE)
+  realError = grep("errorMape", combined_long$Variable, value = TRUE),
+  mediana = grep("_error$", combined_long$Variable, value = TRUE)
 )
 
 for (group_name in names(model_groups)) {

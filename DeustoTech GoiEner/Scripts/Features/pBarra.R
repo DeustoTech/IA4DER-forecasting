@@ -78,9 +78,8 @@ fwrite(combinedPreds, "Resultados/PrediccionErrorNew/combinedPreds.csv")
 
 
 #LEER ARCHIVOS PARA PBARRA
-allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+feats <- fread("NUEVOS DATOS/combined_data.csv")
 combinedPreds <- fread("Resultados/PrediccionErrorNew/combinedPreds.csv")
-feats <- allFeats 
 feats$ID <- feats$id
 feats <- feats %>% select(-id, -V1_error)
 
@@ -88,7 +87,8 @@ colsY <- grep("\\.y$", names(combinedPreds), value = TRUE)
 combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsY), with = FALSE]
 colsX <- grep("\\.x$", names(combinedPreds), value = TRUE)
 combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsX), with = FALSE]
-
+feats$Real <- feats$real_pred
+feats <- feats %>% select(-real_pred)
 datosCombinados <- merge(combinedPreds, feats, by = "ID")
 #fwrite(datosCombinados, "datosParaPBarra.csv")
 #datosCombinados <- fread("datosParaPBarra.csv")
@@ -105,6 +105,7 @@ columnasPBarra <- paste("PBarra", rep(modelosP, each = length(features)), rep(fe
 pb <- data.frame(matrix(ncol = length(columnasPBarra), nrow = nrow(datosCombinados)))
 names(pb) <- columnasPBarra
 pb$ID <- datosCombinados$ID
+pb$Real <- datosCombinados$Real
 pb$Real_mean <- datosCombinados$Real_mean
 pb$Real_rw <- datosCombinados$Real_rw
 pb$Real_naive <- datosCombinados$Real_naive
@@ -223,9 +224,10 @@ pBarra_df <- as.data.frame(pBarra_df)
 pBarra_df <- pBarra_df %>%
   mutate(real_mediana = rowMedians(as.matrix(select(., starts_with("Real_"))), na.rm = TRUE))
 
+model_names <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 pbarra_columns <- grep("PBarra", names(pBarra_df), value=TRUE)
 for (col in pbarra_columns) {
-  pBarra_df[paste0(col, "_MAPE")] <- calculate_mape(pBarra_df$real_mediana, pBarra_df[[col]])
+    pBarra_df[paste0(col,"_MAPE")] <- calculate_mape(pBarra_df$Real, pBarra_df[[col]])
 }
 
 pBarra_df <- as.data.table(pBarra_df)
@@ -238,7 +240,7 @@ summary(pBarrasMAPE)
 
 
 
-
+#########################################################################################
 
 summaryPredsFeats <- fread("Resultados/CUPS/SummaryPredsFeats.csv")
 

@@ -34,6 +34,7 @@ datos$cp.provincia <- substr(datos$zip_code, 1, 2)
 datos$cnae.provincia <- substr(datos$cnae, 1, 1)
 datos[, (names(datos)[sapply(datos, is.numeric)]) := lapply(.SD, function(x) ifelse(is.na(x), mean(x, na.rm = TRUE), x)), .SDcols = sapply(datos, is.numeric)]
 datos[, (names(datos)[sapply(datos, is.character)]) := lapply(.SD, as.factor), .SDcols = sapply(datos, is.character)]
+
 categoricas <- c( "contracted_tariff", "self_consumption_type", "province", "municipality")
 
 for (col in colnames(datos)){
