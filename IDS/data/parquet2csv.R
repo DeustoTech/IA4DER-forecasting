@@ -14,7 +14,7 @@ ARROW2DF <- function(SOURCE)
 
 #IDS1
 dir.create("./CSV/ids01_prevision_demanda", showWarnings = F, recursive = T)
-base    <- "./ids01_prevision_demanda/inputdata/data/"
+base    <- "./ids01_prevision_demanda/data/"
 exclude <- c("anm_ids01_lec_horaria_val")
 output  <- "./CSV/ids01_prevision_demanda/"
 
@@ -23,7 +23,7 @@ for (i in setdiff(dir(path = base),exclude))
 
 #IDS3
 dir.create("./CSV/ids03_deteccion_autoconsumo_sin_vertido", showWarnings = F, recursive = T)
-base    <- "./ids03_deteccion_autoconsumo_sin_vertido/inputdata/data/"
+base    <- "./ids03_deteccion_autoconsumo_sin_vertido/data/"
 exclude <- c("anm_ids03_lec_horaria_val","anm_ids03_aut_lec_horaria_val")
 output  <- "./CSV/ids03_deteccion_autoconsumo_sin_vertido/"
 
@@ -32,7 +32,7 @@ for (i in setdiff(dir(path = base),exclude))
 
 #IDS4
 dir.create("./CSV/ids04_descubrimiento_red", showWarnings = F, recursive = T)
-base    <- "./ids04_descubrimiento_red/inputdata/data/"
+base    <- "./ids04_descubrimiento_red/data/"
 exclude <- "Eventos Telegestión.xlsx"
 output  <- "./CSV/ids04_descubrimiento_red/"
 
