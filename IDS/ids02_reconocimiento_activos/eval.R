@@ -25,7 +25,7 @@ names(c1) <- names(r)
 c1 <- c1[c1$Nombre %in% T$Nombre,names(r)]
 c1 <- c1[!duplicated(c1$Nombre),]
 c1 <- rbind(c1,c("4070.jpg","NA","NA","NA","NA"))
-c1$Subtipo.Material[c1$Subtipo.Material == 9999]  <- NA
+c1$Subtipo.Material[c1$Subtipo.Material == 9999]  <- 80
 
 c2 <- c2[c2$Nombre %in% T$Nombre,names(r)]
 
