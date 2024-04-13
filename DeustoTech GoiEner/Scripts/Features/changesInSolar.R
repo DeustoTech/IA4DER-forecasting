@@ -17,12 +17,19 @@ foreach(lib = librerias) %do% {
 }
 
 roseta <- fread("SOLAR/roseta.csv")
-archivos <- list.files("SOLAR/Iberdrola Limpio/SOLAR/", full.names = TRUE, pattern = "\\.csv$")
+featsNoPV <- fread("SOLAR/featuresNoPV.csv")
+archivos <- list.files("SOLAR/SOLAR/", full.names = TRUE, pattern = "\\.csv$")
 
 IDs <-  gsub("\\.csv$", "", basename(archivos)) # All the IDs in the solar folder
 
 
-valPots <- roseta %>% filter(CUPS %in% IDs) %>% select(VAL_POT_AUTORIZADA, CUPS) %>% distinct()
+valPotsPV <- roseta %>% filter(CUPS %in% IDs) %>% select(VAL_POT_AUTORIZADA, CUPS) %>% distinct()
+valPotsNoPV <- featsNoPV %>% filter(ID %in% IDs) %>% select(POT_NOM, ID) %>% filter(!is.na(POT_NOM)) %>% distinct()
+valPotsNoPV <- valPotsNoPV %>% rename(CUPS = ID)
+valPotsNoPV <- valPotsNoPV %>% rename(VAL_POT_AUTORIZADA = POT_NOM)
+
+valPots <- rbind(valPotsPV, valPotsNoPV)
+
 horas <- data.frame(
   hora = 0:23,
   TARIFA_2.0 = c(
