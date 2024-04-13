@@ -65,3 +65,33 @@ final_df <- bind_rows(solar_data, solar_no_pv_data)
 fwrite(final_df, "SOLAR/HasPV.csv")
 
 
+# Cambiar columnas de solar no pv
+
+file_list <- list.files(solar_no_pv_folder, full.names = TRUE)
+
+# Función para procesar y modificar cada archivo
+process_modify_file <- function(file_path) {
+  # Leer el archivo CSV
+  data <- read.csv(file_path, fileEncoding = "UTF-8")
+  
+  # Renombrar columnas y añadir columnas faltantes
+  data_renamed <- data %>%
+    rename(timestamp = time, VAL_AI = kWh) %>%
+    mutate(VAL_AE = 0, AUTO = 0) %>%
+    select(timestamp, VAL_AI, VAL_AE, AUTO)
+  
+  # Guardar el archivo modificado
+  output_file_path <- file.path(solar_folder, basename(file_path))
+  
+  # Guardar el archivo modificado en la carpeta SOLAR
+  write.csv(data_renamed, file = output_file_path, row.names = FALSE, quote = F)
+}
+
+# Aplicar la función a cada archivo en la lista
+map(file_list, process_modify_file)
+
+print("Archivos modificados exitosamente.")
+
+
+
+
