@@ -53,7 +53,7 @@ process_solar_no_pv <- function(file_path) {
 
 
 
-solar_folder <- "SOLAR/SOLAR/"
+solar_folder <- "SOLAR/SOLAR_WITH_PV/"
 solar_no_pv_folder <- "SOLAR/SOLAR_NO_PV/"
 
 solar_data <- list.files(solar_folder, full.names = TRUE) %>%
@@ -81,7 +81,7 @@ process_modify_file <- function(file_path) {
     select(timestamp, VAL_AI, VAL_AE, AUTO)
   
   # Guardar el archivo modificado
-  output_file_path <- file.path(solar_folder, basename(file_path))
+  output_file_path <- file.path("SOLAR/SOLAR/", basename(file_path))
   
   # Guardar el archivo modificado en la carpeta SOLAR
   write.csv(data_renamed, file = output_file_path, row.names = FALSE, quote = F)
