@@ -260,3 +260,97 @@ for (funcname in names(summary_functions)){
 }
 
 }
+
+
+############CALCULATE DIFFERENCES##################
+
+### DAILY
+path <- "SOLAR/Variation/Daily"
+
+output_path <- file.path(path, "Daily_Diff")
+if (!dir.exists(output_path)) {
+  dir.create(output_path)
+}
+
+files <- list.files(path, pattern = "\\.csv$", full.names = TRUE)
+
+for (file in files) {
+  
+  daily_avg <- fread(file, check.names = FALSE)
+  
+  daily_avg_diff <- daily_avg %>%
+    mutate(across(everything(), ~ . - lag(., default = first(.)))) %>%
+    slice(-1)
+  
+  output_filename <- paste0(sub(".csv", "", basename(file)), "_diff.csv")
+  output_filepath <- file.path(output_path, output_filename)
+  
+  fwrite(daily_avg_diff, output_filepath, row.names = FALSE)
+}
+
+
+### WEEKLY
+path <- "SOLAR/Variation/Weekly"
+
+output_path <- file.path(path, "Weekly_Diff")
+if (!dir.exists(output_path)) {
+  dir.create(output_path)
+}
+
+files <- list.files(path, pattern = "\\.csv$", full.names = TRUE)
+
+for (file in files) {
+  
+  weekly_avg <- fread(file, check.names = FALSE)
+  
+  weekly_avg_diff <- weekly_avg %>%
+    mutate(across(everything(), ~ . - lag(., default = first(.)))) %>%
+    slice(-1)
+  
+  output_filename <- paste0(sub(".csv", "", basename(file)), "_diff.csv")
+  output_filepath <- file.path(output_path, output_filename)
+  
+  fwrite(weekly_avg_diff, output_filepath, row.names = FALSE)
+}
+
+
+### MONTHLY
+path <- "SOLAR/Variation/Monthly"
+
+output_path <- file.path(path, "Monthly_Diff")
+if (!dir.exists(output_path)) {
+  dir.create(output_path)
+}
+
+files <- list.files(path, pattern = "\\.csv$", full.names = TRUE)
+
+for (file in files) {
+  
+  monthly_avg <- fread(file, check.names = FALSE)
+  
+  monthly_avg_diff <- monthly_avg %>%
+    mutate(across(everything(), ~ . - lag(., default = first(.)))) %>%
+    slice(-1)
+  
+  output_filename <- paste0(sub(".csv", "", basename(file)), "_diff.csv")
+  output_filepath <- file.path(output_path, output_filename)
+  
+  fwrite(monthly_avg_diff, output_filepath, row.names = FALSE)
+}
+
+
+
+#prueba de grafico
+Daily_AVG_diff <- fread("SOLAR/Variation/Daily/Daily_Diff/Daily_AVG_diff.csv")
+
+Daily_AVG_diff1 <- Daily_AVG_diff[,1]
+
+values <- Daily_AVG_diff1[-1, , drop = FALSE]
+values$time <- seq_along(values[[1]])
+colnames(values)[1] <- "consumo"
+ggplot(data = values, aes(x = time, y = consumo)) +
+  geom_col() +  # Usamos geom_col para graficar las barras
+  labs(x = "Índice de fila", y = "Valor del consumo", title = "Gráfico de consumo a lo largo del tiempo") +
+  theme_minimal()
+
+
