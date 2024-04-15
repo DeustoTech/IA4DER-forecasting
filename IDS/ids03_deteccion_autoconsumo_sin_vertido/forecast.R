@@ -50,23 +50,27 @@ for (k in FEATURES)
       dev.off()
     }
 
-    B <- foreach(NAME = names(DATA),.combine = rbind,.errorhandling = "remove") %dofuture% {
+    B <- foreach(NAME = names(DATA),.combine = rbind,.errorhandling = "remove",.options.future = list(seed = TRUE)) %do% {
+      print(NAME)
       i   <- zoo(diff(DATA[,NAME]))
 
-      if(sum(!is.na(i)) >= MINDATA)
+      if(sum(!is.na(i))      >= MINDATA &
+         sum(i != 0,na.rm=T) >= MINDATA &
+         is.numeric(sd(i,na.rm=T))      &
+         sd(i,na.rm=T) != 0             )
       {
         if (PRINTPDF) {pdf(paste0("fig/",k,"/",p,"/",NAME,".pdf")); plot(i); dev.off()}
 
         ECDF <- ecdf(i)
-        GT   <- grubbs.test(as.numeric(i[!is.na(i)]),type=11)
-        DT   <- dixon.test( as.numeric(i[!is.na(i)]),type=11)
+        AO   <- boxplot(i,plot=FALSE)
+        GT   <- grubbs.test(sample(as.numeric(i[!is.na(i)]),30,replace=TRUE),type=11)
+        DT   <- dixon.test( sample(as.numeric(i[!is.na(i)]),30,replace=TRUE),type=11)
         RT   <- rosnerTest( as.numeric(i[!is.na(i)]),alpha=ALPHA,k=2,warn=FALSE)
 
-        AO   <- boxplot(i,plot=FALSE)
         AVR  <- ifelse(length(which(i>=LA)>=1),which(i>=LA)[1],0)
         Q2   <- ifelse(length(which(i>=LQ)>=1),which(i>=LQ)[1],0)
-        ECDFA<- ifelse(ECDF(LA)<=QMAX         ,quantile(QMAX),0)
-        ECDFQ<- ifelse(ECDF(LQ)<=QMAX         ,quantile(QMAX),0)
+        ECDFA<- ifelse(ECDF(LA)<=QMAX         ,which(i>=quantile(i,probs=QMAX,na.rm=T))[1],0)
+        ECDFQ<- ifelse(ECDF(LQ)<=QMAX         ,which(i>=quantile(i,probs=QMAX,na.rm=T))[1],0)
         OUT  <- ifelse(length(AO$out)>=1      ,which(i %in% AO$out)[1],0)
         GT   <- ifelse(GT$p.value<=ALPHA      ,which(i>=as.numeric(stringr::str_split_1(GT$alternative," ")[3]))[1],0)
         DT   <- ifelse(DT$p.value<=ALPHA      ,which(i>=as.numeric(stringr::str_split_1(DT$alternative," ")[3]))[1],0)
@@ -79,7 +83,7 @@ for (k in FEATURES)
           ECDFA = ECDFA,
           ECDFQ = ECDFQ,
           OUT   = OUT,
-          GT    = GT,
+  #        GT    = GT,
           DT    = DT,
           RT    = RT
         )
@@ -91,7 +95,7 @@ for (k in FEATURES)
           ECDFA = NA,
           ECDFQ = NA,
           OUT   = NA,
-          GT    = NA,
+  #        GT    = NA,
           DT    = NA,
           RT    = NA
         )
@@ -101,3 +105,4 @@ for (k in FEATURES)
     fwrite(B,file=paste0("forecast-",p,"-",k,".csv"))
   }
 }
+
