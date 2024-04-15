@@ -22,6 +22,7 @@ FEATURES <- c("ENTROPY","AVG","SD","VAR","Q1","MEDIAN","Q3","TOTAL",
 
 LIM <- fread("p-valores.csv")
 
+dir.create("results/", showWarnings = F, recursive = T)
 for (k in FEATURES)
 {
   LA  <- as.numeric(LIM[grepl(k,variable),"avr"])
@@ -51,13 +52,13 @@ for (k in FEATURES)
     }
 
     B <- foreach(NAME = names(DATA),.combine = rbind,.errorhandling = "remove",.options.future = list(seed = TRUE)) %do% {
-      print(NAME)
       i   <- zoo(diff(DATA[,NAME]))
 
-      if(sum(!is.na(i))      >= MINDATA &
-         sum(i != 0,na.rm=T) >= MINDATA &
-         is.numeric(sd(i,na.rm=T))      &
-         sd(i,na.rm=T) != 0             )
+      ZERO <- sum(i != 0,na.rm=T)
+      NNA  <- sum(!is.na(i))
+      SD   <- sd(i,na.rm=T)
+
+      if(ZERO >= MINDATA & NNA  >= MINDATA & is.numeric(SD) & SD != 0)
       {
         if (PRINTPDF) {pdf(paste0("fig/",k,"/",p,"/",NAME,".pdf")); plot(i); dev.off()}
 
@@ -75,34 +76,43 @@ for (k in FEATURES)
         GT   <- ifelse(GT$p.value<=ALPHA      ,which(i>=as.numeric(stringr::str_split_1(GT$alternative," ")[3]))[1],0)
         DT   <- ifelse(DT$p.value<=ALPHA      ,which(i>=as.numeric(stringr::str_split_1(DT$alternative," ")[3]))[1],0)
         RT   <- ifelse(RT$n.outlier!=0        ,RT$all.stats[RT$all.stats$Outlier == TRUE,"Obs.Num"][1],0)
+        ENS  <- ifelse(names(which.max(table(c(AVR!=0,Q2!=0,ECDFA!=0,ECDFQ!=0,OUT!=0,GT!=0,DT!=0,RT!=0)))),1,0)
 
         data.frame(
           CUPS  = NAME,
+          ZERO  = ZERO,
+          NNA   = NNA,
+          SD    = SD,
           AVR   = AVR,
           Q2    = Q2,
           ECDFA = ECDFA,
           ECDFQ = ECDFQ,
           OUT   = OUT,
-  #        GT    = GT,
+          GT    = GT,
           DT    = DT,
-          RT    = RT
+          RT    = RT,
+          ENS   = ENS
         )
       } else {
         data.frame(
           CUPS  = NAME,
+          ZERO  = ZERO,
+          NNA   = NNA,
+          SD    = SD,
           AVR   = NA,
           Q2    = NA,
           ECDFA = NA,
           ECDFQ = NA,
           OUT   = NA,
-  #        GT    = NA,
+          GT    = NA,
           DT    = NA,
-          RT    = NA
+          RT    = NA,
+          ENS   = NA
         )
       }
     }
 
-    fwrite(B,file=paste0("forecast-",p,"-",k,".csv"))
+    fwrite(B,file=paste0("results/forecast-",p,"-",k,".csv"))
   }
 }
 
