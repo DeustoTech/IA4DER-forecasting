@@ -3,7 +3,7 @@ library(nlsr)
 library(pracma)
 
 MODELS <- c("Linear","Weibull", "Exponential", "Gamma", "Rayleigh", "Log Normal",
-            "Inverse","Inverse2","Rational(0,1)","Rational(0,2)")
+            "Inverse","Inverse2","Rational(0,1)","Rational(0,3)")
 COLOUR <- rainbow(length(MODELS))
 
 a <- fread("Grid_error_160424.csv")
@@ -26,7 +26,7 @@ E  <-list(A=5,B=23,C=1e-5,D=1,E=1)            ## Initial points for iterative pa
 W  <-list(A=1,B=1e-3,C=1e-3,D=1e3,E=1)
 G  <-list(A=1,B=1,C=1,D=1,E=1)
 R  <-list(A=1,B=1,C=1,D=1,E=1)
-L  <-list(A=1,B=1e3,C=0.01,D=10,E=1)
+L  <-list(A=1,B=1e3,C=1e-6,D=1e-5,E=1)
 I1 <-list(A=0,B=1e-3,C=1,D=1e-3,E=1)
 I2 <-list(A=0,B=1e-3,C=1,D=1e-3,E=1)
 
@@ -40,8 +40,9 @@ ln <- nlxb(formula=mape_ens~B/SUM*exp(-C^2*log(SUM-D)^2),start=L,data=data)  ## 
 
 i1 <- nlxb(formula=mape_ens~B/(SUM-D),                   start=I1,data=data) ## Inverse model
 i2 <- nlxb(formula=mape_ens~B/(SUM-D)^2,                 start=I2,data=data) ## Inverse Square model
-r1 <- rationalfit(data[[1]],data[[2]],d1=0,d2=1)                             ## Rational(2,2) model
-r2 <- rationalfit(data[[1]],data[[2]],d1=0,d2=2)                             ## Rational(1,2) model
+r1 <- rationalfit(data[[1]],data[[2]],d1=0,d2=1)                             ## Rational(0,1) model
+r2 <- rationalfit(data[[1]],data[[2]],d1=0,d2=3)                             ## Rational(0,3) model
+
 
 plot(data)
 #plot(data,xlim=c(0,1000000))
@@ -70,6 +71,13 @@ legend("topright",legend=MODELS,fill=COLOUR,col=COLOUR)
 # a$mape_ens_inv <- aux
 #
 # lm(mape_ens_inv~CAN_POT_CTD-1,data=a[is.finite(a$mape_ens_inv),])
+
+
+pars <- expand.grid(A=seq(0.001, 10, len=10),
+                    B=seq(0.001, 10, len=10),
+                    C=seq(0.001, 10, len=10),
+                    D=seq(0.001, 10, len=10),
+                    E=seq(0.001, 10, len=10))
 
 # #library(survival)
 # library(fitdistrplus)
