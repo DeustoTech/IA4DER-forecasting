@@ -25,11 +25,15 @@ base     <- "data/"
 
 VARS     <- c("FEC_LECTURA","VAL_AI","VAL_AE") # VAL_R1 VAL_R2 VAL_R3 VAL_R4
 
-lec      <- ARROW2DF(paste0(base,"anm_ids03_lecturas_horaria"))
-aut      <- ARROW2DF(paste0(base,"anm_ids03_lecturas_horarias_autoconsumos"))
+lec      <- ARROW2DF(paste0(base,"anm_ids03_lec_horaria_val"))
+aut      <- ARROW2DF(paste0(base,"anm_ids03_aut_lec_horaria_val"))
+
 punto    <- ARROW2DF(paste0(base,"anm_ids03_punto_suministro"))
 contrato <- ARROW2DF(paste0(base,"anm_ids03_contrato"))
 poliza   <- ARROW2DF(paste0(base,"anm_ids03_poliza"))
+#polizaut <- ARROW2DF(paste0(base,"anm_ids03_poliza_autoconsumo"))
+pot      <- ARROW2DF(paste0(base,"anm_ids03_potencias_contratadas"))
+gen      <- ARROW2DF(paste0(base,"anm_ids03_potencias_generacion"))
 
 lec      <- lec[,c("CUPS",VARS)]
 aut      <- aut[,c("CUPS",VARS)]
@@ -37,8 +41,14 @@ aut      <- aut[,c("CUPS",VARS)]
 # intersect(punto$COD_PS,contrato$COD_PS)
 # intersect(poliza$COD_CONTRATO,contrato$COD_CONTRATO)
 
+poliza <- poliza[,c("COD_CONTRATO","COD_TARIF_IBDLA","TIP_PUNTO_MEDIDA")]
+pot    <- pot[,   c("COD_CONTRATO","CAN_POT_CTD")]
+gen    <- gen[,   c("COD_PS","POT_GRUPO")]
+
 ROSETA <- merge(punto,contrato,by="COD_PS")
-ROSETA <- merge(ROSETA,poliza,by="COD_CONTRATO")
+ROSETA <- merge(ROSETA,poliza, by="COD_CONTRATO")
+ROSETA <- merge(ROSETA,pot,    by="COD_CONTRATO")
+ROSETA <- merge(ROSETA,gen,    by="COD_PS")
 
 #NAME <- NAMES[1]
 NAMES <- union(unique(aut$CUPS),unique(lec$CUPS))
