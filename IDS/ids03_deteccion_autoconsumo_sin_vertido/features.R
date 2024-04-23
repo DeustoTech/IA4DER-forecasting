@@ -23,7 +23,7 @@ cat("variable","avr","sd","min","Q1","Q2","Q3","max",
     file="p-valores.csv",sep=",")
 for (i in names(sin)[ind])
 {
-  p <- try(wilcox.test(sin[,i],con[,i],paired=T)$p.value)
+  p <- try(wilcox.test(sin[,i],con[,i],paired=F)$p.value)
   boxplot(sin[,i],con[,i],outline=F,names=c("Sin","Con"),main=paste(i,p))
 
   k1 <- k2 <- k3 <- NA
