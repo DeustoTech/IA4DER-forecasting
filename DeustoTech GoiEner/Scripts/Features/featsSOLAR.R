@@ -356,29 +356,22 @@ for(archivo in archivos) {
  
   serie <- fread(archivo)
   trampa <- F
-  
-  if ("time" %in% colnames(serie)){ # Serie trampa, cambiar nombres de columnas y añadir columnas vacias
-    setnames(serie, old = c("time", "kWh"), new = c("timestamp", "VAL_AI"))
-    print("soy trampa")
-    serie$VAL_AE <- 0
-    serie$AUTO <- 0
-    serie <- serie %>% select(-issue)
-    trampa <- T
-    
-  }
-  
+ 
   serie$timestamp <- ymd_hms(serie$timestamp) # Convertir timestamp a tipo fecha
   
   id_serie <- basename(archivo)
   id_serie <- gsub("\\.csv$", "", id_serie)
   
-  info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS)
+  if (!(id_serie %in% roseta$CUPS)){ trampa <- T}
   
-  if (!(id_serie %in% roseta$CUPS)){ # No está en roseta, por lo que es trampa y el archivo es otro
+  if (trampa == T){ # Es trampa, elegimos las feats de otro archivo
     info_serie <- featsNoPV %>% filter(ID == id_serie)
     info_serie <- info_serie %>% select(POT_NOM) 
     setnames(info_serie, old ="POT_NOM", new = "VAL_POT_AUTORIZADA")
+  } else{
+    info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS)
   }
+  # print(summary(info_serie))
   # Calcular features
   firstPanel <- serie %>%
     filter(AUTO == 1) %>%
@@ -390,22 +383,26 @@ for(archivo in archivos) {
   serie$ID <- id_serie
 
   
+  if (trampa == T){
+    sin_auto <-  calcular_features(serie = serie %>% filter(AUTO == 0), ID1 = gsub("\\.csv$", "", basename(archivo)),
+                                   firstPanel, val_pot = info_serie$VAL_POT_AUTORIZADA)
+  } else{
+    con_auto <- if (any(serie$AUTO == 1)) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),
+                                                                          firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
+  }
   
   # Ahora sin auto es solo la parte de series trampa
   
-  sin_auto <- if (trampa == T) calcular_features(serie = serie %>% filter(AUTO == 0), ID1 = gsub("\\.csv$", "", basename(archivo)),
-                                                                   firstPanel, val_pot = info_serie$VAL_POT_AUTORIZADA)
-  con_auto <- if (any(serie$AUTO == 1) & trampa == F) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),
-                                                                   firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
-  total <-  calcular_features(serie = serie, ID1 = gsub("\\.csv$", "", basename(archivo)),
-                                       firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
+# 
+#   total <-  calcular_features(serie = serie, ID1 = gsub("\\.csv$", "", basename(archivo)),
+#                                        firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
 
   
   # info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS) # Excluir CUPS para evitar duplicados
   
   features_sin_auto <- sin_auto$data
   features_con_auto <- con_auto$data
-  features_total <- total$data
+  # features_total <- total$data
   
   entsin <- intersect(colnames(entropy_sin_auto), colnames(sin_auto))
   entropy_sin_auto <- rbind(entropy_sin_auto[entsin], sin_auto$entropy[entsin])
@@ -414,15 +411,16 @@ for(archivo in archivos) {
   entropy_con_auto <- rbind(entropy_con_auto[entcon], con_auto$entropy[entcon])
   
   
-  entTot <- intersect(colnames(entropy_total), colnames(entropy_total))
-  entropy_total <- rbind(entropy_total[entTot], total$entropy[entTot])
+  # entTot <- intersect(colnames(entropy_total), colnames(entropy_total))
+  # entropy_total <- rbind(entropy_total[entTot], total$entropy[entTot])
   
    
   # Unir con información de roseta
-
-  datos_sin_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_sin_auto, info_serie, .name_repair = "minimal")
-  datos_con_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_con_auto, info_serie, .name_repair = "minimal")
-  datos_totales[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_total, info_serie, .name_repair = "minimal")
+  if (trampa == T){  datos_sin_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_sin_auto, info_serie, .name_repair = "minimal")
+}
+  else{
+  datos_con_auto[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_con_auto, info_serie, .name_repair = "minimal")}
+  # datos_totales[[id_serie]] <- tibble(ID_SERIE = id_serie) %>% bind_cols(features_total, info_serie, .name_repair = "minimal")
 }
 
 df_sin_auto <- bind_rows(datos_sin_auto) 
