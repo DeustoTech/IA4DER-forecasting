@@ -7,8 +7,7 @@ library(doParallel)
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice", "tsfeatures",
-               "catch22") 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "randomForest", "mice", "tsfeatures") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -18,7 +17,7 @@ foreach(lib = librerias) %do% {
 #read csvs
 {
   roseta <- fread("SOLAR/roseta.csv")
-  
+  featsNoPV <- fread("SOLAR/featuresNoPV.csv")
   archivos <- list.files("SOLAR/SOLAR", full.names = TRUE, pattern = "\\.csv$")
  
 }
@@ -56,7 +55,7 @@ horas <- data.frame(
 
 
 calcular_features <- function(serie, ID1, firstPanel, val_pot) {
-  
+  # print(names(serie))
   serie$VAL_AI <- serie$VAL_AI / val_pot
   serie$VAL_AE <- serie$VAL_AE / val_pot
   
@@ -356,12 +355,30 @@ entropy_total <- data.frame()
 for(archivo in archivos) {
  
   serie <- fread(archivo)
-  serie$timestamp <- ymd_hms(serie$timestamp)# Convertir timestamp a tipo fecha
+  trampa <- F
+  
+  if ("time" %in% colnames(serie)){ # Serie trampa, cambiar nombres de columnas y añadir columnas vacias
+    setnames(serie, old = c("time", "kWh"), new = c("timestamp", "VAL_AI"))
+    print("soy trampa")
+    serie$VAL_AE <- 0
+    serie$AUTO <- 0
+    serie <- serie %>% select(-issue)
+    trampa <- T
+    
+  }
+  
+  serie$timestamp <- ymd_hms(serie$timestamp) # Convertir timestamp a tipo fecha
   
   id_serie <- basename(archivo)
   id_serie <- gsub("\\.csv$", "", id_serie)
   
-  info_serie <- roseta %>% filter(CUPS == id_serie)
+  info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS)
+  
+  if (!(id_serie %in% roseta$CUPS)){ # No está en roseta, por lo que es trampa y el archivo es otro
+    info_serie <- featsNoPV %>% filter(ID == id_serie)
+    info_serie <- info_serie %>% select(POT_NOM) 
+    setnames(info_serie, old ="POT_NOM", new = "VAL_POT_AUTORIZADA")
+  }
   # Calcular features
   firstPanel <- serie %>%
     filter(AUTO == 1) %>%
@@ -372,15 +389,19 @@ for(archivo in archivos) {
   serie$firstPanel <- firstPanel
   serie$ID <- id_serie
 
-  sin_auto <- if (any(serie$AUTO == 0)) calcular_features(serie = serie %>% filter(AUTO == 0), ID1 = gsub("\\.csv$", "", basename(archivo)),
+  
+  
+  # Ahora sin auto es solo la parte de series trampa
+  
+  sin_auto <- if (trampa == T) calcular_features(serie = serie %>% filter(AUTO == 0), ID1 = gsub("\\.csv$", "", basename(archivo)),
                                                                    firstPanel, val_pot = info_serie$VAL_POT_AUTORIZADA)
-  con_auto <- if (any(serie$AUTO == 1)) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),
+  con_auto <- if (any(serie$AUTO == 1) & trampa == F) calcular_features(serie = serie %>% filter(AUTO == 1), ID1 = gsub("\\.csv$", "", basename(archivo)),
                                                                    firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
   total <-  calcular_features(serie = serie, ID1 = gsub("\\.csv$", "", basename(archivo)),
                                        firstPanel,  val_pot = info_serie$VAL_POT_AUTORIZADA)
 
   
-  info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS) # Excluir CUPS para evitar duplicados
+  # info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS) # Excluir CUPS para evitar duplicados
   
   features_sin_auto <- sin_auto$data
   features_con_auto <- con_auto$data
@@ -418,14 +439,14 @@ df_totales <- df_totales %>% select(-ID_SERIE) %>% distinct(ID, .keep_all = T)
 
 
 
-fwrite(df_sin_auto, "SOLAR/features_sin_autoconsumo.csv")
-fwrite(df_con_auto, "SOLAR/features_con_autoconsumo.csv")
-fwrite(df_totales, "SOLAR/features_totales.csv")
+fwrite(df_sin_auto, "SOLAR/features_sin_autoconsumo_Trampa.csv")
+fwrite(df_con_auto, "SOLAR/features_con_autoconsumo_ConPV.csv")
+fwrite(df_totales, "SOLAR/features_totales.csv_Trampa_PV")
 
 
-fwrite(entropy_sin_auto, "SOLAR/Entropy_sin_autoconsumo.csv")
-fwrite(entropy_con_auto, "SOLAR/Entropy_con_autoconsumo.csv")
-fwrite(entropy_total, "SOLAR/Entropy_totales.csv")
+fwrite(entropy_sin_auto, "SOLAR/Entropy_sin_autoconsumo_Trampa.csv")
+fwrite(entropy_con_auto, "SOLAR/Entropy_con_autoconsumo_ConPV.csv")
+fwrite(entropy_total, "SOLAR/Entropy_totales.csv_Trampa_PV")
 
 # Combina todos los datos en un data.frame (este paso depende de cómo quieras estructurar tus datos finales)
 datos_combinados <- bind_rows(lapply(datos_finales, bind_rows), .id = "ID_SERIE")
