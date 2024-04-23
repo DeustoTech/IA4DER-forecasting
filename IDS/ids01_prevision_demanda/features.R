@@ -100,49 +100,72 @@ LIM <- LIM[LIM$ID %in% ID,]
 VAR <- c("CUPS","CAN_POT_CTD","VAL_POT_AUTORIZADA",
          "COD_CNAE","COD_TARIF_IBDLA","COD_PROVINCIA","TIP_SUMINISTRO")
 
-#LASS   <- c("CUPS","CGP","LBT","CUA","POS","CT")
+LCNAE   <- levels(ROSETA$COD_CNAE)
+LTARIF  <- levels(ROSETA$COD_TARIF_IBDLA)
+LPROV   <- levels(ROSETA$COD_PROVINCIA)
+LSUM    <- levels(ROSETA$TIP_SUMINISTRO)
+LASS    <- levels(factor(c("CUPS","CGP","LBT","CUA","POS","CT")))
 
-LIM_EST_CUPS          <- ROSETA[,VAR]
-LIM_EST_CUPS          <- LIM_EST_CUPS[LIM_EST_CUPS$CUPS %in% cups$CUPS,]
-LIM_EST_CUPS$SHARP    <- 1
-LIM_EST_CUPS$COD_CNAE           <- factor(LIM_EST_CUPS$COD_CNAE,       levels=LCNAE)
-LIM_EST_CUPS$COD_TARIF_IBDLA    <- factor(LIM_EST_CUPS$COD_TARIF_IBDLA,levels=LTARIF)
-LIM_EST_CUPS$COD_PROVINCIA      <- factor(LIM_EST_CUPS$COD_PROVINCIA,  levels=LPROV)
-LIM_EST_CUPS$TIP_SUMINISTRO     <- factor(LIM_EST_CUPS$TIP_SUMINISTRO, levels=LSUM)
-LIM_EST_CUPS$ASS                <- factor("CUPS",                      levels=LASS)
-LIM_EST_CUPS$CAN_POT_CTD        <- LIM_EST_CUPS$CAN_POT_CTD/1000
-LIM_EST_CUPS$VAL_POT_AUTORIZADA <- LIM_EST_CUPS$VAL_POT_AUTORIZADA/1000
+LIM_EST_CUPS                     <- ROSETA[,VAR]
+LIM_EST_CUPS                     <- LIM_EST_CUPS[LIM_EST_CUPS$CUPS %in% cups$CUPS,]
+LIM_EST_CUPS$SHARP               <- 1
+LIM_EST_CUPS$COD_CNAE            <- factor(LIM_EST_CUPS$COD_CNAE,       levels=LCNAE)
+LIM_EST_CUPS$COD_TARIF_IBDLA     <- factor(LIM_EST_CUPS$COD_TARIF_IBDLA,levels=LTARIF)
+LIM_EST_CUPS$COD_PROVINCIA       <- factor(LIM_EST_CUPS$COD_PROVINCIA,  levels=LPROV)
+LIM_EST_CUPS$TIP_SUMINISTRO      <- factor(LIM_EST_CUPS$TIP_SUMINISTRO, levels=LSUM)
+LIM_EST_CUPS$ASS                 <- factor("CUPS",                      levels=LASS)
+LIM_EST_CUPS$CAN_POT_CTD         <- LIM_EST_CUPS$CAN_POT_CTD/1000
+LIM_EST_CUPS$VAL_POT_AUTORIZADA  <- LIM_EST_CUPS$VAL_POT_AUTORIZADA/1000
+names(LIM_EST_CUPS)              <- c("ID","POT_CON","POT_EST","CNAE","TARIF","PROV","SUM","SHARP","ASS")
 
-names(LIM_EST_CUPS)   <- c("ID","POT_CON","POT_EST","CNAE","TARIF","PROV","SUM","SHARP","ASS")
+LIM_EST_SOLAR                    <- fread("roseta-solar.csv")
+POT_GRUPO                        <- data.frame(ID=LIM_EST_SOLAR$CUPS,POT_AUT=LIM_EST_SOLAR$POT_GRUPO/1000)
+LIM_EST_SOLAR                    <- LIM_EST_SOLAR[,c("CUPS","CAN_POT_CTD","VAL_POT_AUTORIZADA",
+                                    "COD_CNAE", "COD_TARIF_IBDLA","TIP_SUMINISTRO")]
+LIM_EST_SOLAR$SHARP              <- 1
+LIM_EST_SOLAR$COD_CNAE           <- substring(LIM_EST_SOLAR$COD_CNAE,1,1)
+LIM_EST_SOLAR$PROV               <- NA
+LIM_EST_SOLAR$ASS                <- factor("CUPS", levels=LASS)
+LIM_EST_SOLAR$CAN_POT_CTD        <- LIM_EST_SOLAR$CAN_POT_CTD/1000
+LIM_EST_SOLAR$VAL_POT_AUTORIZADA <- LIM_EST_SOLAR$VAL_POT_AUTORIZADA/1000
+names(LIM_EST_SOLAR)             <- c("ID","POT_CON","POT_EST","CNAE","TARIF","SUM","SHARP","PROV","ASS")
+setcolorder(LIM_EST_SOLAR,names(LIM_EST_CUPS))
+LIM_EST_CUPS                     <- rbindlist(list(LIM_EST_SOLAR ,LIM_EST_CUPS))
+LIM_EST_CUPS                     <- merge(LIM_EST_CUPS,POT_GRUPO)
 
 LIM_EST_CGP <- foreach(i = unique(ROSETA$COD_SIC_SIGRID),.combine = rbind,.errorhandling = "remove") %dofuture% {
   aux  <- unique(ROSETA$CUPS[ROSETA$COD_SIC_SIGRID == i])
   data.frame(ID = i, ASS="CGP", POT_EST = sum(LIM_EST_CUPS$POT_EST[LIM_EST_CUPS$ID %in% aux]),
                                 POT_CON = sum(LIM_EST_CUPS$POT_CON[LIM_EST_CUPS$ID %in% aux]),
+                                POT_AUT = sum(LIM_EST_CUPS$POT_AUT[LIM_EST_CUPS$ID %in% aux]),
                                 SHARP   = length(aux))
 }
 LIM_EST_LBT <- foreach(i = unique(ROSETA$ID_PADRE_LINEA_BT),.combine = rbind,.errorhandling = "remove") %dofuture% {
   aux <- unique(ROSETA$CUPS[ROSETA$ID_PADRE_LINEA_BT == i])
   data.frame(ID = i, ASS="LBT", POT_EST = sum(LIM_EST_CUPS$POT_EST[LIM_EST_CUPS$ID %in% aux]),
                                 POT_CON = sum(LIM_EST_CUPS$POT_CON[LIM_EST_CUPS$ID %in% aux]),
+                                POT_AUT = sum(LIM_EST_CUPS$POT_AUT[LIM_EST_CUPS$ID %in% aux]),
                                 SHARP   = length(aux))
 }
 LIM_EST_CUA <- foreach(i = unique(ROSETA$ID_PADRE_CUADRO_BT),.combine = rbind,.errorhandling = "remove") %dofuture% {
   aux <- unique(ROSETA$CUPS[ROSETA$ID_PADRE_CUADRO_BT == i])
   data.frame(ID = i, ASS="CUA", POT_EST = sum(LIM_EST_CUPS$POT_EST[LIM_EST_CUPS$ID %in% aux]),
                                 POT_CON = sum(LIM_EST_CUPS$POT_CON[LIM_EST_CUPS$ID %in% aux]),
+                                POT_AUT = sum(LIM_EST_CUPS$POT_AUT[LIM_EST_CUPS$ID %in% aux]),
                                 SHARP   = length(aux))
 }
 LIM_EST_POS <- foreach(i = unique(ROSETA$ID_PADRE_POS_TRAFO),.combine = rbind,.errorhandling = "remove") %dofuture% {
   aux <- unique(ROSETA$CUPS[ROSETA$ID_PADRE_POS_TRAFO == i])
   data.frame(ID = i, ASS="POS", POT_EST = sum(LIM_EST_CUPS$POT_EST[LIM_EST_CUPS$ID %in% aux]),
                                 POT_CON = sum(LIM_EST_CUPS$POT_CON[LIM_EST_CUPS$ID %in% aux]),
+                                POT_AUT = sum(LIM_EST_CUPS$POT_AUT[LIM_EST_CUPS$ID %in% aux]),
                                 SHARP   = length(aux))
 }
 LIM_EST_CT <- foreach(i = unique(ROSETA$ID_PADRE_CT),.combine = rbind,.errorhandling = "remove") %dofuture% {
-  aux <- aunique(ROSETA$CUPS[ROSETA$ID_PADRE_CT == i])
+  aux <- unique(ROSETA$CUPS[ROSETA$ID_PADRE_CT == i])
   data.frame(ID = i, ASS="CT",  POT_EST = sum(LIM_EST_CUPS$POT_EST[LIM_EST_CUPS$ID %in% aux]),
                                 POT_CON = sum(LIM_EST_CUPS$POT_CON[LIM_EST_CUPS$ID %in% aux]),
+                                POT_AUT = sum(LIM_EST_CUPS$POT_AUT[LIM_EST_CUPS$ID %in% aux]),
                                 SHARP   = length(aux))
 }
 
@@ -193,27 +216,27 @@ f <- merge(B,ROSETA[,c("CUPS","COD_CNAE","COD_TARIF_IBDLA","TIP_SUMINISTRO","COD
 f <- f[!duplicate(f$ID),]
 write.csv(f,file="features.csv",row.names = F)
 
-plot(ecdf(B$ZERO))
-plot(ecdf(B$IMPUTED))
-plot(ecdf(B$MAX/B$POT_NOM))
-ecdf(B$MAX/B$POT_NOM)(0.8)
-
-plot(ecdf(B$MAX[B$ASS=="CUPS"]/B$POT_NOM[B$ASS=="CUPS"]))
-plot(ecdf(B$MAX[B$ASS=="LINE"]/B$POT_NOM[B$ASS=="LINE"]))
-plot(ecdf(B$MAX[B$ASS=="CT"]  /B$POT_NOM[B$ASS=="CT"]))
-
-plot(ecdf(B$MAX[B$ASS=="CUPS"]/B$POT_EST[B$ASS=="CUPS"]))
-plot(ecdf(B$MAX[B$ASS=="LINE"]/B$POT_EST[B$ASS=="LINE"]))
-plot(ecdf(B$MAX[B$ASS=="CT"]  /B$POT_EST[B$ASS=="CT"]))
-
-boxplot(B$POT_NOM[B$ASS=="CUPS"],B$POT_EST[B$ASS=="CUPS"],outline=F)
-boxplot(B$POT_NOM[B$ASS=="LINE"],B$POT_EST[B$ASS=="LINE"],outline=F)
-boxplot(B$POT_NOM[B$ASS=="CT"],  B$POT_EST[B$ASS=="CT"],outline=F)
-
-boxplot(B$POT_NOM[B$ASS=="CT"]/B$POT_EST[B$ASS=="CT"])
-
-summary(B$POT_NOM[B$ASS=="CT"]/B$POT_EST[B$ASS=="CT"])
-summary(B$POT_NOM[B$ASS=="LINE"]/B$POT_EST[B$ASS=="LINE"])
-
-boxplot(B$MC25,B$MC50,B$MC80,B$MC90,B$MC95,outline=F)
-summary(data.frame(B$MC25,B$MC50,B$MC80,B$MC90,B$MC95))
+# plot(ecdf(B$ZERO))
+# plot(ecdf(B$IMPUTED))
+# plot(ecdf(B$MAX/B$POT_NOM))
+# ecdf(B$MAX/B$POT_NOM)(0.8)
+#
+# plot(ecdf(B$MAX[B$ASS=="CUPS"]/B$POT_NOM[B$ASS=="CUPS"]))
+# plot(ecdf(B$MAX[B$ASS=="LINE"]/B$POT_NOM[B$ASS=="LINE"]))
+# plot(ecdf(B$MAX[B$ASS=="CT"]  /B$POT_NOM[B$ASS=="CT"]))
+#
+# plot(ecdf(B$MAX[B$ASS=="CUPS"]/B$POT_EST[B$ASS=="CUPS"]))
+# plot(ecdf(B$MAX[B$ASS=="LINE"]/B$POT_EST[B$ASS=="LINE"]))
+# plot(ecdf(B$MAX[B$ASS=="CT"]  /B$POT_EST[B$ASS=="CT"]))
+#
+# boxplot(B$POT_NOM[B$ASS=="CUPS"],B$POT_EST[B$ASS=="CUPS"],outline=F)
+# boxplot(B$POT_NOM[B$ASS=="LINE"],B$POT_EST[B$ASS=="LINE"],outline=F)
+# boxplot(B$POT_NOM[B$ASS=="CT"],  B$POT_EST[B$ASS=="CT"],outline=F)
+#
+# boxplot(B$POT_NOM[B$ASS=="CT"]/B$POT_EST[B$ASS=="CT"])
+#
+# summary(B$POT_NOM[B$ASS=="CT"]/B$POT_EST[B$ASS=="CT"])
+# summary(B$POT_NOM[B$ASS=="LINE"]/B$POT_EST[B$ASS=="LINE"])
+#
+# boxplot(B$MC25,B$MC50,B$MC80,B$MC90,B$MC95,outline=F)
+# summary(data.frame(B$MC25,B$MC50,B$MC80,B$MC90,B$MC95))
