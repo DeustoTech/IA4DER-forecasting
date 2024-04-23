@@ -1,5 +1,19 @@
-sin <- read.csv("features_sin_autoconsumo.csv")
-con <- read.csv("features_con_autoconsumo.csv")
+sin <- read.csv("SOLAR/features_sin_autoconsumo_Trampa.csv")
+con <- read.csv("SOLAR/features_con_autoconsumo_ConPV.csv")
+
+# CAMBIOS DE ANE Y ASIER CON LAS SERIES TRAMPA
+library(tidyr)
+library(dplyr)
+
+featsSin <- read.csv("SOLAR/featuresNoPV.csv")
+fs1 <- featsSin[which(featsSin$ID %in% sin$ID),] %>% select(c(TIP_SUMINISTRO, COD_CNAE, COD_TARIF_IBDLA, ID))
+sin <- merge(sin, fs1, by = "ID")
+
+columnas_comunes <- intersect(names(sin), names(con))
+
+sin <- sin[, columnas_comunes]
+con <- con[, columnas_comunes]
+# FINAL DE LOS CAMBIOS
 
 ind <- sapply(sin, is.numeric)
 
