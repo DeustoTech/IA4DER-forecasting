@@ -12,7 +12,7 @@ library(zoo)
 plan(multisession)
 
 MINDATA  <- 10
-PRINTPDF <- TRUE
+PRINTPDF <- FALSE
 ALPHA    <- 0.01
 QMAX     <- 0.75
 PERIODS  <- c("Daily","Monthly","Weekly")

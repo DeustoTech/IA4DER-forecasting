@@ -84,10 +84,13 @@ c4 <- c4[order(c4$Nombre),]
 c5 <- c5[order(c5$Nombre),]
 
 pdf()
-cat("Caracteristica","Colaborador","Accuracy","Individual min", "Individual Q2","#","\n",file="resultados.csv",sep=",")
+cat("Caracteristica","Colaborador","Accuracy","Individual min", "Individual Q2","==","p!NA","t!NA","\n",file="resultados.csv",sep=",")
+cat("\n",file="borrame.csv")
 for (t in names(T)[-1])
 {
   LEVELS <- levels(factor(T[,t]))
+  tN <- sum(!is.na(T[,t]))
+
   rn <- sample(levels(factor(T[,t])),length(T[,t]),replace=TRUE)
 
   ra <- confusionMatrix(data=factor(rn,    levels=LEVELS),reference=factor(T[,t]))
@@ -98,13 +101,13 @@ for (t in names(T)[-1])
   a4 <- confusionMatrix(data=factor(c4[,t],levels=LEVELS),reference=factor(T[T$Nombre %in% c4$Nombre,t]))
   a5 <- confusionMatrix(data=factor(c5[,t],levels=LEVELS),reference=factor(T[T$Nombre %in% c5$Nombre,t]))
 
-  cat(t,"random",       ra$overall[1],min(ra$byClass[,6]),median(ra$byClass[,6]),length(rn),                "\n",file="resultados.csv",append=TRUE,sep=",")
-  cat(t,"UDEUSTO",      au$overall[1],min(au$byClass[,6]),median(au$byClass[,6]),sum(T$Nombre == ud$Nombre),"\n",file="resultados.csv",append=TRUE,sep=",")
-  cat(t,"colaborador_1",a1$overall[1],min(a1$byClass[,6]),median(a1$byClass[,6]),sum(T$Nombre == c1$Nombre),"\n",file="resultados.csv",append=TRUE,sep=",")
-  cat(t,"colaborador_2",a2$overall[1],min(a2$byClass[,6]),median(a2$byClass[,6]),sum(T$Nombre == c2$Nombre),"\n",file="resultados.csv",append=TRUE,sep=",")
-  cat(t,"colaborador_3",a3$overall[1],min(a3$byClass[,6]),median(a3$byClass[,6]),sum(T$Nombre == c3$Nombre),"\n",file="resultados.csv",append=TRUE,sep=",")
-  cat(t,"colaborador_4",a4$overall[1],min(a4$byClass[,6]),median(a4$byClass[,6]),sum(T$Nombre == c4$Nombre),"\n",file="resultados.csv",append=TRUE,sep=",")
-  cat(t,"colaborador_5",a5$overall[1],min(a5$byClass[,6]),median(a5$byClass[,6]),sum(T$Nombre == c5$Nombre),"\n",file="resultados.csv",append=TRUE,sep=",")
+  cat(t,"random",       ra$overall[1],min(ifelse(is.na(ra$byClass[,5]),0,ra$byClass[,5])),median(ifelse(is.na(ra$byClass[,5]),0,ra$byClass[,5])),length(rn),                sum(ra$table),tN,"\n",file="resultados.csv",append=TRUE,sep=",")
+  cat(t,"UDEUSTO",      au$overall[1],min(ifelse(is.na(au$byClass[,5]),0,au$byClass[,5])),median(ifelse(is.na(au$byClass[,5]),0,au$byClass[,5])),sum(T$Nombre == ud$Nombre),sum(au$table),tN,"\n",file="resultados.csv",append=TRUE,sep=",")
+  cat(t,"colaborador_1",a1$overall[1],min(ifelse(is.na(a1$byClass[,5]),0,a1$byClass[,5])),median(ifelse(is.na(a1$byClass[,5]),0,a1$byClass[,5])),sum(T$Nombre == c1$Nombre),sum(a1$table),tN,"\n",file="resultados.csv",append=TRUE,sep=",")
+  cat(t,"colaborador_2",a2$overall[1],min(ifelse(is.na(a2$byClass[,5]),0,a2$byClass[,5])),median(ifelse(is.na(a2$byClass[,5]),0,a2$byClass[,5])),sum(T$Nombre == c2$Nombre),sum(a2$table),tN,"\n",file="resultados.csv",append=TRUE,sep=",")
+  cat(t,"colaborador_3",a3$overall[1],min(ifelse(is.na(a3$byClass[,5]),0,a3$byClass[,5])),median(ifelse(is.na(a3$byClass[,5]),0,a3$byClass[,5])),sum(T$Nombre == c3$Nombre),sum(a3$table),tN,"\n",file="resultados.csv",append=TRUE,sep=",")
+  cat(t,"colaborador_4",a4$overall[1],min(ifelse(is.na(a4$byClass[,5]),0,a4$byClass[,5])),median(ifelse(is.na(a4$byClass[,5]),0,a4$byClass[,5])),sum(T$Nombre == c4$Nombre),sum(a4$table),tN,"\n",file="resultados.csv",append=TRUE,sep=",")
+  cat(t,"colaborador_5",a5$overall[1],min(ifelse(is.na(a5$byClass[,5]),0,a5$byClass[,5])),median(ifelse(is.na(a5$byClass[,5]),0,a5$byClass[,5])),sum(T$Nombre == c5$Nombre),sum(a5$table),tN,"\n",file="resultados.csv",append=TRUE,sep=",")
 
   pheatmap(au$table, display_numbers = au$table,
            color = colorRampPalette(c('white','red'))(100), legend=FALSE,
@@ -113,5 +116,12 @@ for (t in names(T)[-1])
   pheatmap(au$table, display_numbers = TRUE,
            color = colorRampPalette(c('white','red'))(100), legend=FALSE,
            cluster_rows = F, cluster_cols = F, fontsize_number = 15)
+
+
+  cat(t,"predicted",diag(au$table),"\n",file="borrame.csv",append=TRUE,sep=",")
+  #cat(t,"real",     colSums(au$table),"\n",file="borrame.csv",append=TRUE,sep=",")
+  cat(t,"TT",       table(T[,t]),"\n",file="borrame.csv",append=TRUE,sep=",")
+  cat(t,"%",        round(100*diag(au$table)/table(T[,t])),"\n",file="borrame.csv",append=TRUE,sep=",")
+  cat(t,"sp-st-acc-ind",sum(diag(au$table)),sum(table(T[,t])),round(100*au$overall[1]),round(100*median(au$byClass[,6])),"\n",file="borrame.csv",append=TRUE,sep=",")
 }
 dev.off()
