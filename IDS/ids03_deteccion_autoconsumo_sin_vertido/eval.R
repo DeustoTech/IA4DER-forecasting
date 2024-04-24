@@ -8,7 +8,7 @@ PERIODS  <- c("Daily","Monthly","Weekly")
 KPI      <- c("AVR","Q2","ECDFA","ECDFQ","OUT","DT","RT","ENS")
 
 
-r  <- read.csv("Variation/HasPV.csv")[,c("ID","hasPV")]
+r  <- read.csv("SOLAR/Variation/HasPV.csv")[,c("ID","hasPV")]
 r  <- r[order(r$ID),]
 r$hasPV <- factor(r$hasPV)
 LEVELS  <- levels(r$hasPV)
