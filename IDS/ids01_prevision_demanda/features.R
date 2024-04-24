@@ -104,7 +104,7 @@ LCNAE   <- levels(ROSETA$COD_CNAE)
 LTARIF  <- levels(ROSETA$COD_TARIF_IBDLA)
 LPROV   <- levels(ROSETA$COD_PROVINCIA)
 LSUM    <- levels(ROSETA$TIP_SUMINISTRO)
-LASS    <- levels(factor(c("CUPS","CGP","LBT","CUA","POS","CT")))
+LASS    <- levels(factor(c("CUPS","CGP","LBT","CUA","TR","CT")))
 
 LIM_EST_CUPS                     <- ROSETA[,VAR]
 LIM_EST_CUPS                     <- LIM_EST_CUPS[LIM_EST_CUPS$CUPS %in% cups$CUPS,]
@@ -120,6 +120,7 @@ names(LIM_EST_CUPS)              <- c("ID","POT_CON","POT_EST","CNAE","TARIF","P
 
 LIM_EST_SOLAR                    <- fread("roseta-solar.csv")
 POT_GRUPO                        <- data.frame(ID=LIM_EST_SOLAR$CUPS,POT_AUT=LIM_EST_SOLAR$POT_GRUPO/1000)
+POT_GRUPO                        <- POT_GRUPO[!duplicated(POT_GRUPO$ID),]
 LIM_EST_SOLAR                    <- LIM_EST_SOLAR[,c("CUPS","CAN_POT_CTD","VAL_POT_AUTORIZADA",
                                     "COD_CNAE", "COD_TARIF_IBDLA","TIP_SUMINISTRO")]
 LIM_EST_SOLAR$SHARP              <- 1
@@ -131,7 +132,8 @@ LIM_EST_SOLAR$VAL_POT_AUTORIZADA <- LIM_EST_SOLAR$VAL_POT_AUTORIZADA/1000
 names(LIM_EST_SOLAR)             <- c("ID","POT_CON","POT_EST","CNAE","TARIF","SUM","SHARP","PROV","ASS")
 setcolorder(LIM_EST_SOLAR,names(LIM_EST_CUPS))
 LIM_EST_CUPS                     <- rbindlist(list(LIM_EST_SOLAR ,LIM_EST_CUPS))
-LIM_EST_CUPS                     <- merge(LIM_EST_CUPS,POT_GRUPO)
+LIM_EST_CUPS                     <- merge(LIM_EST_CUPS,POT_GRUPO,by="ID",all=TRUE)
+rm(LIM_EST_SOLAR)
 
 LIM_EST_CGP <- foreach(i = unique(ROSETA$COD_SIC_SIGRID),.combine = rbind,.errorhandling = "remove") %dofuture% {
   aux  <- unique(ROSETA$CUPS[ROSETA$COD_SIC_SIGRID == i])
@@ -156,7 +158,7 @@ LIM_EST_CUA <- foreach(i = unique(ROSETA$ID_PADRE_CUADRO_BT),.combine = rbind,.e
 }
 LIM_EST_POS <- foreach(i = unique(ROSETA$ID_PADRE_POS_TRAFO),.combine = rbind,.errorhandling = "remove") %dofuture% {
   aux <- unique(ROSETA$CUPS[ROSETA$ID_PADRE_POS_TRAFO == i])
-  data.frame(ID = i, ASS="POS", POT_EST = sum(LIM_EST_CUPS$POT_EST[LIM_EST_CUPS$ID %in% aux]),
+  data.frame(ID = i, ASS="TR",  POT_EST = sum(LIM_EST_CUPS$POT_EST[LIM_EST_CUPS$ID %in% aux]),
                                 POT_CON = sum(LIM_EST_CUPS$POT_CON[LIM_EST_CUPS$ID %in% aux]),
                                 POT_AUT = sum(LIM_EST_CUPS$POT_AUT[LIM_EST_CUPS$ID %in% aux]),
                                 SHARP   = length(aux))
@@ -169,52 +171,63 @@ LIM_EST_CT <- foreach(i = unique(ROSETA$ID_PADRE_CT),.combine = rbind,.errorhand
                                 SHARP   = length(aux))
 }
 
-LIM_EST <- rbind(LIM_EST_CUPS,LIM_EST_CGP,LIM_EST_LBT,LIM_EST_CUA,LIM_EST_POS,LIM_EST_CT)
+LIM_EST <- rbind(LIM_EST_CUPS,LIM_EST_CGP,LIM_EST_LBT,LIM_EST_CUA,LIM_EST_POS,LIM_EST_CT,fill=TRUE)
 LIM     <- merge(LIM_EST,LIM,by="ID",all=TRUE)
 
+#rm(LIM_EST,LIM_EST_CUPS,LIM_EST_CGP,LIM_EST_LBT,LIM_EST_CUA,LIM_EST_POS,LIM_EST_CT)
+
 B <- foreach(NAME = ALL,.combine = rbind,.errorhandling = "remove") %dofuture% {
-  a <- fread(NAME)
-  
+
   FILE   <- strsplit(NAME,"/")[[1]][3]
   ASS    <- strsplit(NAME,"/")[[1]][2]
   ID     <- tools::file_path_sans_ext(FILE)
-  LENGTH <- length(a$kWh)
-  POT_CON<- LIM$POT_CON[LIM$ID == ID]
-  POT_EST<- LIM$POT_EST[LIM$ID == ID]
-  POT_NOM<- LIM$POT_NOM[LIM$ID == ID]
-  SHARP  <- LIM$SHARP[  LIM$ID == ID]
 
-  QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
-  #ECDF   <- ecdf(a$kWh)(MC*POT_NOM)
- 
-  aux <- data.frame(
-           ID=     ID,
-           ASS=    ASS,
-           POT_CON=ifelse(length(POT_CON) == 0,NA,POT_CON),
-           POT_EST=ifelse(length(POT_EST) == 0,NA,POT_EST),
-           POT_NOM=ifelse(length(POT_NOM) == 0,NA,POT_NOM),
-           SHARP=  ifelse(length(SHARP)   == 0,NA,SHARP),
-           LENGTH= LENGTH,
-           ZERO=   sum(a$kWh==0)/LENGTH,
-           IMPUTED=sum(a$issue)/LENGTH,
-           SUM=    sum(a$kWh,na.rm=TRUE),
-           AVG=    mean(a$kWh,na.rm=TRUE),
-           SD=     sd(a$kWh,na.rm=TRUE),
-           MIN=    QQ[1],
-           Q1=     QQ[2],
-           MEDIAN= QQ[3],
-           Q3=     QQ[4],
-           MAX=    QQ[5]
-#            MC25=   ECDF[1],
-#            MC50=   ECDF[2],
-#            MC80=   ECDF[3],
-#            MC90=   ECDF[4],
-#            MC95=   ECDF[5]
-           )
+  if(ASS %in% LASS)
+  {
+    a <- fread(NAME)
+    if (length(names(a)) == 4) names(a) <- c("time","kWh","VAL_AE","AUTO")
+    if (length(names(a)) == 3) names(a) <- c("time","kWh","issue")
+
+    LENGTH <- length(a$kWh)
+    POT_CON<- LIM$POT_CON[LIM$ID == ID]
+    POT_EST<- LIM$POT_EST[LIM$ID == ID]
+    POT_NOM<- LIM$POT_NOM[LIM$ID == ID]
+    POT_AUT<- LIM$POT_AUT[LIM$ID == ID]
+    SHARP  <- LIM$SHARP[  LIM$ID == ID]
+
+    QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
+    #ECDF   <- ecdf(a$kWh)(MC*POT_NOM)
+
+    aux <- data.frame(
+            ID=     ID,
+            ASS=    ASS,
+            POT_CON=ifelse(length(POT_CON) == 0,NA,POT_CON),
+            POT_EST=ifelse(length(POT_EST) == 0,NA,POT_EST),
+            POT_NOM=ifelse(length(POT_NOM) == 0,NA,POT_NOM),
+            POT_AUT=ifelse(length(POT_AUT) == 0,NA,POT_AUT),
+            SHARP=  ifelse(length(SHARP)   == 0,NA,SHARP),
+            LENGTH= LENGTH,
+            ZERO=   sum(a$kWh==0)/LENGTH,
+            IMPUTED=sum(a$issue)/LENGTH,
+            ENERGY= sum(a$kWh,na.rm=TRUE),
+            AVG=    mean(a$kWh,na.rm=TRUE),
+            SD=     sd(a$kWh,na.rm=TRUE),
+            MIN=    QQ[1],
+            Q1=     QQ[2],
+            MEDIAN= QQ[3],
+            Q3=     QQ[4],
+            MAX=    QQ[5]
+  #            MC25=   ECDF[1],
+  #            MC50=   ECDF[2],
+  #            MC80=   ECDF[3],
+  #            MC90=   ECDF[4],
+  #            MC95=   ECDF[5]
+            )
+  } else { aux <- NULL }
 }
-f <- merge(B,ROSETA[,c("CUPS","COD_CNAE","COD_TARIF_IBDLA","TIP_SUMINISTRO","COD_PROVINCIA")],by.x="ID",by.y="CUPS",all=T)
-f <- f[!duplicate(f$ID),]
-write.csv(f,file="features.csv",row.names = F)
+f <- merge(B,LIM[,c("ID","CNAE","TARIF","SUM","PROV")],by.x="ID",by.y="ID",all=T)
+f <- f[!duplicated(f$ID),]
+fwrite(f,file="features.csv",row.names = F)
 
 # plot(ecdf(B$ZERO))
 # plot(ecdf(B$IMPUTED))

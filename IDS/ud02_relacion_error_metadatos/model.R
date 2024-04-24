@@ -2,7 +2,8 @@ library(data.table)
 library(nlsr)
 library(pracma)
 
-MODELS <- c("Linear","Weibull", "Exponential", "Gamma", "Rayleigh", "Log Normal",
+MODELS <- c("Linear","multilinear", "Exponential", "Erlang", "Weibull", "Gamma", "Rayleigh", "Log Normal",
+            "Inv Chi","Inv Gamma","Inv Gaussian","Levy",
             "Inverse","Inverse2","Rational(0,1)","Rational(0,3)")
 COLOUR <- rainbow(length(MODELS))
 
@@ -20,7 +21,7 @@ b <- a[!is.na(a$mape_ens) & !is.na(a$SUM),c("SUM","mape_ens")]   ## make a copy
 b <- as.data.frame(b[order(b$SUM),])                             ## order to have nice prints
 c <- reshape::rescaler.default(b, type = "range")                ## scale to test convergence
 
-data <- b                                     ## To easily change the data to adjust to
+data <- log1p(b)                                     ## To easily change the data to adjust to
 
 E  <-list(A=5,B=23,C=1e-5,D=1,E=1)            ## Initial points for iterative parameter optimization
 W  <-list(A=1,B=1e-3,C=1e-3,D=1e3,E=1)
@@ -30,32 +31,48 @@ L  <-list(A=1,B=1e3,C=1e-6,D=1e-5,E=1)
 I1 <-list(A=0,B=1e-3,C=1,D=1e-3,E=1)
 I2 <-list(A=0,B=1e-3,C=1,D=1e-3,E=1)
 
-l  <- lm(mape_ens~SUM,data=data)                                             ## linear model
+l  <- lm(mape_ens~SUM,data=data)                                                                    ## linear model
+ml <- lm(mape_ens~SUM+POT_CON+POT_EST+POT_NOM+SHARP+TYPE,data=a)                                    ## multi linear model
+e  <- nlxb(formula=mape_ens~B*exp(-B*SUM),                                      start=G,data=data)  ## Exponential model
+r  <- nlxb(formula=mape_ens~A^B*SUM^(B-1)*exp(-A*SUM)/gamma(B),                 start=G,data=data)  ## Erlang model
+w  <- nlxb(formula=mape_ens~B/A*(SUM/A)^(B-1)*exp(-(SUM/A)^B),                  start=G,data=data)  ## Weibull model
+g  <- nlxb(formula=mape_ens~B^A/gamma(A)*SUM^(A-1)*exp(-B*SUM),                 start=G,data=data)  ## Gamma model
+re <- nlxb(formula=mape_ens~SUM/B^2*exp(-SUM^2/(2*B^2)),                        start=G,data=data)  ## Rayleigh model
+ln <- nlxb(formula=mape_ens~1/(sqrt(2*pi)*B*SUM)*exp(-(log(SUM-D))^2/(2*B^2)),  start=G,data=data)  ## Log normal model
 
-e  <- nlxb(formula=mape_ens~B*exp(-C*(SUM-D)),           start=E,data=data)  ## Exponential model
-w  <- nlxb(formula=mape_ens~B*SUM^2*exp(-(C*(SUM-D))^2), start=W,data=data)  ## Weibull model
-g  <- nlxb(formula=mape_ens~B*SUM^E*exp(-C*SUM),         start=G,data=data)  ## Gamma model
-re <- nlxb(formula=mape_ens~B*SUM*exp(-C^2*(SUM-D)^2),   start=R,data=data)  ## Rayleigh model
-ln <- nlxb(formula=mape_ens~B/SUM*exp(-C^2*log(SUM-D)^2),start=L,data=data)  ## Log normal model
+ic <- nlxb(formula=mape_ens~2^(-B/2)/gamma(B/2)*SUM^(-B/2-1)*exp(-1/(2*SUM)),   start=G,data=data)  ## Inverse Chi
+ig <- nlxb(formula=mape_ens~B^A/gamma(A)*(1/SUM)^(A+1)*exp(-B/SUM),             start=G,data=data)  ## Inverse Gamma
+iG <- nlxb(formula=mape_ens~sqrt(B/(2*pi*SUM^3))*exp(-B*(SUM-D)^2/(2*D^2*SUM)), start=G,data=data)  ## Inverse Gaussian
+ll <- nlxb(formula=mape_ens~sqrt(B/(2*pi))*exp(-C/(2*(SUM-D)))/(SUM-D)^(3/2),   start=G,data=data)  ## Levy
 
-i1 <- nlxb(formula=mape_ens~B/(SUM-D),                   start=I1,data=data) ## Inverse model
-i2 <- nlxb(formula=mape_ens~B/(SUM-D)^2,                 start=I2,data=data) ## Inverse Square model
-r1 <- rationalfit(data[[1]],data[[2]],d1=0,d2=1)                             ## Rational(0,1) model
-r2 <- rationalfit(data[[1]],data[[2]],d1=0,d2=3)                             ## Rational(0,3) model
+i1 <- nlxb(formula=mape_ens~B/(SUM-D),                                          start=I1,data=data) ## Inverse model
+i2 <- nlxb(formula=mape_ens~B/(SUM-D)^2,                                        start=I2,data=data) ## Inverse Square model
+r1 <- rationalfit(data[[1]],data[[2]],d1=0,d2=1)                                                    ## Rational(0,1) model
+r2 <- rationalfit(data[[1]],data[[2]],d1=0,d2=3)                                                    ## Rational(0,3) model
 
 
 plot(data)
 #plot(data,xlim=c(0,1000000))
 lines(data[,1],as.numeric(predict(l, newdata=data)),col=COLOUR[1],lwd=3)
+lines(data[,1],as.numeric(predict(l, newdata=data)),col=COLOUR[2],lwd=3) ##### ÑAPA hasta que revise cmo se hace el glm
+
 lines(data[,1],as.numeric(predict(e, newdata=data)),col=COLOUR[3],lwd=3)
-lines(data[,1],as.numeric(predict(w, newdata=data)),col=COLOUR[2],lwd=3)
-lines(data[,1],as.numeric(predict(g, newdata=data)),col=COLOUR[4],lwd=3)
-lines(data[,1],as.numeric(predict(re,newdata=data)),col=COLOUR[5],lwd=3)
-lines(data[,1],as.numeric(predict(ln,newdata=data)),col=COLOUR[6],lwd=3)
-lines(data[,1],as.numeric(predict(i1,newdata=data)),col=COLOUR[7],lwd=3)
-lines(data[,1],as.numeric(predict(i2,newdata=data)),col=COLOUR[8],lwd=3)
-lines(data[,1],polyval(r1$p1,data[,1])/polyval(r1$p2,data[,1]),col=COLOUR[9] ,lwd=3)
-lines(data[,1],polyval(r2$p1,data[,1])/polyval(r2$p2,data[,1]),col=COLOUR[10],lwd=3)
+lines(data[,1],as.numeric(predict(r, newdata=data)),col=COLOUR[4],lwd=3)
+lines(data[,1],as.numeric(predict(w, newdata=data)),col=COLOUR[5],lwd=3)
+lines(data[,1],as.numeric(predict(g, newdata=data)),col=COLOUR[6],lwd=3)
+lines(data[,1],as.numeric(predict(re,newdata=data)),col=COLOUR[7],lwd=3)
+lines(data[,1],as.numeric(predict(ln,newdata=data)),col=COLOUR[8],lwd=3)
+
+lines(data[,1],as.numeric(predict(ic,newdata=data)),col=COLOUR[9],lwd=3)
+lines(data[,1],as.numeric(predict(ig,newdata=data)),col=COLOUR[10],lwd=3)
+lines(data[,1],as.numeric(predict(iG,newdata=data)),col=COLOUR[11],lwd=3)
+lines(data[,1],as.numeric(predict(ll,newdata=data)),col=COLOUR[12],lwd=3)
+
+lines(data[,1],as.numeric(predict(i1,newdata=data)),col=COLOUR[13],lwd=3)
+lines(data[,1],as.numeric(predict(i2,newdata=data)),col=COLOUR[14],lwd=3)
+lines(data[,1],polyval(r1$p1,data[,1])/polyval(r1$p2,data[,1]),col=COLOUR[15],lwd=3)
+lines(data[,1],polyval(r2$p1,data[,1])/polyval(r2$p2,data[,1]),col=COLOUR[16],lwd=3)
+
 legend("topright",legend=MODELS,fill=COLOUR,col=COLOUR)
 
 
