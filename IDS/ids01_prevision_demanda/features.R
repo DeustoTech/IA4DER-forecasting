@@ -104,7 +104,7 @@ LCNAE   <- levels(ROSETA$COD_CNAE)
 LTARIF  <- levels(ROSETA$COD_TARIF_IBDLA)
 LPROV   <- levels(ROSETA$COD_PROVINCIA)
 LSUM    <- levels(ROSETA$TIP_SUMINISTRO)
-LASS    <- levels(factor(c("CUPS","CGP","LBT","CUA","TR","CT")))
+LASS    <- levels(factor(c("CUPS","CGP","LBT","CUA","TR","CT","SOLAR")))
 
 LIM_EST_CUPS                     <- ROSETA[,VAR]
 LIM_EST_CUPS                     <- LIM_EST_CUPS[LIM_EST_CUPS$CUPS %in% cups$CUPS,]
@@ -133,7 +133,7 @@ names(LIM_EST_SOLAR)             <- c("ID","POT_CON","POT_EST","CNAE","TARIF","S
 setcolorder(LIM_EST_SOLAR,names(LIM_EST_CUPS))
 LIM_EST_CUPS                     <- rbindlist(list(LIM_EST_SOLAR ,LIM_EST_CUPS))
 LIM_EST_CUPS                     <- merge(LIM_EST_CUPS,POT_GRUPO,by="ID",all=TRUE)
-rm(LIM_EST_SOLAR)
+rm(LIM_EST_SOLAR,POT_GRUPO)
 
 LIM_EST_CGP <- foreach(i = unique(ROSETA$COD_SIC_SIGRID),.combine = rbind,.errorhandling = "remove") %dofuture% {
   aux  <- unique(ROSETA$CUPS[ROSETA$COD_SIC_SIGRID == i])
