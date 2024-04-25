@@ -63,6 +63,7 @@ r <- r[order(r$ID), ]
 r$hasPV <- factor(r$hasPV)
 LEVELS <- levels(r$hasPV)
 
+
 cat("Features", "Period", "KPI", "Alpha", "QMAX", "Accuracy", "Specificity", "Kappa", "#", "\n", file = "resultados.csv", sep = ",")
 for (ALPHA in ALPHAS) {
   for (QMAX in QMAXS) {
