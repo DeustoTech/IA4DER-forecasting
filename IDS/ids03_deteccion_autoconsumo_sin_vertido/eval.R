@@ -36,8 +36,17 @@ cat(NA, NA, "random", NA, overall_accuracy, precision, NA, 0, "\n", file = "resu
       data <- data[order(data$CUPS),]
       for (k in KPI)
       {
-        conf <- confusionMatrix(factor(ifelse(data[,k]>0,1,0),levels=LEVELS),r$hasPV)
-        print(conf)
+        dataT <- factor(ifelse(data[,k]>0,1,0))#,levels=LEVELS)
+        ref <- factor(r$hasPV)
+        dataT_t <- table(dataT)
+        ref_t <- table(ref)
+        categories_dataT <- as.integer(names(dataT_t))
+        print(categories_dataT)
+        categories_ref <- as.integer(names(ref_t))
+        print(categories_ref)
+        intersection <- intersect(categories_dataT, categories_ref)
+        print(intersection)
+        conf <- confusionMatrix(dataT_t, ref_t)
         cat(f,p,k,z,conf$overall[1],conf$byClass[2],conf$overall[2],length(DIFF),"\n",file="resultados.csv",append=TRUE,sep=",")
       }
     }
