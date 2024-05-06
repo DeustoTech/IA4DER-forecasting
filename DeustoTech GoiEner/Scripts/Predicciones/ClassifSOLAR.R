@@ -41,11 +41,16 @@ for (col in categorical_columns) {
 data_classif_imputed <- data_classif %>%
   mutate_if(is.numeric, ~ifelse(is.na(.), mean(., na.rm = TRUE), .))
 
+data_classif_imputed$hasPV <- as.factor(data_classif_imputed$hasPV)
+
+data_classif_imputed <- subset(data_classif_imputed, select = -grep("AE", names(data_classif_imputed)))
+
 set.seed(123) # para reproducibilidad
 train_index <- sample(1:nrow(data_classif_imputed), 0.7*nrow(data_classif_imputed))
 train_data <- data_classif_imputed[train_index, ]
 test_data <- data_classif_imputed[-train_index, ]
 
+colnames(train_data) <- gsub("-", "_", colnames(train_data))
 
 
 #Random Forest
