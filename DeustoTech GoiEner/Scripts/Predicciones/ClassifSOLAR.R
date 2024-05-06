@@ -17,49 +17,44 @@ foreach(lib = librerias) %do% {
 
 feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.CSV") #982 330
 feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") #1451  312
-hasPV <- fread("SOLAR/Variation/HasPV.csv") #2434    4
+hasPV_data <- fread("SOLAR/Variation/HasPV.csv") #2434    4
 
 feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #2433  330
 
-data_classif <- merge(feats_totales, hasPV, by = "ID") #2433  333
+data_classif <- merge(feats_totales, hasPV_data, by = "ID") #2433  333
 
-indices <- createDataPartition(data_classif$hasPV, p = 0.7, list = FALSE)
-trainSet <- data_classif[indices, ]
-testSet <- data_classif[-indices, ]
+data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_SUM, -TIP_CONTRATO, -TIP_CUALIFICACION)
 
-evaluar_modelo <- function(modelo, nombre_modelo, datos_entrenamiento, datos_prueba) {
-  modelo <- modelo
-  predicciones <- predict(modelo, datos_prueba)
-  
-  mae <- mean(abs(predicciones - datos_prueba$hasPV))
-  mse <- mean((predicciones - datos_prueba$hasPV)^2)
-  rmse <- sqrt(mse)
-  
-  resultados <- data.frame(Modelo = nombre_modelo, MAE = mae, MSE = mse, RMSE = rmse)
-  
-  return(resultados)
+
+categorical_columns <- c("COD_CONTRATO", "COD_PS", 
+                         "TIP_SUMINISTRO", "FEC_ALTA_PUN_SUM",  
+                         "COD_CLIENTE", "FEC_ALTA_CONTRATO", 
+                         "COD_CNAE", "FEC_ENG_POLIZA", "FEC_DGCHE_POLIZA", 
+                         "COD_TARIF_IBDLA", "TIP_EST_POLIZA",
+                         "InstallationDate", "FirstInjection")
+
+
+for (col in categorical_columns) {
+  data_classif[[col]] <- as.numeric(as.factor(data_classif[[col]]))
 }
 
+data_classif_imputed <- data_classif %>%
+  mutate_if(is.numeric, ~ifelse(is.na(.), mean(., na.rm = TRUE), .))
 
-resultados_modelos <- data.frame(Modelo = character(), MAE = numeric(), MSE = numeric(), RMSE = numeric())
+set.seed(123) # para reproducibilidad
+train_index <- sample(1:nrow(data_classif_imputed), 0.7*nrow(data_classif_imputed))
+train_data <- data_classif_imputed[train_index, ]
+test_data <- data_classif_imputed[-train_index, ]
 
-preproc_values <- preProcess(trainSet, method = "medianImpute")
-trainSet <- predict(preproc_values, newdata = trainSet)
+
 
 #Random Forest
-modelo_rf <- randomForest(hasPV ~ ., data = trainSet, ntree = 500)
-resultados_modelos <- rbind(resultados_modelos, evaluar_modelo(modelo_rf, "Random Forest", trainSet, testSet))
+rf_model <- randomForest(hasPV ~ ., data = train_data, treesize = 500)
 
-# Modelo de regresión logística
-modelo_logit <- glm(hasPV ~ ., data = trainSet, family = "binomial")
-resultados_modelos <- rbind(resultados_modelos, evaluar_modelo(modelo_logit, "Logistic Regression", trainSet, testSet))
+# SVM
+svm_model <- svm(as.factor(hasPV) ~ ., data = train_data, kernel = "radial")
 
-# Modelo de máquinas de vectores de soporte
-modelo_svm <- svm(hasPV ~ ., data = trainSet)
-resultados_modelos <- rbind(resultados_modelos, evaluar_modelo(modelo_svm, "SVM", trainSet, testSet))
+# Regresión logística
+glm_model <- glm(as.factor(hasPV) ~ ., data = train_data, family = "binomial")
 
-# Guardar resultados en un archivo CSV
-write.csv(resultados_modelos, "resultados_modelos.csv", row.names = FALSE)
 
-# Ver los resultados
-print(resultados_modelos)
