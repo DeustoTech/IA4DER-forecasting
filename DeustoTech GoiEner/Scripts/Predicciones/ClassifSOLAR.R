@@ -20,21 +20,33 @@ feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") #1451  312
 hasPV_data <- fread("SOLAR/Variation/HasPV.csv") #2434    4
 features <- fread("SOLAR/features.csv") #97028    22
 
-feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #2433  330
-feats_totales <- merge(feats_totales, features, by = "ID")
-data_classif <- merge(feats_totales, hasPV_data, by = "ID") #2433  333
-data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_SUM, -TIP_CONTRATO, -TIP_CUALIFICACION, -FirstInjection)
+features <- features %>% filter(ASS == "CUPS" | ASS == "SOLAR") #71021 22
 
-categorical_columns <- c("COD_CONTRATO", "COD_PS", 
-                         "TIP_SUMINISTRO", "FEC_ALTA_PUN_SUM",  
-                         "COD_CLIENTE", "FEC_ALTA_CONTRATO", 
-                         "COD_CNAE", "FEC_ENG_POLIZA", "FEC_DGCHE_POLIZA", 
-                         "COD_TARIF_IBDLA", "TIP_EST_POLIZA",
-                         "InstallationDate")
+feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #2433  330
+
+# Ejecutar estas dos lineas para seleccionar de features (cruz) solo las que no tenemos nosotros
+columns_to_select <- setdiff(names(features), names(feats_totales))
+features <- features %>% select(ID, columns_to_select)
+
+feats_totales <- merge(feats_totales, features, by = "ID")
+
+data_classif <- merge(feats_totales, hasPV_data, by = "ID") #2433  333
+
+# Quitamos todo lo de inyección, identificadores, fechas, repetidas y variables que no cambian
+
+data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_SUM,
+                                        -TIP_CONTRATO, -TIP_CUALIFICACION,
+                                        -FirstInjection, -InstallationDate, -DIFF_HOURS,
+                                        -COD_CNAE, -contains("AE."), -COD_PS, -COD_CLIENTE,
+                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD)
+
+categorical_columns <- c("COD_POLIZA", "TIP_SUMINISTRO", "TARIF",
+                         "CNAE", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "TIP_PUNTO_MEDIDA", "SUM")
 
 
 for (col in categorical_columns) {
-  data_classif[[col]] <- as.numeric(as.factor(data_classif[[col]]))
+  data_classif[[col]] <- ifelse(is.na(data_classif[[col]]) | data_classif[[col]] == "", -1, as.factor(data_classif[[col]]))
+  data_classif[[col]] <- (as.factor(data_classif[[col]]))
 }
 
 
@@ -46,19 +58,22 @@ data_classif_imputed <- data_classif %>%
 
 data_classif_imputed$hasPV <- as.factor(data_classif_imputed$hasPV)
 
-data_classif_imputed <- data_classif_imputed %>%
-  select(-contains("AE"))
+colnames(data_classif_imputed) <- gsub("-", "_", colnames(data_classif_imputed))
 
-group1 <- c("LENGTH.x","NAs","ZEROS","AVG.x","SD.x","MIN.x","Q1.x","MEDIAN.x","Q3.x",
-            "MAX.x","TOTAL","VAR","ENTROPY","LENGTH.y","ZERO","IMPUTED","ENERGY","AVG.y",
-            "SD.y","MIN.y","Q1.y","MEDIAN.y","Q3.y","MAX.y","TARIF","SUM","PROV")
 
+
+# statistical descriptors
+group1 <- c("LENGTH","NAs","ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
+            "MAX","TOTAL","VAR","ENTROPY","IMPUTED","ENERGY", "SUM")
+
+# solar periods + tariff
 group2 <- c("P_T2.0_VALLE","P_T2.0_LLANO","P_T2.0_PICO","P_T_SOLAR_PICO","P_T_SOLAR_LLANO",
-            "P_T_SOLAR_SPICO","P_T_SOLAR_SLLANO")
+            "P_T_SOLAR_SPICO","P_T_SOLAR_SLLANO", "TARIF")
 
-group3 <- c("COD_CONTRATO", "COD_PS","TIP_SUMINISTRO","FEC_ALTA_PUN_SUM","VAL_POT_AUTORIZADA",
-            "FEC_ENG_POLIZA","FEC_DGCHE_POLIZA","COD_TARIF_IBDLA","TIP_EST_POLIZA","TIP_PUNTO_MEDIDA",
-            "ASS","POT_CON","POT_EST","POT_NOM","POT_AUT","SHARP", "DIFF_HOURS")
+# contracted powers an potencies
+group3 <- c("TIP_SUMINISTRO","VAL_POT_AUTORIZADA",
+             "COD_TARIF_IBDLA","TIP_EST_POLIZA","TIP_PUNTO_MEDIDA",
+            "POT_CON","POT_EST","POT_NOM","POT_AUT", "ENERGY")
 
 group4 <- c(
   "AI.week.1", "AI.week.2", "AI.week.3", "AI.week.4", "AI.week.5",
@@ -111,42 +126,50 @@ group6 <- c(
 )
 
 
-evaluar_modelo <- function(data, grupo_features, modelo, seed=123) {
-  set.seed(seed)
-  # Asegúrate que data es un data.table y luego conviértelo a data.frame
-  setDT(data)
-  index_train <- createDataPartition(data$hasPV, p=0.8, list=FALSE)
+evaluar_modelo <- function(grupo_features, modelo, train, test) {
+  # set.seed(123)
+  # setDT(data)
   
-  train_set <- as.data.frame(data[index_train, ..grupo_features])
-  test_set <- as.data.frame(data[-index_train, ..grupo_features])
-  train_labels <- data$hasPV[index_train]
-  test_labels <- data$hasPV[-index_train]
+  train_labels <- train$hasPV
+  test_labels <- test$hasPV
   
-  colnames(train_set) <- gsub("_|-", "", colnames(train_set))
-  colnames(test_set) <- gsub("_|-", "", colnames(test_set))
+  train <- train[, grupo_features]
+  test <- test[, grupo_features]
+  
+  # print(names(train))
   
   # Usar directamente caret::train para evitar conflictos de nombres
-  fit <- caret::train(x = train_set, y = train_labels, method = modelo, trControl = trainControl(method="cv", number=10))
+  # fit <- caret::train(x = train, y = train_labels, method = modelo, trControl = trainControl(method="cv", number=10))
+  fit <- caret::train(x = train, y = train_labels, method = modelo)
   
-  pred <- predict(fit, test_set)
-  accuracy <- sum(pred == test_labels) / length(test_labels)
-  mape <- mape(as.numeric(as.character(test_labels)), as.numeric(as.character(pred)))
-  
-  return(c(accuracy, mape))
+  pred <- predict(fit, test)
+  # accuracy <- sum(pred == test_labels) / length(test_labels)
+  accuracy <- accuracy(test_labels, pred)
+  sensi <- sensitivity(test_labels, pred)
+  speci <- specificity(test_labels, pred)
+  # mape <- mape(as.numeric(as.character(test_labels)), as.numeric(as.character(pred)))
+  return(c(accuracy, sensi, speci))
 }
 
 resultados <- data.frame()
 modelos <- c("rf", "svmLinear", "glm")
+# modelos <- c("glm")
 
 for(modelo in modelos) {
   for(i in 1:6) {
     grupo <- get(paste0("group", i))
-    metrics <- evaluar_modelo(data_classif_imputed, grupo, modelo)
-    resultados <- rbind(resultados, c(modelo, paste0("group", i), metrics[1], metrics[2]))
+  
+    index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
+    train_set <- as.data.frame(data_classif_imputed[index_train, ])
+    test_set <- as.data.frame(data_classif_imputed[-index_train, ])
+    
+    metrics <- evaluar_modelo(grupo, modelo, train_set, test_set)
+    print(paste("Grupo ",i, ", Modelo: ",modelo, "DONE"))
+    resultados <- rbind(resultados, c(modelo, paste0("group", i), metrics[1], metrics[2], metrics[3]))
   }
 }
+colnames(resultados) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specificity")
 
-colnames(resultados) <- c("Modelo", "Grupo", "Accuracy", "MAPE")
 
 
 fwrite(resultados, "resultados_modelos.csv", row.names = F)
