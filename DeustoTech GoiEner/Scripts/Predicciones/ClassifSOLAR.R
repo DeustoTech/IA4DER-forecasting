@@ -153,7 +153,7 @@ evaluar_modelo <- function(grupo_features, modelo, train, test) {
 
 resultados <- data.frame()
 modelos <- c("rf", "svmLinear", "glm")
-# modelos <- c("glm")
+modelos <- c("rf")
 
 for(modelo in modelos) {
   for(i in 1:6) {
