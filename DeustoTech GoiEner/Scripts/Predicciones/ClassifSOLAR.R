@@ -64,7 +64,7 @@ colnames(data_classif_imputed) <- gsub("-", "_", colnames(data_classif_imputed))
 
 # statistical descriptors
 group1 <- c("LENGTH","NAs","ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
-            "MAX","TOTAL","VAR","ENTROPY","IMPUTED","ENERGY", "SUM")
+            "MAX","TOTAL","VAR","ENTROPY","IMPUTED","ENERGY")
 
 # solar periods + tariff
 group2 <- c("P_T2.0_VALLE","P_T2.0_LLANO","P_T2.0_PICO","P_T_SOLAR_PICO","P_T_SOLAR_LLANO",
