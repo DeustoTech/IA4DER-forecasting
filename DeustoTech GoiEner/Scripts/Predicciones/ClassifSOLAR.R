@@ -71,7 +71,7 @@ group1 <- c("LENGTH","NAs","ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
 #             "P_T_SOLAR_SPICO","P_T_SOLAR_SLLANO", "TARIF")
 
 # contracted powers an potencies
-group3 <- c("TIP_SUMINISTRO","COD_TARIF_IBDLA","TIP_EST_POLIZA","TIP_PUNTO_MEDIDA",
+group2 <- c("TIP_SUMINISTRO","COD_TARIF_IBDLA","TIP_EST_POLIZA","TIP_PUNTO_MEDIDA",
             "POT_CON","POT_EST","POT_NOM", "ENERGY")
 
 # group4 <- c(
@@ -155,7 +155,7 @@ modelos <- c("rf", "svmLinear", "glm")
 # modelos <- c("glm")
 
 for(modelo in modelos) {
-  for(i in 1:6) {
+  for(i in 1:2) {
     grupo <- get(paste0("group", i))
   
     index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
