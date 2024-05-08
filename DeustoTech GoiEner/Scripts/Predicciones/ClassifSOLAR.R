@@ -58,7 +58,7 @@ data_classif_imputed <- data_classif %>%
 
 data_classif_imputed$hasPV <- as.factor(data_classif_imputed$hasPV)
 
-colnames(data_classif_imputed) <- gsub("-", "_", colnames(data_classif_imputed))
+#colnames(data_classif_imputed) <- gsub("-", "_", colnames(data_classif_imputed))
 
 
 
@@ -135,12 +135,10 @@ evaluar_modelo <- function(grupo_features, modelo, train, test) {
   train <- train[, grupo_features]
   test <- test[, grupo_features]
   
-  # print(names(train))
-  
   # Usar directamente caret::train para evitar conflictos de nombres
-  # fit <- caret::train(x = train, y = train_labels, method = modelo, trControl = trainControl(method="cv", number=10))
+  #fit <- caret::train(x = train, y = train_labels, method = modelo, trControl = trainControl(method="cv", number=10))
   fit <- caret::train(x = train, y = train_labels, method = modelo)
-  
+
   pred <- predict(fit, test)
   # accuracy <- sum(pred == test_labels) / length(test_labels)
   accuracy <- accuracy(test_labels, pred)
@@ -152,12 +150,12 @@ evaluar_modelo <- function(grupo_features, modelo, train, test) {
 
 resultados <- data.frame()
 modelos <- c("rf", "svmLinear", "glm")
-# modelos <- c("glm")
+modelos <- c("svmLinear")
 
 for(modelo in modelos) {
-  for(i in 1:2) {
+  for(i in 2:2) {
     grupo <- get(paste0("group", i))
-  
+
     index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
     train_set <- as.data.frame(data_classif_imputed[index_train, ])
     test_set <- as.data.frame(data_classif_imputed[-index_train, ])
