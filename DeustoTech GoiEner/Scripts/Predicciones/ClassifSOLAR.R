@@ -128,7 +128,7 @@ group2 <- c("TIP_SUMINISTRO","COD_TARIF_IBDLA","TIP_EST_POLIZA","TIP_PUNTO_MEDID
 evaluar_modelo <- function(grupo_features, modelo, train, test) {
   # set.seed(123)
   # setDT(data)
-  print(grupo_features)
+  # print(grupo_features)
   train_labels <- train$hasPV
   test_labels <- test$hasPV
   
@@ -200,7 +200,7 @@ colnames(resultadosPerms) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Sp
 # resultados$Grupo <- toString(group1)
 
 
-
+# TODO ejecutar con las que todavía no hemos ejecutado (usar setdiff)
 
 
 
