@@ -8,7 +8,7 @@ librerias <- c("ggplot2", "lattice", "caret", "fpp3",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
                'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
-               "randomForest", "purrr", "matrixStats","glmnet", "recipes", "pROC") 
+               "randomForest", "purrr", "matrixStats","glmnet", "recipes", "pROC", "rje") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -170,3 +170,39 @@ colnames(resultados) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specifi
 
 
 fwrite(resultados, "resultados_modelos.csv", row.names = F)
+
+##################### Prueba con grupo 1, todo trainset.
+# 
+group1 <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
+            "MAX","ENTROPY","ENERGY")
+resultadosPerms <- data.frame()
+
+
+# group1 <- c("NAs", "ZEROS")
+# modelos <- c("rf", "svmLinear", "glm")
+modelos <- "rf"
+permutations <- powerSet(group1, 10)
+for(modelo in modelos) {
+  
+  for (grupo in permutations){
+  grupo <- c(grupo)
+  # grupo = group1
+  index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
+  train_set <- as.data.frame(data_classif_imputed[index_train, ])
+  test_set <- as.data.frame(data_classif_imputed[-index_train, ])
+  
+  metrics <- evaluar_modelo(grupo, modelo, train_set, test_set)
+  print(paste("Grupo 1 ", ", Modelo: ",modelo, "DONE"))
+  resultadosPerms <- rbind(resultadosPerms, c(modelo, toString(group1), metrics[1], metrics[2], metrics[3]))
+  }
+}
+colnames(resultadosPerms) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specificity")
+# resultados$Grupo <- toString(group1)
+
+
+
+
+
+
+
+
