@@ -150,10 +150,10 @@ evaluar_modelo <- function(grupo_features, modelo, train, test) {
 
 resultados <- data.frame()
 modelos <- c("rf", "svmLinear", "glm")
-modelos <- c("svmLinear")
+modelos <- c("glm")
 
 for(modelo in modelos) {
-  for(i in 2:2) {
+  for(i in 1:2) {
     grupo <- get(paste0("group", i))
 
     index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
@@ -169,4 +169,4 @@ colnames(resultados) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specifi
 
 
 
-fwrite(resultados, "resultados_modelos.csv", row.names = F)
+fwrite(resultados, "SOLAR/resultados_clasificacion.csv", row.names = F)
