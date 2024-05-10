@@ -8,7 +8,7 @@ librerias <- c("ggplot2", "lattice", "caret", "fpp3",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
                'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
-               "randomForest", "purrr", "matrixStats","glmnet", "recipes", "pROC") 
+               "randomForest", "purrr", "matrixStats","glmnet", "recipes", "pROC", "rje") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -128,12 +128,12 @@ group2 <- c("TIP_SUMINISTRO","COD_TARIF_IBDLA","TIP_EST_POLIZA","TIP_PUNTO_MEDID
 evaluar_modelo <- function(grupo_features, modelo, train, test) {
   # set.seed(123)
   # setDT(data)
-  
+  # print(grupo_features)
   train_labels <- train$hasPV
   test_labels <- test$hasPV
   
-  train <- train[, grupo_features]
-  test <- test[, grupo_features]
+  train <- train %>% select(grupo_features)
+  test <- test %>% select(grupo_features)
   
   # Usar directamente caret::train para evitar conflictos de nombres
   #fit <- caret::train(x = train, y = train_labels, method = modelo, trControl = trainControl(method="cv", number=10))
@@ -169,4 +169,41 @@ colnames(resultados) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specifi
 
 
 
+
 fwrite(resultados, "SOLAR/resultados_clasificacion.csv", row.names = F)
+
+
+##################### Prueba con grupo 1, todo trainset.
+# 
+group1 <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
+            "MAX","ENTROPY","ENERGY")
+resultadosPerms <- data.frame()
+
+
+# group1 <- c("NAs", "ZEROS")
+# modelos <- c("rf", "svmLinear", "glm")
+modelos <- "rf"
+permutations <- powerSet(group1, 10)
+for(modelo in modelos) {
+  
+  for (i in 2:length(permutations)){ # permutations[[1]] is empty
+  grupo <- c(permutations[[i]])
+  # grupo = group1
+  index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
+  train_set <- as.data.frame(data_classif_imputed[index_train, ])
+  test_set <- as.data.frame(data_classif_imputed[-index_train, ])
+  
+  metrics <- evaluar_modelo(grupo, modelo, train_set, test_set)
+  print(paste("Grupo 1 ", ", Modelo: ",modelo, "DONE"))
+  resultadosPerms <- rbind(resultadosPerms, c(modelo, toString(grupo), metrics[1], metrics[2], metrics[3]))
+  }
+}
+colnames(resultadosPerms) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specificity")
+# resultados$Grupo <- toString(group1)
+
+
+# TODO ejecutar con las que todavía no hemos ejecutado (usar setdiff)
+
+
+
+
