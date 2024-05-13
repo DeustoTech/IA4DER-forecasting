@@ -58,6 +58,11 @@ data_classif_imputed <- data_classif %>%
 
 data_classif_imputed$POT_AUT <- as.numeric(data_classif_imputed$POT_AUT)
 
+results_file <- "SOLAR/Regression_SOLAR.csv"
+if (!file.exists(results_file)) {
+  fwrite(data.frame(Model = character(), RMSE = numeric()), results_file, row.names = FALSE)
+}
+
 set.seed(123)  
 train_control <- trainControl(
   method = "cv",        
@@ -82,8 +87,13 @@ for (model in models) {
   )
   
   # Guardar el resultado
-  results[[model]] <- model_fit
+  #results[[model]] <- model_fit
+  rmse_value <- model_fit$results$RMSE
+  
+  fwrite(data.frame(Model = model, RMSE = rmse_value), results_file, row.names = FALSE, append = TRUE)
 }
+
+
 
 
 errors <- data.frame(
