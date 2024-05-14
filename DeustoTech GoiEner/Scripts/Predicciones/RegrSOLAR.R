@@ -38,10 +38,10 @@ data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_S
                                         -TIP_CONTRATO, -TIP_CUALIFICACION,
                                         -FirstInjection, -InstallationDate, -DIFF_HOURS,
                                         -COD_CNAE, -contains("AE."), -COD_PS, -COD_CLIENTE,
-                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD)
+                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD, -TIP_SUMINISTRO)
 
-categorical_columns <- c("COD_POLIZA", "TIP_SUMINISTRO", "TARIF",
-                         "CNAE", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "TIP_PUNTO_MEDIDA", "SUM")
+categorical_columns <- c( "TARIF",
+                         "CNAE", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "TIP_PUNTO_MEDIDA")
 
 
 for (col in categorical_columns) {
@@ -57,6 +57,105 @@ data_classif_imputed <- data_classif %>%
   mutate(across(where(is.numeric), ~if_else(is.na(.), median(., na.rm = TRUE), .)))
 
 data_classif_imputed$POT_AUT <- as.numeric(data_classif_imputed$POT_AUT)
+
+normalize_min_max <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+data_classif_imputed$POT_AUT <- normalize_min_max(data_classif_imputed$POT_AUT)
+
+data_classif_imputed <- data_classif_imputed %>% select(-ID)
+
+ensure_levels_in_train <- function(data, categorical_columns) {
+  train_indices <- c()
+  for (col in categorical_columns) {
+    for (level in unique(data[[col]])) {
+      level_indices <- which(data[[col]] == level)
+      train_indices <- c(train_indices, sample(level_indices, 1))
+    }
+  }
+  return(unique(train_indices))
+}
+
+# Obtener índices para el conjunto de entrenamiento
+initial_train_indices <- ensure_levels_in_train(data_classif_imputed, categorical_columns)
+
+# Crear el conjunto de entrenamiento inicial
+data_train_initial <- data_classif_imputed[initial_train_indices, ]
+
+# Crear el conjunto de datos restante
+remaining_data <- data_classif_imputed[-initial_train_indices, ]
+
+set.seed(123)
+remaining_train_size <- floor(0.8 * nrow(data_classif_imputed)) - nrow(data_train_initial)
+
+# Seleccionar el resto de los datos para el conjunto de entrenamiento
+remaining_train_indices <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
+
+# Combinar las dos partes del conjunto de entrenamiento
+data_train <- rbind(data_train_initial, remaining_data[remaining_train_indices, ])
+
+# Crear el conjunto de prueba con los datos restantes
+data_test <- remaining_data[-remaining_train_indices, ]
+
+for (col in categorical_columns) {
+  data_train[[col]] <- as.factor(data_train[[col]])
+  data_test[[col]] <- as.factor(data_test[[col]])
+  
+  levels(data_test[[col]]) <- levels(data_train[[col]])
+}
+
+####
+
+
+set.seed(123)  # Para reproducibilidad
+trainIndex <- createDataPartition(data_classif_imputed$POT_AUT, p = .8, 
+                                  list = FALSE, 
+                                  times = 1)
+data_train <- data_classif_imputed[trainIndex, ]
+data_test  <- data_classif_imputed[-trainIndex, ]
+
+
+for (col in categorical_columns) {
+  data_train[[col]] <- as.factor(data_train[[col]])
+  data_test[[col]] <- as.factor(data_test[[col]])
+  
+  levels(data_test[[col]]) <- union(levels(data_test[[col]]), levels(data_train[[col]]))
+  levels(data_train[[col]]) <- union(levels(data_train[[col]]), levels(data_test[[col]]))
+}
+
+
+calculate_mape <- function(actual, predicted) {
+  return(mean(abs((actual - predicted) / actual)) * 100)
+}
+
+#linear regression
+model_lm <- lm(POT_AUT ~ ., data = data_train)
+predictions_lm <- predict(model_lm, newdata = data_test)
+
+#random forest
+model_rf <- randomForest(POT_AUT ~ ., data = data_train, ntree = 100)
+predictions_rf <- predict(model_rf, newdata = data_test)
+
+#svm
+model_svm <- train(POT_AUT ~ ., data = data_train, method = 'svmLinear')
+predictions_svm <- predict(model_svm, newdata = data_test)
+
+#CALCULATE MAPES
+mape_lm <- calculate_mape(data_test$POT_AUT, predictions_lm)
+mape_rf <- calculate_mape(data_test$POT_AUT, predictions_rf)
+mape_svm <- calculate_mape(data_test$POT_AUT, predictions_svm)
+
+results <- data.frame(
+  Model = c("LR", "RF", "SVM"),
+  MAPE = c(mape_lm, mape_rf, mape_svm)
+)
+
+fwrite(results, "SOLAR/Regression_SOLAR.csv", row.names = FALSE)
+
+
+
+
 
 results_file <- "SOLAR/Regression_SOLAR.csv"
 if (!file.exists(results_file)) {
