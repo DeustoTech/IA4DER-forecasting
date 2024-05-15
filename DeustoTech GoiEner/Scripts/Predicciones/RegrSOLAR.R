@@ -15,6 +15,7 @@ foreach(lib = librerias) %do% {
 }
 
 
+
 feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.CSV") #982 330
 feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") #1451  312
 hasPV_data <- fread("SOLAR/Variation/HasPV.csv") #2434    4
