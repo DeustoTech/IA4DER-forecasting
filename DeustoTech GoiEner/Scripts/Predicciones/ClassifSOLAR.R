@@ -203,6 +203,7 @@ for(modelo in modelos) {
   test_set <- as.data.frame(data_classif_imputed[-index_train, ])
   
   metrics <- evaluar_modelo(grupo, modelo, train_set, test_set)
+  print(paste("Feature set", i, "/512 completed"))
   print(paste("Grupo 1 ", ", Modelo: ",modelo, "DONE"))
   resultadosPerms <- rbind(resultadosPerms, c(modelo, toString(grupo), metrics[1], metrics[2], metrics[3]))
   }
