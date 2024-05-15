@@ -203,21 +203,21 @@ evaluar_modelo <- function(grupo_features, train, test) {
   test <- test %>% select(grupo_features)
   
   #linear regression
-  model_lm <- lm(POT_AUT ~ ., data = train)
+  model_lm <- lm(train_labels ~ ., data = train)
   predictions_lm <- predict(model_lm, newdata = test)
   
   #random forest
-  model_rf <- randomForest(POT_AUT ~ ., data = train, ntree = 100)
+  model_rf <- randomForest(train_labels ~ ., data = train, ntree = 100)
   predictions_rf <- predict(model_rf, newdata = test)
   
   #svm
-  model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
+  model_gbm <- caret::train(train_labels ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
   predictions_gbm <- predict(model_gbm, newdata = test)
   
   #CALCULATE MAPES
-  mape_lm <- mape(test$POT_AUT, predictions_lm)
-  mape_rf <- mape(test$POT_AUT, predictions_rf)
-  mape_gbm <- mape(test$POT_AUT, predictions_gbm)
+  mape_lm <- mape(test_labels, predictions_lm)
+  mape_rf <- mape(test_labels, predictions_rf)
+  mape_gbm <- mape(test_labels, predictions_gbm)
   
   return(c(mape_lm, mape_rf, mape_gbm))
 }
