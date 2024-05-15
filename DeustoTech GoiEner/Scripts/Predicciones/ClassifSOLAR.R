@@ -185,6 +185,8 @@ resultadosPerms <- data.frame()
 for (col in group1){
   if (col != "ZEROS"){
     data_classif_imputed[[col]] <- data_classif_imputed[[col]] / data_classif_imputed$MAX
+    data_classif_imputed[[col]] <- replace_na(data_classif_imputed[[col]], 0)
+    
   }
 }
 
