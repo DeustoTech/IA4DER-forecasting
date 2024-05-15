@@ -39,7 +39,7 @@ data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_S
                                         -TIP_CONTRATO, -TIP_CUALIFICACION,
                                         -FirstInjection, -InstallationDate, -DIFF_HOURS,
                                         -COD_CNAE, -contains("AE."), -COD_PS, -COD_CLIENTE,
-                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD, NAs)
+                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD, -NAs)
 
 
 
