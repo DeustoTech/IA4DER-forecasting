@@ -25,8 +25,8 @@ features <- features %>% filter(ASS == "CUPS" | ASS == "SOLAR") #71021 22
 feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #2433  330
 
 # Ejecutar estas dos lineas para seleccionar de features (cruz) solo las que no tenemos nosotros
-columns_to_select <- setdiff(names(features), names(feats_totales))
-features <- features %>% select(ID, columns_to_select)
+columns_to_select <- setdiff(names(feats_totales), names(features))
+feats_totales <- feats_totales %>% select(ID, columns_to_select)
 
 feats_totales <- merge(feats_totales, features, by = "ID")
 
@@ -43,6 +43,7 @@ data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_S
 categorical_columns <- c("COD_POLIZA", "TIP_SUMINISTRO", "TARIF",
                          "CNAE", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "TIP_PUNTO_MEDIDA", "SUM")
 
+data_classif$TarifCode <- data_classif$TARIF
 
 for (col in categorical_columns) {
   data_classif[[col]] <- ifelse(is.na(data_classif[[col]]) | data_classif[[col]] == "", -1, as.factor(data_classif[[col]]))
@@ -176,21 +177,29 @@ fwrite(resultados, "SOLAR/resultados_clasificacion.csv", row.names = F)
 ##################### Prueba con grupo 1, todo trainset.
 # 
 group1 <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
-            "MAX","ENTROPY","ENERGY")
+            "ENERGY","ENTROPY")
 resultadosPerms <- data.frame()
+
+
+# Normalize columns
+for (col in group1){
+  if (col != "ZEROS"){
+    data_classif_imputed[[col]] <- data_classif_imputed[[col]] / data_classif_imputed$MAX
+  }
+}
 
 
 # group1 <- c("NAs", "ZEROS")
 # modelos <- c("rf", "svmLinear", "glm")
 modelos <- "rf"
-permutations <- powerSet(group1, 10)
+permutations <- powerSet(group1, 9)
 for(modelo in modelos) {
   
   for (i in 2:length(permutations)){ # permutations[[1]] is empty
   grupo <- c(permutations[[i]])
   # grupo = group1
   index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
-  train_set <- as.data.frame(data_classif_imputed[index_train, ])
+  train_set <- as.data.frame(data_classif_imputed[index_train, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
   test_set <- as.data.frame(data_classif_imputed[-index_train, ])
   
   metrics <- evaluar_modelo(grupo, modelo, train_set, test_set)
