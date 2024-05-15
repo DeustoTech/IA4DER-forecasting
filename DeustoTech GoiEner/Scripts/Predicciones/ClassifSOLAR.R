@@ -213,7 +213,7 @@ for(modelo in modelos) {
 }
 colnames(resultadosPerms) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specificity")
 # resultados$Grupo <- toString(group1)
-fwrite(resultadosPerms, "SOLAR/Classif_256.csv")
+fwrite(resultadosPerms, "SOLAR/Classif_Accuracy.csv")
 
 # TODO ejecutar con las que todavía no hemos ejecutado (usar setdiff)
 
