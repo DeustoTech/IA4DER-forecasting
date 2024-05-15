@@ -190,6 +190,7 @@ for (col in group1){
   }
 }
 
+data_classif_imputed[which(is.infinite(data_classif_imputed$ENTROPY))]$ENTROPY <- 1
 
 # group1 <- c("NAs", "ZEROS")
 # modelos <- c("rf", "svmLinear", "glm")
@@ -212,7 +213,7 @@ for(modelo in modelos) {
 }
 colnames(resultadosPerms) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specificity")
 # resultados$Grupo <- toString(group1)
-
+fwrite(resultadosPerms, "SOLAR/Classif_256.csv")
 
 # TODO ejecutar con las que todavía no hemos ejecutado (usar setdiff)
 
