@@ -38,10 +38,11 @@ data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_S
                                         -TIP_CONTRATO, -TIP_CUALIFICACION,
                                         -FirstInjection, -InstallationDate, -DIFF_HOURS,
                                         -COD_CNAE, -contains("AE."), -COD_PS, -COD_CLIENTE,
-                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD, -TIP_SUMINISTRO)
+                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD, NAs)
 
-categorical_columns <- c( "TARIF",
-                         "CNAE", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "TIP_PUNTO_MEDIDA")
+
+
+categorical_columns <- c( "TIP_SUMINISTRO", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "CNAE", "TARIF", "SUM", "TIP_PUNTO_MEDIDA")
 
 
 for (col in categorical_columns) {
@@ -49,6 +50,29 @@ for (col in categorical_columns) {
   data_classif[[col]] <- (as.factor(data_classif[[col]]))
 }
 
+unique_categories_to_filter <- list(
+  TIP_SUMINISTRO = c(3, 4, 6, 14, 17),
+  TIP_EST_POLIZA = c(1, 3), 
+  CNAE = c(2,4),  
+  SUM = c(5, 16, 18, 19, 21, 22, 23)  
+)
+
+for (col in names(unique_categories_to_filter)) {
+    data_classif <- subset(data_classif, !(get(col) %in% unique_categories_to_filter[[col]]))
+}
+
+data_classif$TIP_SUMINISTRO <- droplevels(data_classif$TIP_SUMINISTRO)
+data_classif$TIP_EST_POLIZA <- droplevels(data_classif$TIP_EST_POLIZA)
+data_classif$CNAE <- droplevels(data_classif$CNAE)
+data_classif$SUM <- droplevels(data_classif$SUM)
+
+for (col in colnames(data_classif)) {
+  # Reemplazar "-" por "."
+  new_col_name <- gsub("-", ".", col)
+  
+  # Renombrar la columna en el dataset
+  names(data_classif)[names(data_classif) == col] <- new_col_name
+}
 
 data_classif <- data_classif %>% 
   mutate(across(where(is.numeric), ~replace(., !is.finite(.), NA)))
@@ -107,7 +131,7 @@ for (col in categorical_columns) {
 
 ####
 
-
+'''
 set.seed(123)  # Para reproducibilidad
 trainIndex <- createDataPartition(data_classif_imputed$POT_AUT, p = .8, 
                                   list = FALSE, 
@@ -124,10 +148,8 @@ for (col in categorical_columns) {
   levels(data_train[[col]]) <- union(levels(data_train[[col]]), levels(data_test[[col]]))
 }
 
+'''
 
-calculate_mape <- function(actual, predicted) {
-  return(mean(abs((actual - predicted) / actual)) * 100)
-}
 
 #linear regression
 model_lm <- lm(POT_AUT ~ ., data = data_train)
@@ -138,74 +160,18 @@ model_rf <- randomForest(POT_AUT ~ ., data = data_train, ntree = 100)
 predictions_rf <- predict(model_rf, newdata = data_test)
 
 #svm
-model_svm <- train(POT_AUT ~ ., data = data_train, method = 'svmLinear')
-predictions_svm <- predict(model_svm, newdata = data_test)
+model_gbm <- caret::train(POT_AUT ~ ., data = data_train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
+predictions_gbm <- predict(model_gbm, newdata = data_test)
 
 #CALCULATE MAPES
-mape_lm <- calculate_mape(data_test$POT_AUT, predictions_lm)
-mape_rf <- calculate_mape(data_test$POT_AUT, predictions_rf)
-mape_svm <- calculate_mape(data_test$POT_AUT, predictions_svm)
+mape_lm <- mape(data_test$POT_AUT, predictions_lm)
+mape_rf <- mape(data_test$POT_AUT, predictions_rf)
+mape_gbm <- mape(data_test$POT_AUT, predictions_gbm)
 
 results <- data.frame(
-  Model = c("LR", "RF", "SVM"),
-  MAPE = c(mape_lm, mape_rf, mape_svm)
+  Model = c("LR", "RF", "GBM"),
+  MAPE = c(mape_lm, mape_rf, mape_gbm)
 )
 
 fwrite(results, "SOLAR/Regression_SOLAR.csv", row.names = FALSE)
-
-
-
-
-
-results_file <- "SOLAR/Regression_SOLAR.csv"
-if (!file.exists(results_file)) {
-  fwrite(data.frame(Model = character(), RMSE = numeric()), results_file, row.names = FALSE)
-}
-
-set.seed(123)  
-train_control <- trainControl(
-  method = "cv",        
-  number = 10          
-)
-
-metric <- "RMSE"
-
-models <- c("lm", "rf", "svmLinear")
-
-results <- list()
-
-for (model in models) {
-  
-  set.seed(123)
-  model_fit <- caret::train(
-    POT_AUT ~ .,  
-    data = data_classif_imputed,
-    method = model,
-    trControl = train_control,
-    metric = metric
-  )
-  
-  # Guardar el resultado
-  #results[[model]] <- model_fit
-  rmse_value <- model_fit$results$RMSE
-  
-  fwrite(data.frame(Model = model, RMSE = rmse_value), results_file, row.names = FALSE, append = TRUE)
-}
-
-
-
-
-errors <- data.frame(
-  Model = character(),
-  RMSE = numeric(),
-  stringsAsFactors = FALSE
-)
-
-
-for (model in names(results)) {
-  errors <- rbind(errors, data.frame(
-    Model = model,
-    RMSE = results[[model]]$results$RMSE
-  ))
-}
 
