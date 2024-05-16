@@ -192,6 +192,8 @@ for (col in group1){
   }
 }
 
+data_classif_imputed[which(is.infinite(data_classif_imputed$ENTROPY))]$ENTROPY <- 1
+
 
 evaluar_modelo <- function(grupo_features, train, test) {
   # set.seed(123)
@@ -200,19 +202,19 @@ evaluar_modelo <- function(grupo_features, train, test) {
   train_labels <- train$POT_AUT
   test_labels <- test$POT_AUT
   
-  train <- train %>% select(all_of(grupo_features))
-  test <- test %>% select(all_of(grupo_features))
+  train <- train %>% select(all_of(grupo_features), POT_AUT)
+  test <- test %>% select(all_of(grupo_features), POT_AUT)
   
   #linear regression
-  model_lm <- lm(train_labels ~ ., data = train)
+  model_lm <- lm(POT_AUT ~ ., data = train)
   predictions_lm <- predict(model_lm, newdata = test)
   
   #random forest
-  model_rf <- randomForest(train_labels ~ ., data = train, ntree = 100)
+  model_rf <- randomForest(POT_AUT ~ ., data = train, ntree = 100)
   predictions_rf <- predict(model_rf, newdata = test)
   
   #svm
-  model_gbm <- caret::train(train_labels ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
+  model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
   predictions_gbm <- predict(model_gbm, newdata = test)
   
   #CALCULATE MAPES
@@ -239,10 +241,10 @@ permutations <- powerSet(group1, 9)
     remaining_train_indices <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
     data_train <- rbind(data_train_initial, remaining_data[remaining_train_indices, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
     data_test <- remaining_data[-remaining_train_indices, ]
-    
     metrics <- evaluar_modelo(grupo, data_train, data_test)
     print(paste("Feature set", i, "/512 completed"))
     resultadosPerms <- rbind(resultadosPerms, c(toString(grupo), metrics[1], metrics[2], metrics[3]))
   }
 
 colnames(resultadosPerms) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm")
+fwrite(resultadosPerms, "SOLAR/resultadosPerms_regrs.csv", row.names = T)
