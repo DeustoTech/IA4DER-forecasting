@@ -45,6 +45,7 @@ data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_S
 
 categorical_columns <- c( "TIP_SUMINISTRO", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "CNAE", "TARIF", "SUM", "TIP_PUNTO_MEDIDA")
 
+data_classif$TarifCode <- data_classif$TARIF
 
 for (col in categorical_columns) {
   data_classif[[col]] <- ifelse(is.na(data_classif[[col]]) | data_classif[[col]] == "", -1, as.factor(data_classif[[col]]))
@@ -199,8 +200,8 @@ evaluar_modelo <- function(grupo_features, train, test) {
   train_labels <- train$POT_AUT
   test_labels <- test$POT_AUT
   
-  train <- train %>% select(grupo_features)
-  test <- test %>% select(grupo_features)
+  train <- train %>% select(all_of(grupo_features))
+  test <- test %>% select(all_of(grupo_features))
   
   #linear regression
   model_lm <- lm(train_labels ~ ., data = train)
@@ -227,6 +228,7 @@ permutations <- powerSet(group1, 9)
   
   for (i in 2:length(permutations)){ # permutations[[1]] is empty
     grupo <- c(permutations[[i]])
+    print(grupo)
     # grupo = group1
     initial_train_indices <- ensure_levels_in_train(data_classif_imputed, categorical_columns)
     data_train_initial <- data_classif_imputed[initial_train_indices, ]
@@ -235,7 +237,7 @@ permutations <- powerSet(group1, 9)
     set.seed(123)
     remaining_train_size <- floor(0.8 * nrow(data_classif_imputed)) - nrow(data_train_initial)
     remaining_train_indices <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
-    data_train <- rbind(data_train_initial, remaining_data[remaining_train_indices, ]) %>% filter(COD_TARIF_IBDLA != "96T1" & COD_TARIF_IBDLA != "97T2")
+    data_train <- rbind(data_train_initial, remaining_data[remaining_train_indices, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
     data_test <- remaining_data[-remaining_train_indices, ]
     
     metrics <- evaluar_modelo(grupo, data_train, data_test)
