@@ -252,3 +252,12 @@ permutations <- powerSet(group1, 9)
 
 colnames(resultadosPerms) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm")
 fwrite(resultadosPerms, "SOLAR/resultadosPerms_regrs.csv", row.names = T)
+
+
+data <- fread("SOLAR/resultadosPerms_regrs.csv")
+
+summary(data)
+
+data <- data %>% arrange(RMSE_rf)
+
+fwrite(data, "SOLAR/resultadosPerms_regrs_ord.csv", row.names = FALSE)
