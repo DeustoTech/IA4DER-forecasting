@@ -222,7 +222,11 @@ evaluar_modelo <- function(grupo_features, train, test) {
   mape_rf <- mape(test_labels, predictions_rf)
   mape_gbm <- mape(test_labels, predictions_gbm)
   
-  return(c(mape_lm, mape_rf, mape_gbm))
+  rmse_lm <- rmse(test_labels, predictions_lm)
+  rmse_rf <- rmse(test_labels, predictions_rf)
+  rmse_gbm <- rmse(test_labels, predictions_gbm)
+  
+  return(c(mape_lm, mape_rf, mape_gbm, rmse_lm, rmse_rf, rmse_gbm))
 }
 
 
@@ -243,8 +247,8 @@ permutations <- powerSet(group1, 9)
     data_test <- remaining_data[-remaining_train_indices, ]
     metrics <- evaluar_modelo(grupo, data_train, data_test)
     print(paste("Feature set", i, "/512 completed"))
-    resultadosPerms <- rbind(resultadosPerms, c(toString(grupo), metrics[1], metrics[2], metrics[3]))
+    resultadosPerms <- rbind(resultadosPerms, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6]))
   }
 
-colnames(resultadosPerms) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm")
+colnames(resultadosPerms) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm")
 fwrite(resultadosPerms, "SOLAR/resultadosPerms_regrs.csv", row.names = T)
