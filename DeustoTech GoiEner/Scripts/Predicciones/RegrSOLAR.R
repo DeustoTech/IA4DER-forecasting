@@ -180,8 +180,12 @@ fwrite(results, "SOLAR/Regression_SOLAR.csv", row.names = FALSE)
 #### lo nuevo con los cambios
 group1 <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
             "ENERGY","ENTROPY")
-resultadosPerms <- data.frame()
 
+resultadosT2 <- data.frame()
+resultadosT6 <- data.frame()
+
+c <- read.csv("SOLAR/resultadosPerms_regrs.csv") %>% arrange(desc(RMSE_rf)) %>% slice(1:20) %>% select(Grupo)
+c_list <- lapply(c$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
 
 # Normalize columns
 for (col in group1){
@@ -200,10 +204,13 @@ evaluar_modelo <- function(grupo_features, train, test) {
   # setDT(data)
   # print(grupo_features)
   train_labels <- train$POT_AUT
-  test_labels <- test$POT_AUT
   
   train <- train %>% select(all_of(grupo_features), POT_AUT)
-  test <- test %>% select(all_of(grupo_features), POT_AUT)
+  
+  #test <- test %>% filter(TarifCode != "96T1" & TarifCode != "97T2") %>% select(all_of(grupo_features), POT_AUT)
+  test <- test %>% filter(TarifCode == "96T1" | TarifCode == "97T2") %>% select(all_of(grupo_features), POT_AUT)
+  
+  test_labels <- test$POT_AUT
   
   #linear regression
   model_lm <- lm(POT_AUT ~ ., data = train)
@@ -232,8 +239,9 @@ evaluar_modelo <- function(grupo_features, train, test) {
 
 permutations <- powerSet(group1, 9)
   
-  for (i in 2:length(permutations)){ # permutations[[1]] is empty
-    grupo <- c(permutations[[i]])
+  for (i in 1:length(c_list)){ # permutations[[1]] is empty
+    
+    grupo <- c_list[[i]]
     print(grupo)
     # grupo = group1
     initial_train_indices <- ensure_levels_in_train(data_classif_imputed, categorical_columns)
@@ -244,18 +252,19 @@ permutations <- powerSet(group1, 9)
     remaining_train_size <- floor(0.8 * nrow(data_classif_imputed)) - nrow(data_train_initial)
     remaining_train_indices <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
     data_train <- rbind(data_train_initial, remaining_data[remaining_train_indices, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    data_test <- remaining_data[-remaining_train_indices, ] %>% filter(TarifCode != "96T1" | TarifCode != "97T2")
+    data_test <- remaining_data[-remaining_train_indices, ] 
     metrics <- evaluar_modelo(grupo, data_train, data_test)
-    print(paste("Feature set", i, "/512 completed"))
-    resultadosPerms <- rbind(resultadosPerms, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6]))
+    print(paste("Feature set", i, "/20 completed"))
+    resultadosT6 <- rbind(resultadosT6, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6]))
   }
 
-colnames(resultadosPerms) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm")
-fwrite(resultadosPerms, "SOLAR/resultadosPerms_regrs_t2.csv", row.names = T)
+colnames(resultadosT6) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm")
+fwrite(resultadosT6, "SOLAR/resultadosPerms_regrs_t6.csv", row.names = T)
 
 
 datat2 <- fread("SOLAR/resultadosPerms_regrs_t2.csv")
 datat6 <- fread("SOLAR/resultadosPerms_regrs_t6.csv")
+
 
 summary(datat2)
 
