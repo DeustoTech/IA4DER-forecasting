@@ -244,14 +244,14 @@ permutations <- powerSet(group1, 9)
     remaining_train_size <- floor(0.8 * nrow(data_classif_imputed)) - nrow(data_train_initial)
     remaining_train_indices <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
     data_train <- rbind(data_train_initial, remaining_data[remaining_train_indices, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    data_test <- remaining_data[-remaining_train_indices, ]
+    data_test <- remaining_data[-remaining_train_indices, ] %>% filter(TarifCode == "97T1")
     metrics <- evaluar_modelo(grupo, data_train, data_test)
     print(paste("Feature set", i, "/512 completed"))
     resultadosPerms <- rbind(resultadosPerms, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6]))
   }
 
 colnames(resultadosPerms) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm")
-fwrite(resultadosPerms, "SOLAR/resultadosPerms_regrs.csv", row.names = T)
+fwrite(resultadosPerms, "SOLAR/resultadosPerms_regrs_97T1.csv", row.names = T)
 
 
 data <- fread("SOLAR/resultadosPerms_regrs.csv")
