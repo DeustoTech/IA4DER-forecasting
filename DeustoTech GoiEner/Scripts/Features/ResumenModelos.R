@@ -1,6 +1,9 @@
 library(foreach)
 library(doParallel)
 
+# R script to join all the base forecast results.
+# Only use if each result is in a different csv.
+
 
 # añadir las librerias nuevas en este vector
 
@@ -78,7 +81,7 @@ etsCUPS <- fread("Resultados/CUPS/ResultadosCUPS_ETS.csv")
 etsCUPS$ID <- basename(etsCUPS$ID)
 nnCUPS <- fread("Resultados/CUPS/ResultadosCUPS_NN.csv")
 nnCUPS$ID <- basename(nnCUPS$ID)
-svmCUPS <- fread("Resultados/CUPS/ResultadosCUPS_SVM_2.csv")
+svmCUPS <- fread("Resultados/CUPS/ResultadosCUPS_SVM.csv")
 svmCUPS$ID <- basename(svmCUPS$ID)
 
 
