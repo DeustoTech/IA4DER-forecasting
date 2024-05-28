@@ -1,6 +1,10 @@
 library(foreach)
 library(doParallel)
 
+# FFORMA SCRIPT: given the predicted error of each base forecast model, predict 
+# consumption using fforma
+
+
 
 # añadir las librerias nuevas en este vector
 

@@ -1,5 +1,4 @@
-# Script para predecir el error que comete cada modelo 
-# a partir de las features 
+# FFORMA SCRIPT: PREDICT ERROR OF EACH MODEL GIVEN A SET OF FEATURES
 
 library(foreach)
 library(doParallel)
@@ -89,16 +88,13 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
 
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   
-  
-  
   cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), id)
   clean_nrow <- nrow(cleanSet)
   trainIndexClean <- sample(1:clean_nrow, index * clean_nrow)
   
   trainSet <- cleanSet[trainIndexClean, ]
   testSet <- cleanSet[-trainIndexClean, ]
-  
-  
+
   return(list(trainSet = trainSet, testSet = testSet))
 }
 
@@ -147,7 +143,6 @@ regresion_model_feats <- function(model_type, target_variable, trainIndex) {
       predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
     } else if (model_type == "rf") {
       # Random Forest
-      # print(names(trainSet))
       model <- randomForest(as.formula(paste(log_variable, "~ . - ", target_variable)), data = trainSet, na.action = na.roughfix)
       predicciones_log <- exp(predict(model, newdata = testSet)) - 1
       predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
