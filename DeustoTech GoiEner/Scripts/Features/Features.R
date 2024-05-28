@@ -1,6 +1,10 @@
 library(foreach)
 library(doParallel)
 
+# R script to compute some features of CUPS. Includes: seasonal aggregates,
+# mapes of each model, statistical descriptors, best model, solar tariffs
+# and some metadata.
+
 
 # añadir las librerias nuevas en este vector
 
@@ -14,19 +18,11 @@ foreach(lib = librerias) %do% {
 }
 
 
-#descropmir carpeta de 200 csv
-path <- "Transformers.zip" # path del zip
-tempdir <- tempdir() # crea un directorio temporal. Cuando cierras R, se elimina
-unzip(path, exdir = tempdir) # descomprime. Tarda un poco
-plan(multisession)
-
 
 folder <- "TransformersV2/"
-# Lista de archivos CSV en la carpeta extraída
 csv_files <- list.files(folder, pattern = ".csv$", recursive = T, full.names = F)
 metadata_file <- fread("metadata.csv")
 
-# csv_files <- csv_files[201:length(csv_files)]
 
 N <- csv_files[!grepl("-CT\\.csv$", csv_files) & !grepl("-L\\.csv$", csv_files)]
 CT <- csv_files[grepl("-CT\\.csv$", csv_files)]
@@ -181,10 +177,8 @@ Feats <- foreach(NAME = N,
                QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
                
                nombre     <- tools::file_path_sans_ext(NAME)
-               # ID1 <-  sub("TransformersV2/TransformersV2/", "", nombre)
                ID1 <-  sub("TransformersV2/", "", nombre)
-               # ID <- tools::file_path_sans_ext(ID)
-               
+
                
                metadatos <- filter(metadata_file, user ==  ID1)
                
@@ -246,10 +240,6 @@ Feats <- foreach(NAME = N,
                  municipality = metadatos$municipality,
                  contracted_tariff = metadatos$contracted_tariff,
                  self_consumption_type = metadatos$self_consumption_type,
-                 
-                 # Errores de cada modelo. 
-                 # Buscar esa serie temporal en el fichero de resultados, 
-                 # coger todos los errores de ese tipo para ese modelo
                  
                  
                  # Si no hay summary para ese ID, pone a NA
@@ -320,34 +310,12 @@ Feats <- foreach(NAME = N,
 
 write.csv(Feats,file="featuresPredicciones.csv",row.names = F)
 
+
+
+
+# Graphs
+
 B <- read.csv("featuresPredicciones.csv")
-colnames(B)
-head(B)
-
-
-# BEST MODEL
-
-a <- read.csv("featuresPredicciones_3.csv") 
-model_names <- c("Media", "Naive", "SNaive", "Arima", "ETS", "NN", "SVM", "Ensemble")
-for (i in 1:nrow(a)) {
-  min_index <- which.min(c(a$mapeMedia_mediana[i],
-                           a$mapeNaive_mediana[i],
-                           a$mapeSN_mediana[i],
-                           a$mapeArima_mediana[i],
-                           a$mapeETS_mediana[i],
-                           a$mapeNN_mediana[i],
-                           a$mapeSVM_mediana[i],
-                           a$mapeEnsemble_mediana[i]))
-  if (length(min_index) == 0) {
-    a$best_model[i] <- NA
-  } else {
-    a$best_model[i] <- model_names[min_index]
-  }
-}
-
-
-
-
 
 boxplot(B$P_T2.0_VALLE,B$P_T2.0_LLANO,B$P_T2.0_PICO,B$P_T_SOLAR_PICO,
         B$P_T_SOLAR_LLANO,B$P_T_SOLAR_SPICO, B$P_T_SOLAR_SLLANO,outline=F )
@@ -375,7 +343,6 @@ boxplot(B$P1_PICO_PRECIO, B$P2_LLANO_PRECIO, B$P3_VALLE_PRECIO,
         xlab = "Columnas", ylab = "Valor", ylim = c(min(B), quantile(B, 0.75)) )
 
 
-#nuevos
 df_longPrecio <- gather(B, key = "Columna", value = "Valor", P1_PICO_PRECIO, P2_LLANO_PRECIO, P3_VALLE_PRECIO)
 
 # Crea un boxplot combinado con ggplot2
@@ -602,327 +569,5 @@ ggplot(df_finde_max, aes(x = Columna, y = Valor, fill = Columna)) +
   labs(title = "Boxplot del consumo maximo del fin de semana por estacion", x = "Columnas", y = "Valor") +
   ylim(0, quantile(df_finde_max$Valor, 0.75)) +  # Establece el límite superior del eje y
   scale_fill_manual(values = c("#9FA6FA", "#88FA8F", "#94929C", "#FCD574"))
-
-
-## modelo de regresion
-
-target <- c("mapeMedia_mediana", "mapeNaive_mediana", "mapeSN_mediana", "mapeArima_mediana", 
-             "mapeETS_mediana", "mapeSVM_mediana", "mapeNN_mediana", "mapeEnsemble_mediana")
-
-features <- c("kWhTotal_autum_0.4", "kWhTotal_autum_5.8","kWhTotal_autum_9.12", "kWhTotal_autum_13.16",
-             "kWhTotal_autum_17.20", "kWhTotal_autum_21.24", "kWhTotal_spring_0.4", "kWhTotal_spring_5.8",
-             "kWhTotal_spring_9.12", "kWhTotal_spring_13.16", "kWhTotal_spring_17.20", "kWhTotal_spring_21.24",
-             "kWhTotal_summer_0.4", "kWhTotal_summer_5.8", "kWhTotal_summer_9.12", "kWhTotal_summer_13.16", 
-             "kWhTotal_summer_17.20", "kWhTotal_summer_21.24", "kWhTotal_winter_0.4", "kWhTotal_winter_5.8",
-             "kWhTotal_winter_9.12", "kWhTotal_winter_13.16", "kWhTotal_winter_17.20", "kWhTotal_winter_21.24",
-             "kWhTotal_autum_finde", "kWhTotal_spring_finde", "kWhTotal_summer_finde", "kWhTotal_winter_finde")
-
-# Ahora tenemos que hacer un trainset, testset y modelos para predecir cada mape
-
-# Media
-
-columns <- append(features, target[1])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-
-modelo_svm_media <- svm(mapeMedia_mediana ~ ., data = trainSet)
-media_pred_svm <- predict(modelo_svm_media, newdata = testSet)
-
-#naive
-
-columns <- append(features, target[2])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-
-modelo_svm_naive <- svm(mapeNaive_mediana ~ ., data = trainSet)
-naive_pred_svm <- predict(modelo_svm_naive, newdata = testSet)
-
-#seasonal naive
-columns <- append(features, target[3])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-modelo_svm_snaive <- svm(mapeSN_mediana ~ ., data = trainSet)
-snaive_pred_svm <- predict(modelo_svm_snaive, newdata = testSet)
-
-#arima
-columns <- append(features, target[4])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-modelo_svm_arima <- svm(mapeArima_mediana ~ ., data = trainSet)
-arima_pred_svm <- predict(modelo_svm_arima, newdata = testSet)
-
-#ets
-columns <- append(features, target[5])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-modelo_svm_ets <- svm(mapeETS_mediana ~ ., data = trainSet)
-ets_pred_svm <- predict(modelo_svm_ets, newdata = testSet)
-
-#nn
-columns <- append(features, target[6])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-modelo_svm_nn <- svm(mapeNN_mediana ~ ., data = trainSet)
-nn_pred_svm <- predict(modelo_svm_nn, newdata = testSet)
-
-#svm
-columns <- append(features, target[7])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-modelo_svm_svm <- svm(mapeSVM_mediana ~ ., data = trainSet)
-svm_pred_svm <- predict(modelo_svm_svm, newdata = testSet)
-
-# Ensemble
-
-columns <- append(features, target[8])
-
-newData <- B[columns]
-
-set.seed(123)
-index <- 0.8
-trainIndex <- sample(1:nrow(newData), index * nrow(newData))
-trainSet <- newData[trainIndex, ]
-testSet <- newData[-trainIndex, ]
-grid_svm <- expand.grid(C = c(0.1, 1, 5, 10), gamma = c(0.1, 1, 5, 10))
-control_svm <- trainControl(method = "cv", number = 5)
-modelo_svm_ensemble <- svm(mapeEnsemble_mediana ~ ., data = trainSet)
-svm_pred_svm <- predict(modelo_svm_ensemble, newdata = testSet)
-
-
-
-
-
-
-# PRUEBAS 
-prueba <- msts(fread(CT[1]))
-
-out <- get_seasonal_features_from_timeseries(prueba)
-
-
-
-
-
-
-# pruebas
-
-csv_actual <- fread(N[8000])
-
-if ("time" %in% colnames(csv_actual)) {
-  # Cambiar el nombre de la columna a "timestamp". SOLO PARA LOS -L y -CT
-  colnames(csv_actual)[colnames(csv_actual) == "time"] <- "timestamp"
-  csv_actual$imputed <- 0
-  csv_actual <- csv_actual %>% select(timestamp, kWh, imputed)
-}
-
-
-a <- csv_actual %>%
-  mutate(timestamp = as.POSIXct(timestamp, format = "%Y-%m-%d %H:%M:%OS")) %>%
-  mutate(Hora = hour(timestamp))
-
-
-a$week_day <- wday(a$timestamp)
-
-a$season <- case_when(
-  month(a$timestamp) %in% c(12, 1, 2) ~ "winter",
-  month(a$timestamp) %in% c(3, 4, 5) ~ "spring",
-  month(a$timestamp) %in% c(6, 7, 8) ~ "summer",
-  month(a$timestamp) %in% c(9, 10, 11) ~ "autum"
-)
-
-a$day_period <- cut(
-  hour(a$timestamp),
-  breaks = c(0, 4, 8, 12, 16, 20, 24),
-  labels = c("0-4", "5-8", "9-12", "13-16", "17-20", "21-24"),
-  include.lowest = TRUE
-)
-
-laborable <- a %>% filter(week_day %in% c(1, 2, 3, 4, 5))
-finde <- a %>% filter(week_day %in% c(6, 7))
-
-features_semana <- laborable %>%
-  group_by(season, day_period) %>%
-  summarise(kWhTotal = sum(kWh)) %>%
-  pivot_wider(names_from = c(season, day_period), values_from = kWhTotal)
-
-features_fin_de_semana <- finde %>%
-  group_by(season) %>%
-  summarise(kWhTotal = sum(kWh)) %>%
-  pivot_wider(names_from = season, values_from = kWhTotal)
-
-colnames(features_fin_de_semana) <- paste(colnames(features_fin_de_semana), "finde", sep = "_")
-
-
-
-T2.0_VALLE <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "valle"]])
-T2.0_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "llano"]])
-T2.0_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_2.0 == "pico"]])
-
-T_SOLAR_LLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "llano"]])
-T_SOLAR_PICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "pico"]])
-T_SOLAR_SPICO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar pico"]])
-T_SOLAR_SLLANO <- sum(a$kWh[a$Hora %in% horas$hora[horas$TARIFA_SOLAR == "solar llano"]])
-
-
-
-LENGTH <- length(a$kWh)
-
-QQ     <- as.numeric(quantile(a$kWh,c(0,0.25,0.5,0.75,1),na.rm=T))
-
-nombre     <- tools::file_path_sans_ext(N[8000])
-
-ID1 <-  sub("TransformersV2/", "", nombre)
-
-
-metadatos <- filter(metadata_file, user ==  ID1)
-
-POT_NOM <- max(metadatos$p1, metadatos$p2, metadatos$p3, metadatos$p4, metadatos$p5, metadatos$p6, na.rm = T)
-ECDF   <- ecdf(a$kWh)(MC*POT_NOM) 
-
-
-
-
-summaryMedia <- filter(summaryMedia_CUPS, ID == ID1 )
-summaryNaive <- summaryNaive_CUPS[summaryNaive_CUPS$ID == ID1, ]
-summarysNaive <- summarysNaive_CUPS[summarysNaive_CUPS$ID == ID1, ]
-summaryArima <- summaryArima_CUPS[summaryArima_CUPS$ID == ID1, ]
-summaryETS <- summaryETS_CUPS[summaryETS_CUPS$ID == ID1, ]
-summaryNN <- summaryNN_CUPS[summaryNN_CUPS$ID == ID1, ]
-
-
-aux <- data.frame(
-  ID=     ID1,
-  LENGTH= LENGTH,
-  ZERO=   ifelse(LENGTH == 0, NA, sum(a$kWh == 0)/LENGTH),
-  IMPUTED=ifelse(LENGTH == 0, NA, sum(a$issue == 0)/LENGTH),
-  AVG=    mean(a$kWh,na.rm=T),
-  SD=     sd(a$kWh,na.rm=T),
-  MIN=    QQ[1],
-  Q1=     QQ[2],
-  MEDIAN= QQ[3],
-  Q3=     QQ[4],
-  MAX=    QQ[5],
-
-  POT_1 = metadatos$p1,
-  POT_2 = metadatos$p2,
-  POT_3 = metadatos$p3,
-  POT_4 = metadatos$p4,
-  POT_5 = metadatos$p5,
-  POT_6 = metadatos$p6,
-  # 
-  MC25=   ECDF[1],
-  MC50=   ECDF[2],
-  MC80=   ECDF[3],
-  MC90=   ECDF[4],
-  MC95=   ECDF[5],
-
-  P_T2.0_VALLE = T2.0_VALLE,
-  P_T2.0_LLANO = T2.0_LLANO,
-  P_T2.0_PICO = T2.0_PICO,
-  P_T_SOLAR_PICO = T_SOLAR_PICO,
-  P_T_SOLAR_LLANO = T_SOLAR_LLANO,
-  P_T_SOLAR_SPICO = T_SOLAR_SPICO,
-  P_T_SOLAR_SLLANO = T_SOLAR_SLLANO,
-  # 
-  zip_code = metadatos$zip_code,
-  cnae = metadatos$cnae,
-  municipality = metadatos$municipality,
-  contracted_tariff = metadatos$contracted_tariff,
-  self_consumption_type = metadatos$self_consumption_type,
-  # 
-  # Errores de cada modelo. 
-  # Buscar esa serie temporal en el fichero de resultados, 
-  # coger todos los errores de ese tipo para ese modelo
-  # y la media? o la mediana? alguno supongo
-  
-  # 
-
-  mapeMedia_mediana = if (nrow(summaryMedia) == 0) NA else summaryMedia$Median_MAPE,
-  mapeNaive_mediana = if (nrow(summaryNaive) == 0) NA else summaryNaive$Median_MAPE,
-  mapeSN_mediana = if (nrow(summarysNaive) == 0) NA else summarysNaive$Median_MAPE,
-  mapeArima_mediana = if (nrow(summaryArima) == 0) NA else summaryArima$Median_MAPE,
-  mapeETS_mediana = if (nrow(summaryETS) == 0) NA else summaryETS$Median_MAPE,
-  mapeNN_mediana = if (nrow(summaryNN) == 0) NA else summaryNN$Median_MAPE,
-  
-  mapeMedia_q1 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q1_MAPE,
-  mapeNaive_q1 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q1_MAPE,
-  mapeSN_q1 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q1_MAPE,
-  mapeArima_q1 = if (nrow(summaryArima) == 0) NA else summaryArima$Q1_MAPE,
-  mapeETS_q1 = if (nrow(summaryETS) == 0) NA else summaryETS$Q1_MAPE,
-  mapeNN_q1 = if (nrow(summaryNN) == 0) NA else summaryNN$Q1_MAPE,
-  
-  mapeMedia_q3 = if (nrow(summaryMedia) == 0) NA else summaryMedia$Q3_MAPE,
-  mapeNaive_q3 = if (nrow(summaryNaive) == 0) NA else summaryNaive$Q3_MAPE,
-  mapeSN_q3 = if (nrow(summarysNaive) == 0) NA else summarysNaive$Q3_MAPE,
-  mapeArima_q3 = if (nrow(summaryArima) == 0) NA else summaryArima$Q3_MAPE,
-  mapeETS_q3 = if (nrow(summaryETS) == 0) NA else summaryETS$Q3_MAPE,
-  mapeNN_q3 = if (nrow(summaryNN) == 0) NA else summaryNN$Q3_MAPE
-  
-  # mapeSVM_mediana = if (nrow(summarySVM) == 0) NA else summarySVM$Median_MAPE,
-  # mapeSVM_q1 = if (nrow(summarySVM) == 0) NA else summarySVM$Q1_MAPE,
-  # mapeSVM_q3= if (nrow(summarySVM) == 0) NA else summarySVM$Q3_MAPE,
-  # 
-  
-  
-)
-
-aux <- cbind(aux, features_semana, features_fin_de_semana)
-
-
 
 
