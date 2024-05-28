@@ -106,10 +106,6 @@ for (archivo in archivos) {
 }
 
 
-
-# Initizalize df with one column per ID and max_weeks rows (total unique weeks)
-
-
 for (funcname in names(summary_functions)){
   
   func <- summary_functions[[funcname]]
@@ -339,18 +335,5 @@ for (file in files) {
 }
 
 
-
-#prueba de grafico
-Daily_AVG_diff <- fread("SOLAR/Variation/Daily/Daily_Diff/Daily_AVG_diff.csv")
-
-Daily_AVG_diff1 <- Daily_AVG_diff[,1]
-
-values <- Daily_AVG_diff1[-1, , drop = FALSE]
-values$time <- seq_along(values[[1]])
-colnames(values)[1] <- "consumo"
-ggplot(data = values, aes(x = time, y = consumo)) +
-  geom_col() +  # Usamos geom_col para graficar las barras
-  labs(x = "Índice de fila", y = "Valor del consumo", title = "Gráfico de consumo a lo largo del tiempo") +
-  theme_minimal()
 
 

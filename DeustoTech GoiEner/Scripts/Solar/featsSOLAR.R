@@ -55,7 +55,10 @@ horas <- data.frame(
 
 
 calcular_features <- function(serie, ID1, firstPanel, val_pot) {
-  # print(names(serie))
+  
+  
+  # NORMALIZE CONSUMPTION AND INYECTION DIVIDING THEM BY VAL_POT
+  
   serie$VAL_AI <- serie$VAL_AI / val_pot
   serie$VAL_AE <- serie$VAL_AE / val_pot
   
@@ -125,8 +128,7 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
   
   column_names <- c(column_names, colnames(features_semana) ,colnames(features_fin_de_semana))
   
-  # print(features_fin_de_semana)
-  
+
   
   # INICIALIZAR EL DF
   
@@ -141,7 +143,7 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
   feats$ID <- as.character(feats$ID)
   
   
-  # # INYECCION  POR HORAS 
+  #  INYECCION  POR HORAS 
   injection_by_hour_weekdays <- laborable %>%
     group_by(hour) %>%
     summarise(mean_VAL_AE = mean(VAL_AE, na.rm = TRUE))
@@ -190,7 +192,7 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
     feats[1, injection_col] <- injection_value
   }
   
-  # POR SEMANA INYECCION Y CONSUMO
+  # POR SEMANA INYECCION, CONSUMO Y ENTROPIA
   nWeeks <- max(serie$week, na.rm = T)
   
   inyection_by_week <- serie %>%
@@ -203,7 +205,6 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
   
   entropy_by_week <- serie %>% group_by(week) %>% 
     summarise(entropy = entropy(VAL_AI))
-  # print(entropy_by_week)
 
   for (i in 1:nrow(entropy_by_week)){
     entropyCol <- paste("Entropy.w", i, sep = ".")
@@ -233,9 +234,8 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
   entropyDf$ID <- ID1
   
   
-  # print(entropyDf)
-  
-  # Mape by week and mean week mape
+  # Mape by week and average mape every week
+  # Predict next week to be the same as the current (naive) and calculate the mape
   colsMapeW <- c()
   for (i in 1:(nWeeks - 1)){
     j <- i + 1
@@ -251,7 +251,7 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
   }
   
   # Mean month mape
-  
+  # Same with month
   colsMapeM <- c()
   for (i in 1:11){
     j <- i + 1
@@ -317,8 +317,6 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
       mean.mape.month = mean(colsMapeM, na.rm = T)
     )
 
-  # feats <- cbind(feats, features_semana, features_fin_de_semana)
-  
   for (col_name in names(features_semana)){
     feats[1, col_name] <- features_semana[1, col_name]
   }
@@ -335,7 +333,6 @@ calcular_features <- function(serie, ID1, firstPanel, val_pot) {
     }
   }
   
-  # print(head(entropyDf))
   return(list(data = data, entropyDf = entropyDf))
 }
 
@@ -371,7 +368,7 @@ for(archivo in archivos) {
   } else{
     info_serie <- roseta %>% filter(CUPS == id_serie) %>% select(-CUPS)
   }
-  # print(summary(info_serie))
+
   # Calcular features
   firstPanel <- serie %>%
     filter(AUTO == 1) %>%
