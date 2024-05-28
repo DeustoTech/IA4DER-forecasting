@@ -45,7 +45,6 @@ process_solar_no_pv <- function(file_path) {
     InstallationDate = NA,
     FirstInjection = NA,
     hasPV = 0
-    # maybe add power
   )
   
   return(df)
