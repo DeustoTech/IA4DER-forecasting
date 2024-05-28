@@ -16,21 +16,21 @@ foreach(lib = librerias) %do% {
 
 
 #cargar archivos necesarios
-feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.CSV") #982 330
-feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") #1451  312
-hasPV_data <- fread("SOLAR/Variation/HasPV.csv") #2434    4
-features <- fread("SOLAR/features.csv") #97028    22
+feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.CSV") 
+feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") 
+hasPV_data <- fread("SOLAR/Variation/HasPV.csv") 
+features <- fread("SOLAR/features.csv") 
 
-features <- features %>% filter(ASS == "CUPS" | ASS == "SOLAR") #71021 22
+features <- features %>% filter(ASS == "CUPS" | ASS == "SOLAR") 
 
-feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #2433  330
+feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) 
 
 # Ejecutar estas dos lineas para seleccionar de features (cruz) solo las que no tenemos nosotros
 columns_to_select <- setdiff(names(feats_totales), names(features))
 feats_totales <- feats_totales %>% select(ID, columns_to_select)
 
 feats_totales <- merge(feats_totales, features, by = "ID")
-data_classif <- merge(feats_totales, hasPV_data, by = "ID") #2433  333
+data_classif <- merge(feats_totales, hasPV_data, by = "ID") 
 
 # Quitamos todo lo de inyección, identificadores, fechas, repetidas y variables que no cambian
 data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_SUM,
@@ -58,8 +58,6 @@ data_classif_imputed <- data_classif %>%
 
 data_classif_imputed$hasPV <- as.factor(data_classif_imputed$hasPV)
 
-#colnames(data_classif_imputed) <- gsub("-", "_", colnames(data_classif_imputed))
-
 
 evaluar_modelo <- function(grupo_features, modelo, train, test, i) {
 
@@ -68,7 +66,7 @@ evaluar_modelo <- function(grupo_features, modelo, train, test, i) {
 
   fit <- caret::train(x = train_feats, y = train_labels, method = modelo)
   
-  # print("ENTRENADO")
+
   
   test_featsT2 <- test %>% filter(TarifCode != "96T1" & TarifCode != "97T2") %>% select(grupo_features)
   test_featsT6 <- test %>% filter(TarifCode == "96T1" | TarifCode == "97T2") %>% select(grupo_features)
@@ -79,10 +77,7 @@ evaluar_modelo <- function(grupo_features, modelo, train, test, i) {
 
   predT2 <- predict(fit, test_featsT2)
   predT6 <- predict(fit, test_featsT6)
-  # print(length(predT2))
-  # print((test_labelsT2))
-  
-  # print(predT2)
+
   accuracyT2 <- accuracy(test_labelsT2$hasPV, predT2)
   sensiT2 <- sensitivity(test_labelsT2$hasPV, predT2)
   speciT2 <- specificity(test_labelsT2$hasPV, predT2)
@@ -90,12 +85,9 @@ evaluar_modelo <- function(grupo_features, modelo, train, test, i) {
   accuracyT6 <- accuracy(test_labelsT6$hasPV, predT6)
   sensiT6 <- sensitivity(test_labelsT6$hasPV, predT6)
   speciT6 <- specificity(test_labelsT6$hasPV, predT6)
-  # 
-  # 
-  
-  
+
   return(c(accuracyT2, sensiT2, speciT2, accuracyT6, sensiT6, speciT6))
-  # return()
+
 }
 
 resultados <- data.frame()
@@ -157,9 +149,8 @@ for(modelo in modelos) {
   
   for (i in 1:length(c_list)){ # permutations[[1]] is empty
     
-  # grupo <- c(permutations[[i]])
+  # grupo <- c(permutations[[i]]) USE PERMUTATIONS FOR ALL POSSIBLE COMBINATIONS
   grupo <- c_list[[i]]
-  # grupo = group1
   index_train <- createDataPartition(data_classif_imputed$hasPV, p=0.8, list=FALSE)
   train_set <- as.data.frame(data_classif_imputed[index_train, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
   test_set <- as.data.frame(data_classif_imputed[-index_train, ]) 
@@ -173,11 +164,10 @@ for(modelo in modelos) {
 }
 colnames(resultadosT2) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specificity")
 colnames(resultadosT6) <- c("Modelo", "Grupo", "Accuracy", "Sensitivity", "Specificity")
-# resultados$Grupo <- toString(group1)
 fwrite(resultadosT2, "SOLAR/Classif_Accuracy_T2.csv")
 fwrite(resultadosT6, "SOLAR/Classif_Accuracy_T6.csv")
 
-# TODO ejecutar con las que todavía no hemos ejecutado (usar setdiff)
+
 
 
 
