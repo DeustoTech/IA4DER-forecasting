@@ -45,8 +45,8 @@ for (col in colnames(datos)){
 
 tarifa <- c("cnae.provincia", "cp.provincia","p1", "p2","p3","p4","p5","p6","contracted_tariff")
 
+
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
-  
   
   
   cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), id)
@@ -82,22 +82,6 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
     }
     
   }
-  
-  return(list(trainSet = trainSet, testSet = testSet))
-}
-
-
-limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
-  
-  
-  
-  cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), id)
-  clean_nrow <- nrow(cleanSet)
-  trainIndexClean <- sample(1:clean_nrow, index * clean_nrow)
-  
-  trainSet <- cleanSet[trainIndexClean, ]
-  testSet <- cleanSet[-trainIndexClean, ]
-  
   
   return(list(trainSet = trainSet, testSet = testSet))
 }
