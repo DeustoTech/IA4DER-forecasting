@@ -14,45 +14,10 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
-
-# Leer los datos desde el archivo CSV
-datos <- fread("Resultados/pBarras.csv")
-
-# Función para generar gráficos de bigotes
-generar_grafico_pBarra <- function(data, tipo_modelo) {
-  # Definimos las columnas basadas en el tipo de modelo
-  columnas <- switch(tipo_modelo,
-                     "lm" = c("PBarra_lm_habitos", "PBarra_lm_cluster", "PBarra_lm_edificio", "PBarra_lm_socio", "PBarra_lm_consumo", "PBarra_lm_tarifa"),
-                     "rf" = c("PBarra_rf_habitos", "PBarra_rf_cluster", "PBarra_rf_edificio", "PBarra_rf_socio", "PBarra_rf_consumo", "PBarra_rf_tarifa"),
-                     "gbm" = c("PBarra_gbm_habitos", "PBarra_gbm_cluster", "PBarra_gbm_edificio", "PBarra_gbm_socio", "PBarra_gbm_consumo", "PBarra_gbm_tarifa"),
-                     "nn" = c("PBarra_nn_habitos", "PBarra_nn_cluster", "PBarra_nn_edificio", "PBarra_nn_socio", "PBarra_nn_consumo", "PBarra_nn_tarifa"),
-                     "svm" = c("PBarra_svm_habitos", "PBarra_svm_cluster", "PBarra_svm_edificio", "PBarra_svm_socio", "PBarra_svm_consumo", "PBarra_svm_tarifa"),
-                     stop("Tipo de modelo no reconocido"))
-  
-  #data_filtrado <- data %>%
-  #  mutate(across(all_of(columnas), ~ifelse(. > quantile(., 0.75, na.rm = TRUE), NA, .)))
-  
-  # Preparar los datos para el gráfico
-  print(data$pBarra_habitos_lm)
-  data_melt <- reshape2::melt(data, measure.vars = columnas, na.rm = T)
-  
-  # Generar el gráfico
-  ggplot(data_melt, aes(x = variable, y = value)) +
-    geom_boxplot() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(title = paste("PBarra del modelo", tipo_modelo),
-         x = "Variable",
-         y = "Valor")
-}
-
-generar_grafico_pBarra(datos, "lm")
-generar_grafico_pBarra(datos, "rf")
-generar_grafico_pBarra(datos, "gbm")
-generar_grafico_pBarra(datos, "nn")
-generar_grafico_pBarra(datos, "svm")
+############ GRAFICOS INDIVIDUALES #############
 
 #DATOS MAPE
-datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
+datosMAPE <- fread("PFG/Resultados/pBarrasMAPE.csv")
 
 # Función para generar gráficos de bigotes
 generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
@@ -61,6 +26,8 @@ generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
                      "lm" = c("PBarra_lm_tarifa_MAPE"),
                      "rf" = c("PBarra_rf_tarifa_MAPE"),
                      "gbm" = c("PBarra_gbm_tarifa_MAPE"),
+                     "nn" = c("PBarra_nn_tarifa_MAPE"),
+                     "svm" = c("PBarra_svm_tarifa_MAPE"),
                      "Ensemble" = c("PBarra_Ensemble_tarifa_MAPE"),
                      "RealError" = c("PBarra_errorMape_MAPE"),
                      stop("Tipo de modelo no reconocido"))
@@ -85,13 +52,16 @@ generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
 generar_grafico_pBarraMAPE(datosMAPE, "lm")
 generar_grafico_pBarraMAPE(datosMAPE, "rf")
 generar_grafico_pBarraMAPE(datosMAPE, "gbm")
-#generar_grafico_pBarraMAPE(datosMAPE, "nn")
-#generar_grafico_pBarraMAPE(datosMAPE, "svm")
+generar_grafico_pBarraMAPE(datosMAPE, "nn")
+generar_grafico_pBarraMAPE(datosMAPE, "svm")
 generar_grafico_pBarraMAPE(datosMAPE, "Ensemble")
 generar_grafico_pBarraMAPE(datosMAPE, "RealError")
 
-#GRAFICOS CON MAPES NORMALES Y MAPES DEL PBARRA
-allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+
+#################################
+
+#GRAFICOS CON MAPES NORMALES Y MAPES DEL PBARRA (FUNCIONA REGULAR)
+allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
 
 datosMAPE_long <- datosMAPE %>%
   select(contains("MAPE")) %>%
@@ -119,7 +89,7 @@ total_vars <- n_distinct(combined_long_filtered$Variable)
 plots_needed <- ceiling(total_vars / 6)
 
 # Iniciar el archivo PDF
-pdf("MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5)
+pdf("PFG/Resultados/MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5)
 
 for (i in 1:plots_needed) {
   vars_subset <- combined_long_filtered %>%
@@ -155,12 +125,12 @@ for (i in 1:plots_needed) {
 # Cerrar el archivo PDF
 dev.off()
 
+######################################
 
 
-
-#GRÁFICO NORMAL CON TODOS LOS MAPES DE TODAS LAS PREDICCIONES
-datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
-allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+#GRÁFICO NORMAL CON TODOS LOS MAPES DE TODAS LAS PREDICCIONES (UNICO GRAFICO)
+datosMAPE <- fread("PFG/Resultados/pBarrasMAPE.csv")
+allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
 
 combined_long <- bind_rows(
   datosMAPE %>%
@@ -183,13 +153,11 @@ medianas <- combined_long %>%
   summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
   arrange(Mediana)
 
-# 2. Selecciona los 4 con la mediana más baja
+#Selecciona los 4 con la mediana más baja
 variables_baja_mediana <- head(medianas$Variable, 5)
 
-# 3. Crea una nueva variable en tu dataframe para indicar si está entre los 4 más bajos
 combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
 
-# 4. Utiliza esta nueva variable para colorear las cajas en tu gráfico
 ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   geom_boxplot() +
   scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
@@ -197,11 +165,13 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   labs(title = paste("MAPE -", group_name), x = "", y = "MAPE") +
   guides(fill = FALSE) # Para no mostrar la leyenda
 
-#GRAFICO NORMAL CON LOS MAPES DE LAS PREDICCIONES ENSEMBLE
-datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
-allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+################################################
 
-datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_errorMape_MAPE, PBarra_Ensemble_tarifa_MAPE)
+#GRAFICO NORMAL CON LOS MAPES DE LAS PREDICCIONES ENSEMBLE (ÚNICO GRAFICO)
+datosMAPE <- fread("PFG/Resultados/pBarrasMAPE.csv")
+allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
+
+datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_nn_tarifa_MAPE, PBarra_svm_tarifa_MAPE, PBarra_errorMape_MAPE, PBarra_Ensemble_tarifa_MAPE)
 allFeats <- allFeats %>% select(ens_error)
 
 combined_long <- bind_rows(
@@ -224,13 +194,10 @@ medianas <- combined_long %>%
   summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
   arrange(Mediana)
 
-# 2. Selecciona los 4 con la mediana más baja
 variables_baja_mediana <- head(medianas$Variable, 1)
 
-# 3. Crea una nueva variable en tu dataframe para indicar si está entre los 4 más bajos
 combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
 
-# 4. Utiliza esta nueva variable para colorear las cajas en tu gráfico
 ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   geom_boxplot() +
   scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
@@ -238,10 +205,12 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   labs(title = paste("MAPE -", group_name), x = "", y = "MAPE") +
   guides(fill = FALSE) # Para no mostrar la leyenda
 
+#Q3 + 1.5*(Q3-Q1)
+############################################
 
 #GENERAR PDF
-datosMAPE <- fread("Resultados/pBarrasMAPE.csv")
-allFeats <- fread("NUEVOS DATOS/combined_data.csv")
+datosMAPE <- fread("PFG/Resultados/pBarrasMAPE.csv")
+allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
 
 combined_long <- bind_rows(
   datosMAPE %>%
