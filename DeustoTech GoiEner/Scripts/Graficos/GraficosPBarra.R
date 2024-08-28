@@ -17,7 +17,7 @@ foreach(lib = librerias) %do% {
 ############ GRAFICOS INDIVIDUALES #############
 
 #DATOS MAPE
-datosMAPE <- fread("PFG/Resultados/pBarrasMAPE.csv")
+datosMAPE <- fread("PFG/Resultados/ResultadosTestEntero/pBarrasMAPE.csv")
 
 # Función para generar gráficos de bigotes
 generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
