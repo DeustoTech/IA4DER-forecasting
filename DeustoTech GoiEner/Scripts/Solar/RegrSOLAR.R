@@ -28,7 +28,7 @@ feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #2433  330
 
 # Ejecutar estas dos lineas para seleccionar de features (cruz) solo las que no tenemos nosotros
 columns_to_select <- setdiff(names(feats_totales), names(features))
-feats_totales <- feats_totales %>% select(ID, columns_to_select)
+feats_totales <- feats_totales %>% select(ID, all_of(columns_to_select))
 
 feats_totales <- merge(feats_totales, features, by = "ID")
 data_classif <- merge(feats_totales, hasPV_data, by = "ID") #2433  333
@@ -76,18 +76,18 @@ for (col in colnames(data_classif)) {
 #imputar valores
 data_classif <- data_classif %>% 
   mutate(across(where(is.numeric), ~replace(., !is.finite(.), NA)))
-data_classif_imputed <- data_classif %>%
+solar_data <- data_classif %>%
   mutate(across(where(is.numeric), ~if_else(is.na(.), median(., na.rm = TRUE), .)))
 
 #convertir a numerica y normalizar la variable a predecir
-data_classif_imputed$POT_AUT <- as.numeric(data_classif_imputed$POT_AUT)
+solar_data$POT_AUT <- as.numeric(solar_data$POT_AUT)
 
 normalize_min_max <- function(x) {
   return((x - min(x)) / (max(x) - min(x)))
 }
 
-data_classif_imputed$POT_AUT <- normalize_min_max(data_classif_imputed$POT_AUT)
-data_classif_imputed <- data_classif_imputed %>% select(-ID) #quitar el ID
+solar_data$POT_AUT <- normalize_min_max(solar_data$POT_AUT)
+solar_data <- solar_data %>% select(-ID) #quitar el ID
 
 ensure_levels_in_train <- function(data, categorical_columns) {
   train_indices <- c()
@@ -102,8 +102,125 @@ ensure_levels_in_train <- function(data, categorical_columns) {
 
 ## PREDICCIONES
 
-group1 <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
+feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
             "ENERGY","ENTROPY")
+models <- c("lm", "rf", "gbm")
+
+# Normalizar columnas
+for (col in feats){
+  if (col != "ZEROS"){
+    solar_data[[col]] <- solar_data[[col]] / solar_data$MAX
+    solar_data[[col]] <- replace_na(solar_data[[col]], 0)
+    
+  }
+}
+
+solar_data[which(is.infinite(solar_data$ENTROPY))]$ENTROPY <- 1
+
+# T2: TarifCode != 96T1, 97T2
+# T6: TarifCode == 96T1, 97T2
+
+
+# TODO Train t2, test t2. Case 1
+#      Train t6, test t6. Case 2
+#      Train t2, test t6. Case 3
+#      Train t6, test t2. Case 4
+# Repeat each 100 times
+
+cases <- c(1:4)
+
+evaluar_modelo <- function(grupo_features, train, test) {
+  
+  train_labels <- train$POT_AUT
+  train <- train %>% select(all_of(grupo_features), POT_AUT)
+  test_labels <- test$POT_AUT
+  
+  
+  
+  #linear regression
+  model_lm <- lm(POT_AUT ~ ., data = train)
+  predictions_lm <- predict(model_lm, newdata = test)
+  
+  #random forest
+  model_rf <- randomForest(POT_AUT ~ ., data = train, ntree = 100)
+  predictions_rf <- predict(model_rf, newdata = test)
+  
+  #gbm
+  predictions_gbm <- predict(model_gbm, newdata = test)
+  
+  # por alguna razon está con cv, de momento lo quito
+  # model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
+  model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm')
+  
+  #CALCULATE MAPES
+  mape_lm <- mape(test_labels, predictions_lm)
+  mape_rf <- mape(test_labels, predictions_rf)
+  mape_gbm <- mape(test_labels, predictions_gbm)
+  
+  rmse_lm <- rmse(test_labels, predictions_lm)
+  rmse_rf <- rmse(test_labels, predictions_rf)
+  rmse_gbm <- rmse(test_labels, predictions_gbm)
+  
+  return(c(mape_lm, mape_rf, mape_gbm, rmse_lm, rmse_rf, rmse_gbm))
+}
+
+results <- data.frame()
+permutations <- powerSet(feats, 9)
+
+for(case in cases){ 
+  
+  
+  train_idx <- ensure_levels_in_train(solar_data, categorical_columns)
+  initial_train <- solar_data[initial_train_indices, ]
+  
+  remaining_data <- solar_data[-initial_train_indices, ]
+  remaining_train_size <- floor(0.8 * nrow(solar_train)) - nrow(initial_train)
+  remaining_train_idx <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
+  
+  
+  # Train t2, test t2
+  if(case == 1) {
+    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+  }
+  
+  # Train t6, test t6
+  if(case == 2) {
+    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
+    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
+  }
+  
+  # Train t2, test t6
+  if(case == 3) {
+    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
+  }
+ 
+  # Train t6, test t2
+  if(case == 1) {
+    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
+    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+  }
+  
+  
+  
+  for(modelo in models){
+    for(i in 2:length(permutations)){ # permutations[[1]] is empty
+      grupo <- c(permutations[[i]])
+      metrics <- evaluar_modelo(grupo, train, test)
+      print(paste("Feature set", i, "/", length(permutations), "completed"))
+      results <- rbind(results, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6], case))
+      colnames(results) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm", "Train-test_Case")
+      
+    }
+  }
+}
+
+
+
+
+
+# OLD ANE CODE
 
 resultadosT2 <- data.frame()
 resultadosT6 <- data.frame()
