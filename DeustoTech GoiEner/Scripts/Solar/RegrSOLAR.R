@@ -3,7 +3,7 @@ library(doParallel)
 library(doFuture)
 
 registerDoFuture()
-plan(multisession, workers = 4)  # Change the number of workers
+plan(multisession, workers = 6)  # Change the number of workers
 
 
 # añadir las librerias nuevas en este vector
@@ -11,7 +11,7 @@ librerias <- c("ggplot2", "lattice", "caret", "fpp3",
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
                'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
-               "randomForest", "purrr", "matrixStats","glmnet", "recipes", "pROC", "rje") 
+               "randomForest", "purrr", "matrixStats","glmnet", "recipes", "pROC", "rje", "dplyr") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -106,11 +106,11 @@ ensure_levels_in_train <- function(data, categorical_columns) {
 
 ## PREDICCIONES
 # 
-# feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
-#             "ENERGY","ENTROPY")
+feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
+            "ENERGY","ENTROPY")
 
 
-feats <- c("ZEROS","AVG","SD")
+# feats <- c("ZEROS","AVG","SD")
 
 models <- c("lm", "rf", "gbm")
 
@@ -178,9 +178,9 @@ permutations <- powerSet(feats, 3)
 results <- data.frame()
 
 results <- foreach(case = cases, .combine = rbind, 
-                   .options.future = list(globals = c("evaluar_modelo", "solar_data", "permutations"), .packages = librerias, seed = TRUE)) %dofuture% {
+                   .options.future = list(globals = c("evaluar_modelo", "solar_data", "permutations", "librerias", "results"), add = TRUE, packages = librerias, seed = TRUE)) %dofuture% {
+                   
                      
-         
          train <- data.frame()
          test <- data.frame()
          
