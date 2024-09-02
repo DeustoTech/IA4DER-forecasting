@@ -101,9 +101,13 @@ ensure_levels_in_train <- function(data, categorical_columns) {
 }
 
 ## PREDICCIONES
+# 
+# feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
+#             "ENERGY","ENTROPY")
 
-feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
-            "ENERGY","ENTROPY")
+
+feats <- c("ZEROS","AVG","SD")
+
 models <- c("lm", "rf", "gbm")
 
 # Normalizar columnas
@@ -146,12 +150,12 @@ evaluar_modelo <- function(grupo_features, train, test) {
   predictions_rf <- predict(model_rf, newdata = test)
   
   #gbm
-  predictions_gbm <- predict(model_gbm, newdata = test)
   
   # por alguna razon está con cv, de momento lo quito
   # model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
-  model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm')
-  
+  model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', verbose = FALSE)
+  predictions_gbm <- predict(model_gbm, newdata = test)
+
   #CALCULATE MAPES
   mape_lm <- mape(test_labels, predictions_lm)
   mape_rf <- mape(test_labels, predictions_rf)
@@ -165,55 +169,89 @@ evaluar_modelo <- function(grupo_features, train, test) {
 }
 
 results <- data.frame()
-permutations <- powerSet(feats, 9)
+# permutations <- powerSet(feats, 9)
+permutations <- powerSet(feats, 3)
 
 for(case in cases){ 
   
+  train <- data.frame()
+  test <- data.frame()
   
-  train_idx <- ensure_levels_in_train(solar_data, categorical_columns)
-  initial_train <- solar_data[initial_train_indices, ]
-  
-  remaining_data <- solar_data[-initial_train_indices, ]
-  remaining_train_size <- floor(0.8 * nrow(solar_train)) - nrow(initial_train)
-  remaining_train_idx <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
+  # train_idx <- ensure_levels_in_train(solar_data, categorical_columns)
+  # initial_train <- solar_data[train_idx, ]
+  # 
+  # remaining_data <- solar_data[-train_idx, ]
+  # remaining_train_size <- floor(0.8 * nrow(solar_data)) - nrow(initial_train)
+  # remaining_train_idx <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
   
   
   # Train t2, test t2
   if(case == 1) {
-    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    case1 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    train_idx <- createDataPartition(case1$POT_AUT, p=0.8, list=FALSE)
+    train <- as.data.frame(solar_data[train_idx, ])
+    test <- as.data.frame(solar_data[-train_idx, ])
+    
+    
+    # train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    # test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
   }
+  
+  # print(train)
   
   # Train t6, test t6
   if(case == 2) {
-    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
-    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
+    
+    case2 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+    train_idx <- createDataPartition(case2$POT_AUT, p=0.8, list=FALSE)
+    train <- as.data.frame(solar_data[train_idx, ])
+    print("bien case 2")
+    
+    test <- as.data.frame(solar_data[-train_idx, ])
+    # train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
+    # test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
   }
   
   # Train t2, test t6
   if(case == 3) {
-    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
+    
+    t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+    train_idx <- createDataPartition(t2$POT_AUT, p=0.8, list=FALSE)
+    test_idx <- createDataPartition(t6$POT_AUT, p=0.2, list=FALSE)
+    
+    train <- as.data.frame(solar_data[train_idx, ])
+    test <- as.data.frame(solar_data[test_idx, ])
+    
+    # train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    # test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
   }
  
   # Train t6, test t2
-  if(case == 1) {
-    train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode == "96T1" & TarifCode == "97T2")
-    test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+  if(case == 4) {
+    # train <- rbind(initial_train, remaining_data[remaining_train_idx, ]) %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+    # test <- remaining_data[-remaining_train_idx, ] %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    
+    
+    t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+    train_idx <- createDataPartition(t6$POT_AUT, p=0.8, list=FALSE)
+    test_idx <- createDataPartition(t2$POT_AUT, p=0.2, list=FALSE)
+    
+    train <- as.data.frame(solar_data[train_idx, ])
+    test <- as.data.frame(solar_data[test_idx, ])
+    
   }
   
-  
-  
-  for(modelo in models){
     for(i in 2:length(permutations)){ # permutations[[1]] is empty
       grupo <- c(permutations[[i]])
       metrics <- evaluar_modelo(grupo, train, test)
-      print(paste("Feature set", i, "/", length(permutations), "completed"))
+      print(paste("Case", case, ". Feature set", i-1,"/",length(permutations)-1, "completed"))
       results <- rbind(results, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6], case))
       colnames(results) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm", "Train-test_Case")
       
     }
-  }
+  print(paste("Case", case, "completed"))
 }
 
 
