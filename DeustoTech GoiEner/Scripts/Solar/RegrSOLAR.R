@@ -3,7 +3,7 @@ library(doParallel)
 library(doFuture)
 
 registerDoFuture()
-plan(multisession, workers = 6)  # Change the number of workers
+plan(multisession)  # Change the number of workers
 
 
 # añadir las librerias nuevas en este vector
@@ -19,9 +19,9 @@ foreach(lib = librerias) %do% {
 
 
 #cargar archivos necesarios
-feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.CSV") #982 330
+feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.csv") #982 330
 feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") #1451  312
-hasPV_data <- fread("SOLAR/Variation/HasPV.csv") #2434    4
+hasPV_data <- fread("SOLAR/HasPV.csv") #2434    4
 features <- fread("SOLAR/features.csv") #97028    22
 
 ## DATA CLEANING
@@ -174,7 +174,7 @@ evaluar_modelo <- function(grupo_features, train, test) {
 
 # USING DOFUTURE AND PARALLEL PROCESSING
 cases <- c(1:4)
-permutations <- powerSet(feats, 3)
+permutations <- powerSet(feats, 9)
 results <- data.frame()
 all_results <- list()
 
