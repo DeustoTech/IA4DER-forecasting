@@ -176,65 +176,68 @@ evaluar_modelo <- function(grupo_features, train, test) {
 cases <- c(1:4)
 permutations <- powerSet(feats, 3)
 results <- data.frame()
+all_results <- list()
 
-results <- foreach(case = cases, .combine = rbind, 
-                   .options.future = list(globals = c("evaluar_modelo", "solar_data", "permutations", "librerias", "results"), add = TRUE, packages = librerias, seed = TRUE)) %dofuture% {
-                   
+for (it in 1:100){  
+
+  results <- foreach(case = cases, .combine = rbind, 
+                     .options.future = list(globals = c("evaluar_modelo", "solar_data", "permutations", "librerias", "results"), add = TRUE, packages = librerias, seed = TRUE)) %dofuture% {
                      
-         train <- data.frame()
-         test <- data.frame()
-         
-         if(case == 1) {
-           case1 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-           train_idx <- createDataPartition(case1$POT_AUT, p=0.8, list=FALSE)
-           train <- as.data.frame(solar_data[train_idx, ])
-           test <- as.data.frame(solar_data[-train_idx, ])
+                       
+           train <- data.frame()
+           test <- data.frame()
+           
+           if(case == 1) {
+             case1 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+             train_idx <- createDataPartition(case1$POT_AUT, p=0.8, list=FALSE)
+             train <- as.data.frame(solar_data[train_idx, ])
+             test <- as.data.frame(solar_data[-train_idx, ])
+           }
+           
+           if(case == 2) {
+             case2 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+             train_idx <- createDataPartition(case2$POT_AUT, p=0.8, list=FALSE)
+             train <- as.data.frame(solar_data[train_idx, ])
+             test <- as.data.frame(solar_data[-train_idx, ])
+           }
+           
+           if(case == 3) {
+             t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+             t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+             train_idx <- createDataPartition(t2$POT_AUT, p=0.8, list=FALSE)
+             test_idx <- createDataPartition(t6$POT_AUT, p=0.2, list=FALSE)
+             train <- as.data.frame(solar_data[train_idx, ])
+             test <- as.data.frame(solar_data[test_idx, ])
+           }
+           
+           if(case == 4) {
+             t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+             t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+             train_idx <- createDataPartition(t6$POT_AUT, p=0.8, list=FALSE)
+             test_idx <- createDataPartition(t2$POT_AUT, p=0.2, list=FALSE)
+             train <- as.data.frame(solar_data[train_idx, ])
+             test <- as.data.frame(solar_data[test_idx, ])
+           }
+           
+           foreach(i = 2:length(permutations), .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
+             grupo <- c(permutations[[i]])
+             metrics <- evaluar_modelo(grupo, train, test)
+             print(paste("Case", case, ". Feature set", i-1,"/",length(permutations)-1, "completed"))
+             data.frame(Grupo = toString(grupo),
+                        MAPE_lm = metrics[1],
+                        MAPE_rf = metrics[2],
+                        MAPE_gbm = metrics[3],
+                        RMSE_lm = metrics[4],
+                        RMSE_rf = metrics[5],
+                        RMSE_gbm = metrics[6],
+                        Train_test_Case = case)
+           }
          }
-         
-         if(case == 2) {
-           case2 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-           train_idx <- createDataPartition(case2$POT_AUT, p=0.8, list=FALSE)
-           train <- as.data.frame(solar_data[train_idx, ])
-           test <- as.data.frame(solar_data[-train_idx, ])
-         }
-         
-         if(case == 3) {
-           t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-           t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-           train_idx <- createDataPartition(t2$POT_AUT, p=0.8, list=FALSE)
-           test_idx <- createDataPartition(t6$POT_AUT, p=0.2, list=FALSE)
-           train <- as.data.frame(solar_data[train_idx, ])
-           test <- as.data.frame(solar_data[test_idx, ])
-         }
-         
-         if(case == 4) {
-           t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-           t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-           train_idx <- createDataPartition(t6$POT_AUT, p=0.8, list=FALSE)
-           test_idx <- createDataPartition(t2$POT_AUT, p=0.2, list=FALSE)
-           train <- as.data.frame(solar_data[train_idx, ])
-           test <- as.data.frame(solar_data[test_idx, ])
-         }
-         
-         foreach(i = 2:length(permutations), .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
-           grupo <- c(permutations[[i]])
-           metrics <- evaluar_modelo(grupo, train, test)
-           print(paste("Case", case, ". Feature set", i-1,"/",length(permutations)-1, "completed"))
-           data.frame(Grupo = toString(grupo),
-                      MAPE_lm = metrics[1],
-                      MAPE_rf = metrics[2],
-                      MAPE_gbm = metrics[3],
-                      RMSE_lm = metrics[4],
-                      RMSE_rf = metrics[5],
-                      RMSE_gbm = metrics[6],
-                      Train_test_Case = case)
-         }
-       }
 
-print("All cases completed")
+  all_results[[it]] <- results
+}
 
-
-
+final_results <- do.call(rbind, all_results)
 
 
 # Without doFuture
