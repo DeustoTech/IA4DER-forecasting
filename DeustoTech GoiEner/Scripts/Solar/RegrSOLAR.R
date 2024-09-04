@@ -49,27 +49,28 @@ categorical_columns <- c( "TIP_SUMINISTRO", "COD_TARIF_IBDLA", "TIP_EST_POLIZA",
 
 data_classif$TarifCode <- data_classif$TARIF
 
+# Transformar categoricas a factores
 for (col in categorical_columns) {
   data_classif[[col]] <- ifelse(is.na(data_classif[[col]]) | data_classif[[col]] == "", -1, as.factor(data_classif[[col]]))
   data_classif[[col]] <- (as.factor(data_classif[[col]]))
 }
 
 #quitar categorias que solo tienen un factor o 2
-unique_categories_to_filter <- list(
-  TIP_SUMINISTRO = c(3, 4, 6, 14, 17),
-  TIP_EST_POLIZA = c(1, 3), 
-  CNAE = c(2,4),  
-  SUM = c(5, 16, 18, 19, 21, 22, 23)  
-)
+# unique_categories_to_filter <- list(
+#   TIP_SUMINISTRO = c(3, 4, 6, 14, 17),
+#   TIP_EST_POLIZA = c(1, 3), 
+#   CNAE = c(2,4),  
+#   SUM = c(5, 16, 18, 19, 21, 22, 23)  
+# )
+# 
+# for (col in names(unique_categories_to_filter)) {
+#     data_classif <- subset(data_classif, !(get(col) %in% unique_categories_to_filter[[col]]))
+# }
 
-for (col in names(unique_categories_to_filter)) {
-    data_classif <- subset(data_classif, !(get(col) %in% unique_categories_to_filter[[col]]))
-}
-
-data_classif$TIP_SUMINISTRO <- droplevels(data_classif$TIP_SUMINISTRO)
-data_classif$TIP_EST_POLIZA <- droplevels(data_classif$TIP_EST_POLIZA)
-data_classif$CNAE <- droplevels(data_classif$CNAE)
-data_classif$SUM <- droplevels(data_classif$SUM)
+# data_classif$TIP_SUMINISTRO <- droplevels(data_classif$TIP_SUMINISTRO)
+# data_classif$TIP_EST_POLIZA <- droplevels(data_classif$TIP_EST_POLIZA)
+# data_classif$CNAE <- droplevels(data_classif$CNAE)
+# data_classif$SUM <- droplevels(data_classif$SUM)
 
 #renombrar algunas columnas para que funcione random forest
 for (col in colnames(data_classif)) {
@@ -83,29 +84,17 @@ data_classif <- data_classif %>%
 solar_data <- data_classif %>%
   mutate(across(where(is.numeric), ~if_else(is.na(.), median(., na.rm = TRUE), .)))
 
-#convertir a numerica y normalizar la variable a predecir
+
 solar_data$POT_AUT <- as.numeric(solar_data$POT_AUT)
+solar_data <- solar_data %>% filter(POT_AUT > 0)
 
-normalize_min_max <- function(x) {
-  return((x - min(x)) / (max(x) - min(x)))
-}
 
-solar_data$POT_AUT <- normalize_min_max(solar_data$POT_AUT)
 solar_data <- solar_data %>% select(-ID) #quitar el ID
 
-ensure_levels_in_train <- function(data, categorical_columns) {
-  train_indices <- c()
-  for (col in categorical_columns) {
-    for (level in unique(data[[col]])) {
-      level_indices <- which(data[[col]] == level)
-      train_indices <- c(train_indices, sample(level_indices, 1))
-    }
-  }
-  return(unique(train_indices))
-}
+
 
 ## PREDICCIONES
-# 
+
 feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
             "ENERGY","ENTROPY")
 
@@ -114,9 +103,9 @@ feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
 
 models <- c("lm", "rf", "gbm")
 
-# Normalizar columnas
+# Normalizar columnas dividiendo entre MAX
 for (col in feats){
-  if (col != "ZEROS"){
+  if (col != "ZEROS" & col != "ENTROPY"){
     solar_data[[col]] <- solar_data[[col]] / solar_data$MAX
     solar_data[[col]] <- replace_na(solar_data[[col]], 0)
     
@@ -154,9 +143,6 @@ evaluar_modelo <- function(grupo_features, train, test) {
   predictions_rf <- predict(model_rf, newdata = test)
   
   #gbm
-  
-  # por alguna razon está con cv, de momento lo quito
-  # model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
   model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', verbose = FALSE)
   predictions_gbm <- predict(model_gbm, newdata = test)
 
@@ -174,71 +160,71 @@ evaluar_modelo <- function(grupo_features, train, test) {
 
 # USING DOFUTURE AND PARALLEL PROCESSING
 cases <- c(1:4)
-permutations <- powerSet(feats, 9)
+
+feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
+           "ENERGY","ENTROPY")
+
+permutations <- powerSet(feats, length(feats))
 results <- data.frame()
 all_results <- list()
+final_results <- foreach(iteration = 1:100, .combine = rbind, .options.future = list(globals = c("evaluar_modelo", "solar_data", "permutations", "librerias"), add = TRUE, 
+packages = librerias, seed = TRUE)) %dofuture% {
 
-for (it in 1:100){  
-
-  results <- foreach(case = cases, .combine = rbind, 
-                     .options.future = list(globals = c("evaluar_modelo", "solar_data", "permutations", "librerias", "results"), add = TRUE, packages = librerias, seed = TRUE)) %dofuture% {
-                     
-                       
-           train <- data.frame()
-           test <- data.frame()
-           
-           if(case == 1) {
-             case1 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-             train_idx <- createDataPartition(case1$POT_AUT, p=0.8, list=FALSE)
-             train <- as.data.frame(solar_data[train_idx, ])
-             test <- as.data.frame(solar_data[-train_idx, ])
-           }
-           
-           if(case == 2) {
-             case2 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-             train_idx <- createDataPartition(case2$POT_AUT, p=0.8, list=FALSE)
-             train <- as.data.frame(solar_data[train_idx, ])
-             test <- as.data.frame(solar_data[-train_idx, ])
-           }
-           
-           if(case == 3) {
-             t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-             t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-             train_idx <- createDataPartition(t2$POT_AUT, p=0.8, list=FALSE)
-             test_idx <- createDataPartition(t6$POT_AUT, p=0.2, list=FALSE)
-             train <- as.data.frame(solar_data[train_idx, ])
-             test <- as.data.frame(solar_data[test_idx, ])
-           }
-           
-           if(case == 4) {
-             t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-             t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-             train_idx <- createDataPartition(t6$POT_AUT, p=0.8, list=FALSE)
-             test_idx <- createDataPartition(t2$POT_AUT, p=0.2, list=FALSE)
-             train <- as.data.frame(solar_data[train_idx, ])
-             test <- as.data.frame(solar_data[test_idx, ])
-           }
-           
-           foreach(i = 2:length(permutations), .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
-             grupo <- c(permutations[[i]])
-             metrics <- evaluar_modelo(grupo, train, test)
-             print(paste("Case", case, ". Feature set", i-1,"/",length(permutations)-1, "completed"))
-             data.frame(Grupo = toString(grupo),
-                        MAPE_lm = metrics[1],
-                        MAPE_rf = metrics[2],
-                        MAPE_gbm = metrics[3],
-                        RMSE_lm = metrics[4],
-                        RMSE_rf = metrics[5],
-                        RMSE_gbm = metrics[6],
-                        Train_test_Case = case)
-           }
-         }
-
-  all_results[[it]] <- results
+results <- foreach(case = cases, .combine = rbind, 
+             .options.future = list(seed = TRUE)) %dofuture% {
+               
+               train <- data.frame()
+               test <- data.frame()
+               
+               if(case == 1) {
+                 case1 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+                 train_idx <- createDataPartition(case1$POT_AUT, p=0.8, list=FALSE)
+                 train <- as.data.frame(solar_data[train_idx, ])
+                 test <- as.data.frame(solar_data[-train_idx, ])
+               }
+               
+               if(case == 2) {
+                 case2 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+                 train_idx <- createDataPartition(case2$POT_AUT, p=0.8, list=FALSE)
+                 train <- as.data.frame(solar_data[train_idx, ])
+                 test <- as.data.frame(solar_data[-train_idx, ])
+               }
+               
+               if(case == 3) {
+                 t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+                 t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+                 train_idx <- createDataPartition(t2$POT_AUT, p=0.8, list=FALSE)
+                 test_idx <- createDataPartition(t6$POT_AUT, p=0.2, list=FALSE)
+                 train <- as.data.frame(solar_data[train_idx, ])
+                 test <- as.data.frame(solar_data[test_idx, ])
+               }
+               
+               if(case == 4) {
+                 t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+                 t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+                 train_idx <- createDataPartition(t6$POT_AUT, p=0.8, list=FALSE)
+                 test_idx <- createDataPartition(t2$POT_AUT, p=0.2, list=FALSE)
+                 train <- as.data.frame(solar_data[train_idx, ])
+                 test <- as.data.frame(solar_data[test_idx, ])
+               }
+               
+               foreach(i = 2:length(permutations), .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
+                 grupo <- c(permutations[[i]])
+                 metrics <- evaluar_modelo(grupo, train, test)
+                 print(paste("Case", case, ". Feature set", i-1,"/",length(permutations)-1, "completed"))
+                 data.frame(Grupo = toString(grupo),
+                            MAPE_lm = metrics[1],
+                            MAPE_rf = metrics[2],
+                            MAPE_gbm = metrics[3],
+                            RMSE_lm = metrics[4],
+                            RMSE_rf = metrics[5],
+                            RMSE_gbm = metrics[6],
+                            Train_test_Case = case,
+                            Iteration = iteration)
+               }
+             }
+  results
 }
-
-final_results <- do.call(rbind, all_results)
-
 
 # Without doFuture
 {
@@ -334,7 +320,16 @@ for (col in group1){
 }
 
 data_classif_imputed[which(is.infinite(data_classif_imputed$ENTROPY))]$ENTROPY <- 1
-
+ensure_levels_in_train <- function(data, categorical_columns) {
+  train_indices <- c()
+  for (col in categorical_columns) {
+    for (level in unique(data[[col]])) {
+      level_indices <- which(data[[col]] == level)
+      train_indices <- c(train_indices, sample(level_indices, 1))
+    }
+  }
+  return(unique(train_indices))
+}
 
 evaluar_modelo <- function(grupo_features, train, test) {
   
