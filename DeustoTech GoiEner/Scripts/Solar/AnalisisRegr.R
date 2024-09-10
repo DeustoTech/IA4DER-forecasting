@@ -17,7 +17,7 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
-regr <- read.csv("SOLAR/RegrSolar.csv")
+regr <- read.csv("SOLAR/Regresion/RegrSolar.csv")
 
 # Create a new column 'numFeats' by counting commas + 1
 regr$numFeats <- sapply(regr$Grupo, function(x) {
@@ -129,8 +129,7 @@ summary_c1 <- case1_all %>%
 
 # ONLY THE BEST (FIRST OBSERVATION FOR EACH COMBINATION)
 
-
-
+{
 regr_first_obs <- regr %>%
   group_by(Train_test_Case, numFeats) %>%
   slice_min(order_by = MAPE_rf, with_ties = FALSE) %>% # Selects the row with the minimum MAPE_gbm
@@ -140,4 +139,13 @@ case1 <- regr_first_obs %>% filter(Train_test_Case == 1)
 case2 <- regr_first_obs %>% filter(Train_test_Case == 2)
 case3 <- regr_first_obs %>% filter(Train_test_Case == 3)
 case4 <- regr_first_obs %>% filter(Train_test_Case == 4)
+}
 
+
+# BEST 30 COMBINATIONS OF EACH CASE TO THEN EXECUTE 100 TIMES 
+{
+case1_top <- case1_all %>% head(30)
+case2_top <- case2_all %>% head(30)
+case3_top <- case3_all %>% head(30)
+case4_top <- case4_all %>% head(30)
+}
