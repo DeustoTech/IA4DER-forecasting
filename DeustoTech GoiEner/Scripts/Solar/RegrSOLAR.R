@@ -10,7 +10,7 @@ plan(multisession)  # Change the number of workers
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
                "lattice", "forecast", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
+               'quantmod', 'caret', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', "stringr", 
                "randomForest", "purrr", "matrixStats","glmnet", "recipes", "pROC", "rje", "dplyr", "progressr") 
 
 foreach(lib = librerias) %do% {
@@ -163,12 +163,31 @@ evaluar_modelo <- function(grupo_features, train, test) {
 permutations <- powerSet(feats, length(feats))
 howMany <- length(permutations)
 results <- data.frame() 
-globalvars <- c("evaluar_modelo", "solar_data", "permutations", "librerias", "cases", "case_progress",  "perm_progress")
+globalvars <- c("evaluar_modelo", "solar_data", "permutations", "librerias", "cases", "case_progress",  "perm_progress",
+                "c1_list", "c2_list", "c3_list", "c4_list")
+
+
+# Codigo para, a partir de un csv de resultados ya existente
+# sacar la columna grupo en el mismo formato que el loop a usar
+{
+c1 <- read.csv("SOLAR/Regresion/Top/case1_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c1_list <- lapply(c1$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
+
+c2 <- read.csv("SOLAR/Regresion/Top/case2_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c2_list <- lapply(c2$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
+
+c3 <- read.csv("SOLAR/Regresion/Top/case3_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c3_list <- lapply(c3$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
+
+c4 <- read.csv("SOLAR/Regresion/Top/case4_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c4_list <- lapply(c4$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
+}
 
 
 
+# 100 times the best 30 of each case
+# IN THIS LOOP, PERMUTATIONS TAKES THE VALUE OF Cn_list depending on the case
 
-# 100 times (fail)
 {
 
 final_results <- foreach(iteration = 1:100, .combine = rbind, 
@@ -182,11 +201,13 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
     train <- data.frame()
     test <- data.frame()
     
+    
     if(case == 1) {
       case1 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
       train_idx <- createDataPartition(case1$POT_AUT, p=0.8, list=FALSE)
       train <- as.data.frame(solar_data[train_idx, ])
       test <- as.data.frame(solar_data[-train_idx, ])
+      permutations <- c1_list # Remove or comment if all permutations are to be used
     }
     
     if(case == 2) {
@@ -194,6 +215,7 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
       train_idx <- createDataPartition(case2$POT_AUT, p=0.8, list=FALSE)
       train <- as.data.frame(solar_data[train_idx, ])
       test <- as.data.frame(solar_data[-train_idx, ])
+      permutations <- c2_list # Remove or comment if all permutations are to be used
     }
     
     if(case == 3) {
@@ -203,6 +225,7 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
       test_idx <- createDataPartition(t6$POT_AUT, p=0.2, list=FALSE)
       train <- as.data.frame(solar_data[train_idx, ])
       test <- as.data.frame(solar_data[test_idx, ])
+      permutations <- c3_list # Remove or comment if all permutations are to be used
     }
     
     if(case == 4) {
@@ -212,6 +235,7 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
       test_idx <- createDataPartition(t2$POT_AUT, p=0.2, list=FALSE)
       train <- as.data.frame(solar_data[train_idx, ])
       test <- as.data.frame(solar_data[test_idx, ])
+      permutations <- c4_list # Remove or comment if all permutations are to be used
     }
     
     foreach(i = 2:length(permutations), .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
