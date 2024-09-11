@@ -36,6 +36,14 @@ case4_all <- regr_sorted %>% filter(Train_test_Case == 4)
 
 # PLOTS
 
+ggplot(regr, aes(x = factor(Train_test_Case), y = MAPE_rf)) +
+  geom_boxplot() +
+  labs(title = "MAPE_rf for each Case",
+       x = "Case",
+       y = "MAPE_rf")
+
+
+
 # Case 1
 {
 ggplot(case1_all, aes(x = as.factor(numFeats), y = MAPE_rf)) +
@@ -148,4 +156,87 @@ case1_top <- case1_all %>% head(30)
 case2_top <- case2_all %>% head(30)
 case3_top <- case3_all %>% head(30)
 case4_top <- case4_all %>% head(30)
+}
+
+
+# RESULTS AFTER 100 EXECUTIONS OF EACH 30 BEST COMBINATIONS
+{
+  top <- read.csv("SOLAR/Regresion/Top/Top30.csv")
+  top$numFeats <- sapply(top$Grupo, function(x) {
+    num_commas <- str_count(x, ",")
+    return(num_commas + 1)
+  })
+  
+  c1 <- top %>% filter(Train_test_Case == 1)
+  c2 <- top %>% filter(Train_test_Case == 2)
+  c3 <- top %>% filter(Train_test_Case == 3)
+  c4 <- top %>% filter(Train_test_Case == 4)
+  
+  # SUMMARIES 
+  {
+  c1_summary <- c1 %>%
+    group_by(Grupo) %>%
+    summarize(
+      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
+      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
+      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
+      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
+      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      Train_test_Case = 1
+    )
+  
+  c2_summary <- c2 %>%
+    group_by(Grupo) %>%
+    summarize(
+      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
+      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
+      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
+      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
+      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      Train_test_Case = 2
+    )
+  
+  c3_summary <- c3 %>%
+    group_by(Grupo) %>%
+    summarize(
+      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
+      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
+      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
+      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
+      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      Train_test_Case = 3
+    )
+  
+  c4_summary <- c4 %>%
+    group_by(Grupo) %>%
+    summarize(
+      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
+      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
+      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
+      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
+      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      Train_test_Case = 4
+    )
+  
+  fwrite(c1_summary, "SOLAR/Regresion/Top/Summaries/Summary_case1.csv")
+  fwrite(c2_summary, "SOLAR/Regresion/Top/Summaries/Summary_case2.csv")
+  fwrite(c3_summary, "SOLAR/Regresion/Top/Summaries/Summary_case3.csv")
+  fwrite(c4_summary, "SOLAR/Regresion/Top/Summaries/Summary_case4.csv")
+  }
+  
+  # PLOTS
+  
+  
+  
+  
+  
+  
 }
