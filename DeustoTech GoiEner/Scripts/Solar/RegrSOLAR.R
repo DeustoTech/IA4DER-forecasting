@@ -194,7 +194,7 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
                          .options.future = list(globals = globalvars,add = TRUE,
                                                 packages = librerias, seed = TRUE)) %dofuture% {
         
-  outer_progress(message = sprintf("Starting iteration %d of 100", iteration))
+  # outer_progress(message = sprintf("Starting iteration %d of 100", iteration))
                                                   
   foreach(case = cases, .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
     
