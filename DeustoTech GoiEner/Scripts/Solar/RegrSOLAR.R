@@ -17,10 +17,9 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
-
 #cargar archivos necesarios
 feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.csv") #982 330
-feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") #1451  312
+feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") %>% slice(1:1000) #1000  312
 hasPV_data <- fread("SOLAR/HasPV.csv") #2434    4
 features <- fread("SOLAR/features.csv") #97028    22
 
@@ -28,89 +27,59 @@ features <- fread("SOLAR/features.csv") #97028    22
 
 #juntar todos los csvs
 features <- features %>% filter(ASS == "CUPS" | ASS == "SOLAR") #71021 22
-feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #2433  330
+feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #1982  330
 
 # Ejecutar estas dos lineas para seleccionar de features (cruz) solo las que no tenemos nosotros
 columns_to_select <- setdiff(names(feats_totales), names(features))
 feats_totales <- feats_totales %>% select(ID, all_of(columns_to_select))
 
-feats_totales <- merge(feats_totales, features, by = "ID")
-data_classif <- merge(feats_totales, hasPV_data, by = "ID") #2433  333
+solar_data <- merge(feats_totales, features, by = "ID")
+solar_data <- merge(solar_data, hasPV_data, by = "ID") #1982  346
 
 
-# Quitamos todo lo de inyección, identificadores, fechas, repetidas y variables que no cambian
-data_classif <- data_classif %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_SUM,
+# Quitamos todo lo solar_data inyección, identificadores, fechas, repetidas y variables que no cambian
+solar_data <- solar_data %>% select(-INSTALLATION_TIMESTAMP, -FEC_BAJA_PUN_SUM,
                                         -TIP_CONTRATO, -TIP_CUALIFICACION,
                                         -FirstInjection, -InstallationDate, -DIFF_HOURS,
                                         -COD_CNAE, -contains("AE."), -COD_PS, -COD_CLIENTE,
-                                        -COD_CONTRATO, -ASS, -starts_with("FEC"), -SHARP, -ZERO, -COD_SOCIEDAD)
+                                        -COD_CONTRATO,  -starts_with("FEC"), -SHARP, -ZEROS, -COD_SOCIEDAD)
 
 categorical_columns <- c( "TIP_SUMINISTRO", "COD_TARIF_IBDLA", "TIP_EST_POLIZA", "CNAE", "TARIF", "SUM", "TIP_PUNTO_MEDIDA")
 
-data_classif$TarifCode <- data_classif$TARIF
+solar_data$TarifCode <- solar_data$TARIF
 
 # Transformar categoricas a factores
 for (col in categorical_columns) {
-  data_classif[[col]] <- ifelse(is.na(data_classif[[col]]) | data_classif[[col]] == "", -1, as.factor(data_classif[[col]]))
-  data_classif[[col]] <- (as.factor(data_classif[[col]]))
+  solar_data[[col]] <- ifelse(is.na(solar_data[[col]]) | solar_data[[col]] == "", -1, as.factor(solar_data[[col]]))
+  solar_data[[col]] <- (as.factor(solar_data[[col]]))
 }
 
-#quitar categorias que solo tienen un factor o 2
-# unique_categories_to_filter <- list(
-#   TIP_SUMINISTRO = c(3, 4, 6, 14, 17),
-#   TIP_EST_POLIZA = c(1, 3), 
-#   CNAE = c(2,4),  
-#   SUM = c(5, 16, 18, 19, 21, 22, 23)  
-# )
-# 
-# for (col in names(unique_categories_to_filter)) {
-#     data_classif <- subset(data_classif, !(get(col) %in% unique_categories_to_filter[[col]]))
-# }
-
-# data_classif$TIP_SUMINISTRO <- droplevels(data_classif$TIP_SUMINISTRO)
-# data_classif$TIP_EST_POLIZA <- droplevels(data_classif$TIP_EST_POLIZA)
-# data_classif$CNAE <- droplevels(data_classif$CNAE)
-# data_classif$SUM <- droplevels(data_classif$SUM)
 
 #renombrar algunas columnas para que funcione random forest
-for (col in colnames(data_classif)) {
+for (col in colnames(solar_data)) {
   new_col_name <- gsub("-", ".", col)
-  names(data_classif)[names(data_classif) == col] <- new_col_name
+  names(solar_data)[names(solar_data) == col] <- new_col_name
 }
 
-#imputar valores CAGADON LAS CUPS NO TIENEN POT AUT 
-data_classif <- data_classif %>% 
-  mutate(across(where(is.numeric), ~replace(., !is.finite(.), NA)))
-solar_data <- data_classif %>%
-  mutate(across(where(is.numeric), ~if_else(is.na(.), median(., na.rm = TRUE), .)))
+solar_data <- solar_data %>%
+  mutate(POT_AUT = ifelse(ASS == "CUPS", 0, POT_AUT)) %>% mutate(POT_AUT = POT_AUT / MAX)
 
+solar_data <- solar_data %>% filter(!is.na(POT_AUT) & !is.infinite(POT_AUT))
 
-solar_data$POT_AUT <- as.numeric(solar_data$POT_AUT)
-solar_data <- solar_data %>% filter(POT_AUT > 0)
+summary(solar_data$POT_AUT)
 
-
-solar_data <- solar_data %>% select(-ID) #quitar el ID
-
-
-
-## PREDICCIONES
-
-feats <- c("ZEROS","AVG","SD","MIN","Q1","MEDIAN","Q3",
-            "ENERGY","ENTROPY")
-
-
-# feats <- c("ZEROS","AVG","SD")
-
-models <- c("lm", "rf", "gbm")
+feats <- c("ZERO","AVG","SD","MIN","Q1","MEDIAN","Q3",
+           "ENERGY","ENTROPY")
 
 # Normalizar columnas dividiendo entre MAX
 for (col in feats){
-  if (col != "ZEROS" & col != "ENTROPY"){
-    solar_data[[col]] <- solar_data[[col]] / solar_data$MAX
-    solar_data[[col]] <- replace_na(solar_data[[col]], 0)
+  if (col != "ZERO" & col != "ENTROPY"){
+    features[[col]] <- features[[col]] / features$MAX
+    features[[col]] <- replace_na(features[[col]], 0)
     
   }
 }
+
 
 solar_data[which(is.infinite(solar_data$ENTROPY))]$ENTROPY <- 1
 
