@@ -78,7 +78,7 @@ for (col in colnames(data_classif)) {
   names(data_classif)[names(data_classif) == col] <- new_col_name
 }
 
-#imputar valores
+#imputar valores CAGADON LAS CUPS NO TIENEN POT AUT 
 data_classif <- data_classif %>% 
   mutate(across(where(is.numeric), ~replace(., !is.finite(.), NA)))
 solar_data <- data_classif %>%
