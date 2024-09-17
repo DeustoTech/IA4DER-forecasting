@@ -49,7 +49,7 @@ for (col in categorical_columns) {
   data_classif[[col]] <- (as.factor(data_classif[[col]]))
 }
 
-
+# CAGADON, LAS CUPS NO TIENEN POT AUT
 data_classif <- data_classif %>% 
   mutate(across(where(is.numeric), ~replace(., !is.finite(.), NA)))
 
