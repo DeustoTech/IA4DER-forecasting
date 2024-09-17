@@ -25,14 +25,11 @@ features <- fread("SOLAR/features.csv") #97028    22
 
 ## DATA CLEANING
 
-#juntar todos los csvs
+#juntar todos los csvs con todas las columnas
 features <- features %>% filter(ASS == "CUPS" | ASS == "SOLAR") #71021 22
 feats_totales <- rbind(feats_con_auto, feats_trampa, fill = T) #1982  330
-
-# Ejecutar estas dos lineas para seleccionar de features (cruz) solo las que no tenemos nosotros
 columns_to_select <- setdiff(names(feats_totales), names(features))
 feats_totales <- feats_totales %>% select(ID, all_of(columns_to_select))
-
 solar_data <- merge(feats_totales, features, by = "ID")
 solar_data <- merge(solar_data, hasPV_data, by = "ID") #1982  346
 
@@ -64,7 +61,8 @@ for (col in colnames(solar_data)) {
 solar_data <- solar_data %>%
   mutate(POT_AUT = ifelse(ASS == "CUPS", 0, POT_AUT)) %>% mutate(POT_AUT = POT_AUT / MAX)
 
-solar_data <- solar_data %>% filter(!is.na(POT_AUT) & !is.infinite(POT_AUT))
+# take out incorrect cups and solars
+solar_data <- solar_data %>% filter(!is.na(POT_AUT) & !is.infinite(POT_AUT)) 
 
 summary(solar_data$POT_AUT)
 
@@ -116,15 +114,12 @@ evaluar_modelo <- function(grupo_features, train, test) {
   predictions_gbm <- predict(model_gbm, newdata = test)
 
   #CALCULATE MAPES
-  mape_lm <- mape(test_labels, predictions_lm)
-  mape_rf <- mape(test_labels, predictions_rf)
-  mape_gbm <- mape(test_labels, predictions_gbm)
+  mape_lm <- mape(test_labels, predictions_lm) * 100
+  mape_rf <- mape(test_labels, predictions_rf) * 100
+  mape_gbm <- mape(test_labels, predictions_gbm) * 100
   
-  rmse_lm <- rmse(test_labels, predictions_lm)
-  rmse_rf <- rmse(test_labels, predictions_rf)
-  rmse_gbm <- rmse(test_labels, predictions_gbm)
-  
-  return(c(mape_lm, mape_rf, mape_gbm, rmse_lm, rmse_rf, rmse_gbm))
+
+  return(c(mape_lm, mape_rf, mape_gbm))
 }
 
 # USING DOFUTURE AND PARALLEL PROCESSING
@@ -215,9 +210,6 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
                  MAPE_lm = metrics[1],
                  MAPE_rf = metrics[2],
                  MAPE_gbm = metrics[3],
-                 RMSE_lm = metrics[4],
-                 RMSE_rf = metrics[5],
-                 RMSE_gbm = metrics[6],
                  Train_test_Case = case,
                  Iteration = iteration)
     }
@@ -285,85 +277,10 @@ with_progress({
                  MAPE_lm = metrics[1],
                  MAPE_rf = metrics[2],
                  MAPE_gbm = metrics[3],
-                 RMSE_lm = metrics[4],
-                 RMSE_rf = metrics[5],
-                 RMSE_gbm = metrics[6],
                  Train_test_Case = case)
     }
   }
 })
-# Without doFuture
-{
-results <- data.frame()
-# permutations <- powerSet(feats, 9)
-permutations <- powerSet(feats, 3)
-
-for(case in cases){ 
-  
-  train <- data.frame()
-  test <- data.frame()
- 
-  
-  
-  # Train t2, test t2
-  if(case == 1) {
-    case1 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    train_idx <- createDataPartition(case1$POT_AUT, p=0.8, list=FALSE)
-    train <- as.data.frame(solar_data[train_idx, ])
-    test <- as.data.frame(solar_data[-train_idx, ])
-    
-  
-  }
-  
-
-  # Train t6, test t6
-  if(case == 2) {
-    
-    case2 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-    train_idx <- createDataPartition(case2$POT_AUT, p=0.8, list=FALSE)
-    train <- as.data.frame(solar_data[train_idx, ])
-    test <- as.data.frame(solar_data[-train_idx, ])
-
-  }
-  
-  # Train t2, test t6
-  if(case == 3) {
-    
-    t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-    train_idx <- createDataPartition(t2$POT_AUT, p=0.8, list=FALSE)
-    test_idx <- createDataPartition(t6$POT_AUT, p=0.2, list=FALSE)
-    
-    train <- as.data.frame(solar_data[train_idx, ])
-    test <- as.data.frame(solar_data[test_idx, ])
-    
-  }
- 
-  # Train t6, test t2
-  if(case == 4) {
-    t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
-    train_idx <- createDataPartition(t6$POT_AUT, p=0.8, list=FALSE)
-    test_idx <- createDataPartition(t2$POT_AUT, p=0.2, list=FALSE)
-    
-    train <- as.data.frame(solar_data[train_idx, ])
-    test <- as.data.frame(solar_data[test_idx, ])
-    
-  }
-  
-    for(i in 2:length(permutations)){ # permutations[[1]] is empty
-      grupo <- c(permutations[[i]])
-      metrics <- evaluar_modelo(grupo, train, test)
-      print(paste("Case", case, ". Feature set", i-1,"/",length(permutations)-1, "completed"))
-      results <- rbind(results, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6], case))
-      colnames(results) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm", "Train-test_Case")
-      
-    }
-  print(paste("Case", case, "completed"))
-}
-
-}
-
 
 
 
