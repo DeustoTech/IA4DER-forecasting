@@ -3,7 +3,7 @@ library(doParallel)
 library(doFuture)
 
 registerDoFuture()
-plan(multisession)  # Change the number of workers
+plan(multisession, workers = 30)  # Change the number of workers
 
 
 # añadir las librerias nuevas en este vector
@@ -100,7 +100,6 @@ evaluar_modelo <- function(grupo_features, train, test) {
   test_labels <- test$POT_AUT
   
   
-  
   #linear regression
   model_lm <- lm(POT_AUT ~ ., data = train)
   predictions_lm <- predict(model_lm, newdata = test)
@@ -114,12 +113,12 @@ evaluar_modelo <- function(grupo_features, train, test) {
   predictions_gbm <- predict(model_gbm, newdata = test)
 
   #CALCULATE MAPES
-  mape_lm <- mape(test_labels, predictions_lm) * 100
-  mape_rf <- mape(test_labels, predictions_rf) * 100
-  mape_gbm <- mape(test_labels, predictions_gbm) * 100
+  rmse_lm <- rmse(test_labels, predictions_lm) * 100
+  rmse_rf <- rmse(test_labels, predictions_rf) * 100
+  rmse_gbm <- rmse(test_labels, predictions_gbm) * 100
   
 
-  return(c(mape_lm, mape_rf, mape_gbm))
+  return(c(rmse_lm, rmse_rf, rmse_gbm))
 }
 
 # USING DOFUTURE AND PARALLEL PROCESSING
@@ -274,9 +273,9 @@ with_progress({
       perm_progress(sprintf("Permutation %d/%d for case %d", i-1, length(permutations)-1, case))  # Update permutation progress
       
       data.frame(Grupo = toString(grupo),
-                 MAPE_lm = metrics[1],
-                 MAPE_rf = metrics[2],
-                 MAPE_gbm = metrics[3],
+                 RMSE_lm = metrics[1],
+                 RMSE_rf = metrics[2],
+                 RMSE_gbm = metrics[3],
                  Train_test_Case = case)
     }
   }
