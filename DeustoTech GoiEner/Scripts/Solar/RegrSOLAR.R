@@ -133,16 +133,16 @@ globalvars <- c("evaluar_modelo", "solar_data", "permutations", "librerias", "ca
 # Codigo para, a partir de un csv de resultados ya existente
 # sacar la columna grupo en el mismo formato que el loop a usar
 {
-c1 <- read.csv("SOLAR/Regresion/Top/case1_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c1 <- read.csv("SOLAR/Regresion/Top/case1_top.csv") %>% arrange(desc(RMSE_rf))  %>% select(Grupo)
 c1_list <- lapply(c1$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
 
-c2 <- read.csv("SOLAR/Regresion/Top/case2_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c2 <- read.csv("SOLAR/Regresion/Top/case2_top.csv") %>% arrange(desc(RMSE_rf))  %>% select(Grupo)
 c2_list <- lapply(c2$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
 
-c3 <- read.csv("SOLAR/Regresion/Top/case3_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c3 <- read.csv("SOLAR/Regresion/Top/case3_top.csv") %>% arrange(desc(RMSE_rf))  %>% select(Grupo)
 c3_list <- lapply(c3$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
 
-c4 <- read.csv("SOLAR/Regresion/Top/case4_top.csv") %>% arrange(desc(MAPE_rf))  %>% select(Grupo)
+c4 <- read.csv("SOLAR/Regresion/Top/case4_top.csv") %>% arrange(desc(RMSE_rf))  %>% select(Grupo)
 c4_list <- lapply(c4$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
 }
 
@@ -206,9 +206,9 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
       metrics <- evaluar_modelo(grupo, train, test)
       
       data.frame(Grupo = toString(grupo),
-                 MAPE_lm = metrics[1],
-                 MAPE_rf = metrics[2],
-                 MAPE_gbm = metrics[3],
+                 RMSE_lm = metrics[1],
+                 RMSE_rf = metrics[2],
+                 RMSE_gbm = metrics[3],
                  Train_test_Case = case,
                  Iteration = iteration)
     }
@@ -280,6 +280,8 @@ with_progress({
     }
   }
 })
+
+fwrite(final_results, "SOLAR/Regresion/RegrSolar.csv")
 
 
 
