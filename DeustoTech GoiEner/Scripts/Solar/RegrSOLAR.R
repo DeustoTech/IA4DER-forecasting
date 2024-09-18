@@ -113,9 +113,9 @@ evaluar_modelo <- function(grupo_features, train, test) {
   predictions_gbm <- predict(model_gbm, newdata = test)
 
   #CALCULATE MAPES
-  rmse_lm <- rmse(test_labels, predictions_lm) * 100
-  rmse_rf <- rmse(test_labels, predictions_rf) * 100
-  rmse_gbm <- rmse(test_labels, predictions_gbm) * 100
+  rmse_lm <- rmse(test_labels, predictions_lm)
+  rmse_rf <- rmse(test_labels, predictions_rf)
+  rmse_gbm <- rmse(test_labels, predictions_gbm)
   
 
   return(c(rmse_lm, rmse_rf, rmse_gbm))
