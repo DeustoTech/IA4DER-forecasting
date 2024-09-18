@@ -34,6 +34,13 @@ case2_all <- regr_sorted %>% filter(Train_test_Case == 2)
 case3_all <- regr_sorted %>% filter(Train_test_Case == 3)
 case4_all <- regr_sorted %>% filter(Train_test_Case == 4)
 
+
+fwrite(case1_all, "SOLAR/Regresion/All/case1_all.csv")
+fwrite(case2_all, "SOLAR/Regresion/All/case2_all.csv")
+fwrite(case3_all, "SOLAR/Regresion/All/case3_all.csv")
+fwrite(case4_all, "SOLAR/Regresion/All/case4_all.csv")
+
+
 # PLOTS
 
 ggplot(regr, aes(x = factor(Train_test_Case), y = RMSE_rf)) +
@@ -62,7 +69,7 @@ summary_c1 <- case1_all %>%
     sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE)       # Standard deviation of RMSE_rf
   ) %>% as.data.frame()
 
- fwrite(summary_c1, "SOLAR/Regresion/All/Summary_case1.csv")
+ fwrite(summary_c1, "SOLAR/Regresion/All/Summaries/Summary_case1.csv")
 }
 
 # Case 2
@@ -143,10 +150,19 @@ regr_first_obs <- regr %>%
   slice_min(order_by = RMSE_rf, with_ties = FALSE) %>% # Selects the row with the minimum RMSE_rf
   ungroup()  # Remove grouping after selection
 
-case1 <- regr_first_obs %>% filter(Train_test_Case == 1)
-case2 <- regr_first_obs %>% filter(Train_test_Case == 2)
-case3 <- regr_first_obs %>% filter(Train_test_Case == 3)
-case4 <- regr_first_obs %>% filter(Train_test_Case == 4)
+case1best <- regr_first_obs %>% filter(Train_test_Case == 1)
+case2best <- regr_first_obs %>% filter(Train_test_Case == 2)
+case3best <- regr_first_obs %>% filter(Train_test_Case == 3)
+case4best <- regr_first_obs %>% filter(Train_test_Case == 4)
+
+
+
+fwrite(case1best, "SOLAR/Regresion/Best/case1_best.csv")
+fwrite(case2best, "SOLAR/Regresion/Best/case2_best.csv")
+fwrite(case3best, "SOLAR/Regresion/Best/case3_best.csv")
+fwrite(case4best, "SOLAR/Regresion/Best/case4_best.csv")
+
+
 }
 
 
@@ -156,6 +172,15 @@ case1_top <- case1_all %>% head(30)
 case2_top <- case2_all %>% head(30)
 case3_top <- case3_all %>% head(30)
 case4_top <- case4_all %>% head(30)
+
+
+
+fwrite(case1_top, "SOLAR/Regresion/Top/case1_top.csv")
+fwrite(case2_top, "SOLAR/Regresion/Top/case2_top.csv")
+fwrite(case3_top, "SOLAR/Regresion/Top/case3_top.csv")
+fwrite(case4_top, "SOLAR/Regresion/Top/case4_top.csv")
+
+
 }
 
 
