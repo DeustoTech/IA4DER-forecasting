@@ -25,7 +25,7 @@ regr$numFeats <- sapply(regr$Grupo, function(x) {
   return(num_commas + 1)
 })
 regr_sorted <- regr %>% 
-  arrange(numFeats, MAPE_rf)
+  arrange(numFeats, RMSE_rf)
 
 
 # ALL COMBINATIONS
@@ -36,30 +36,30 @@ case4_all <- regr_sorted %>% filter(Train_test_Case == 4)
 
 # PLOTS
 
-ggplot(regr, aes(x = factor(Train_test_Case), y = MAPE_rf)) +
+ggplot(regr, aes(x = factor(Train_test_Case), y = RMSE_rf)) +
   geom_boxplot() +
-  labs(title = "MAPE_rf for each Case",
+  labs(title = "RMSE_rf for each Case",
        x = "Case",
-       y = "MAPE_rf")
+       y = "RMSE_rf")
 
 
 
 # Case 1
 {
-ggplot(case1_all, aes(x = as.factor(numFeats), y = MAPE_rf)) +
+ggplot(case1_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
   geom_boxplot() +
   labs(title = "Case 1: Train t2 test t2",
        x = "Number of Features used",
-       y = "MAPE_rf")
+       y = "RMSE_rf")
 
 summary_c1 <- case1_all %>%
   group_by(numFeats) %>%
   summarise(                      
-    mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-    median_MAPE_rf = median(MAPE_rf, na.rm = TRUE), # Median of MAPE_rf
-    min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),     # Minimum MAPE_rf
-    max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),     # Maximum MAPE_rf
-    sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE)       # Standard deviation of MAPE_rf
+    mean_RMSE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+    median_RMSE_rf = median(RMSE_rf, na.rm = TRUE), # Median of RMSE_rf
+    min_RMSE_rf = min(RMSE_rf, na.rm = TRUE),     # Minimum RMSE_rf
+    max_RMSE_rf = max(RMSE_rf, na.rm = TRUE),     # Maximum RMSE_rf
+    sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE)       # Standard deviation of RMSE_rf
   ) %>% as.data.frame()
 
  fwrite(summary_c1, "SOLAR/Regresion/All/Summary_case1.csv")
@@ -67,20 +67,20 @@ summary_c1 <- case1_all %>%
 
 # Case 2
 {
-  ggplot(case2_all, aes(x = as.factor(numFeats), y = MAPE_rf)) +
+  ggplot(case2_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
     geom_boxplot() +
     labs(title = "Case 2: Train t6 test t6",
          x = "Number of Features used",
-         y = "MAPE_rf")
+         y = "RMSE_rf")
   
   summary_c2 <- case2_all %>%
     group_by(numFeats) %>%
     summarise(                      
-      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE), # Median of MAPE_rf
-      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),     # Minimum MAPE_rf
-      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),     # Maximum MAPE_rf
-      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE)       # Standard deviation of MAPE_rf
+      mean_RMSE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+      median_RMSE_rf = median(RMSE_rf, na.rm = TRUE), # Median of RMSE_rf
+      min_RMSE_rf = min(RMSE_rf, na.rm = TRUE),     # Minimum RMSE_rf
+      max_RMSE_rf = max(RMSE_rf, na.rm = TRUE),     # Maximum RMSE_rf
+      sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE)       # Standard deviation of RMSE_rf
     ) %>% as.data.frame()
   
   fwrite(summary_c2, "SOLAR/Regresion/All/Summaries/Summary_case2.csv")
@@ -89,20 +89,20 @@ summary_c1 <- case1_all %>%
 
 # Case 3
 {
-  ggplot(case3_all, aes(x = as.factor(numFeats), y = MAPE_rf)) +
+  ggplot(case3_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
     geom_boxplot() +
     labs(title = "Case 3: Train t2 test t6",
          x = "Number of Features used",
-         y = "MAPE_rf")
+         y = "RMSE_rf")
   
   summary_c3 <- case3_all %>%
     group_by(numFeats) %>%
     summarise(                      
-      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE), # Median of MAPE_rf
-      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),     # Minimum MAPE_rf
-      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),     # Maximum MAPE_rf
-      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE)       # Standard deviation of MAPE_rf
+      mean_RMSE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+      median_RMSE_rf = median(RMSE_rf, na.rm = TRUE), # Median of RMSE_rf
+      min_RMSE_rf = min(RMSE_rf, na.rm = TRUE),     # Minimum RMSE_rf
+      max_RMSE_rf = max(RMSE_rf, na.rm = TRUE),     # Maximum RMSE_rf
+      sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE)       # Standard deviation of RMSE_rf
     ) %>% as.data.frame()
   
   fwrite(summary_c3, "SOLAR/Regresion/All/Summaries/Summary_case3.csv")
@@ -111,20 +111,20 @@ summary_c1 <- case1_all %>%
 
 # Case 4
 {
-  ggplot(case4_all, aes(x = as.factor(numFeats), y = MAPE_rf)) +
+  ggplot(case4_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
     geom_boxplot() +
     labs(title = "Case 4: Train t6 test t2",
          x = "Number of Features used",
-         y = "MAPE_rf")
+         y = "RMSE_rf")
   
   summary_c4 <- case4_all %>%
     group_by(numFeats) %>%
     summarise(                      
-      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE), # Median of MAPE_rf
-      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),     # Minimum MAPE_rf
-      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),     # Maximum MAPE_rf
-      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE)       # Standard deviation of MAPE_rf
+      mean_RMSE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+      median_RMSE_rf = median(RMSE_rf, na.rm = TRUE), # Median of RMSE_rf
+      min_RMSE_rf = min(RMSE_rf, na.rm = TRUE),     # Minimum RMSE_rf
+      max_RMSE_rf = max(RMSE_rf, na.rm = TRUE),     # Maximum RMSE_rf
+      sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE)       # Standard deviation of RMSE_rf
     ) %>% as.data.frame()
   
   fwrite(summary_c4, "SOLAR/Regresion/All/Summaries/Summary_case4.csv")
@@ -140,7 +140,7 @@ summary_c1 <- case1_all %>%
 {
 regr_first_obs <- regr %>%
   group_by(Train_test_Case, numFeats) %>%
-  slice_min(order_by = MAPE_rf, with_ties = FALSE) %>% # Selects the row with the minimum MAPE_gbm
+  slice_min(order_by = RMSE_rf, with_ties = FALSE) %>% # Selects the row with the minimum RMSE_rf
   ungroup()  # Remove grouping after selection
 
 case1 <- regr_first_obs %>% filter(Train_test_Case == 1)
@@ -177,52 +177,52 @@ case4_top <- case4_all %>% head(30)
   c1_summary <- c1 %>%
     group_by(Grupo) %>%
     summarize(
-      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
-      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
-      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
-      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
-      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
-      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      mean_MAPE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+      median_MAPE_rf = median(RMSE_rf, na.rm = TRUE),  # Median of RMSE_rf
+      sd_MAPE_rf = sd(RMSE_rf, na.rm = TRUE),  # Standard deviation of RMSE_rf
+      min_MAPE_rf = min(RMSE_rf, na.rm = TRUE),  # Minimum RMSE_rf
+      q1_MAPE_rf = quantile(RMSE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_MAPE_rf = quantile(RMSE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_MAPE_rf = max(RMSE_rf, na.rm = TRUE),  # Maximum RMSE_rf
       Train_test_Case = 1
     )
   
   c2_summary <- c2 %>%
     group_by(Grupo) %>%
     summarize(
-      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
-      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
-      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
-      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
-      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
-      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      mean_RMSE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+      median_RMSE_rf = median(RMSE_rf, na.rm = TRUE),  # Median of RMSE_rf
+      sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE),  # Standard deviation of RMSE_rf
+      min_RMSE_rf = min(RMSE_rf, na.rm = TRUE),  # Minimum RMSE_rf
+      q1_RMSE_rf = quantile(RMSE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_RMSE_rf = quantile(RMSE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_RMSE_rf = max(RMSE_rf, na.rm = TRUE),  # Maximum RMSE_rf
       Train_test_Case = 2
     )
   
   c3_summary <- c3 %>%
     group_by(Grupo) %>%
     summarize(
-      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
-      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
-      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
-      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
-      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
-      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      mean_RMSE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+      median_RMSE_rf = median(RMSE_rf, na.rm = TRUE),  # Median of RMSE_rf
+      sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE),  # Standard deviation of RMSE_rf
+      min_RMSE_rf = min(RMSE_rf, na.rm = TRUE),  # Minimum RMSE_rf
+      q1_RMSE_rf = quantile(RMSE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_RMSE_rf = quantile(RMSE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_RMSE_rf = max(RMSE_rf, na.rm = TRUE),  # Maximum RMSE_rf
       Train_test_Case = 3
     )
   
   c4_summary <- c4 %>%
     group_by(Grupo) %>%
     summarize(
-      mean_MAPE_rf = mean(MAPE_rf, na.rm = TRUE),  # Mean of MAPE_rf
-      median_MAPE_rf = median(MAPE_rf, na.rm = TRUE),  # Median of MAPE_rf
-      sd_MAPE_rf = sd(MAPE_rf, na.rm = TRUE),  # Standard deviation of MAPE_rf
-      min_MAPE_rf = min(MAPE_rf, na.rm = TRUE),  # Minimum MAPE_rf
-      q1_MAPE_rf = quantile(MAPE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
-      q3_MAPE_rf = quantile(MAPE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
-      max_MAPE_rf = max(MAPE_rf, na.rm = TRUE),  # Maximum MAPE_rf
+      mean_RMSE_rf = mean(RMSE_rf, na.rm = TRUE),  # Mean of RMSE_rf
+      median_RMSE_rf = median(RMSE_rf, na.rm = TRUE),  # Median of RMSE_rf
+      sd_RMSE_rf = sd(RMSE_rf, na.rm = TRUE),  # Standard deviation of RMSE_rf
+      min_RMSE_rf = min(RMSE_rf, na.rm = TRUE),  # Minimum RMSE_rf
+      q1_RMSE_rf = quantile(RMSE_rf, 0.25, na.rm = TRUE),  # First quartile (Q1)
+      q3_RMSE_rf = quantile(RMSE_rf, 0.75, na.rm = TRUE),  # Third quartile (Q3)
+      max_RMSE_rf = max(RMSE_rf, na.rm = TRUE),  # Maximum RMSE_rf
       Train_test_Case = 4
     )
   
