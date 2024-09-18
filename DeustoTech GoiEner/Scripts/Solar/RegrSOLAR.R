@@ -150,13 +150,14 @@ c4_list <- lapply(c4$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
 
 # 100 times the best 30 of each case
 # IN THIS LOOP, PERMUTATIONS TAKES THE VALUE OF Cn_list depending on the case
-
 {
+with_progress({
 
-final_results <- foreach(iteration = 1:100, .combine = rbind, 
+final_results_100_iters <- foreach(iteration = 1:100, .combine = rbind, 
                          .options.future = list(globals = globalvars,add = TRUE,
                                                 packages = librerias, seed = TRUE)) %dofuture% {
-        
+    case_progress <- progressr::progressor(steps = length(cases), message = "Processing cases")
+                                                  
   # outer_progress(message = sprintf("Starting iteration %d of 100", iteration))
                                                   
   foreach(case = cases, .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
@@ -214,6 +215,7 @@ final_results <- foreach(iteration = 1:100, .combine = rbind,
     }
   }
 }
+})
 }
 # TODO fwrite final results
 
@@ -281,8 +283,7 @@ with_progress({
   }
 })
 
-fwrite(final_results, "SOLAR/Regresion/RegrSolar.csv")
-
+#fwrite(final_results_100_iters, )
 
 
 
