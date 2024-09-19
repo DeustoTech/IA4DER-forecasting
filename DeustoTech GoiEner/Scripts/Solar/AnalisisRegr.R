@@ -57,7 +57,7 @@ ggsave(
   plot = rmse_all,                        # The plot object
   width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
   height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
-  dpi = 72                            # Resolution in DPI (Dots Per Inch)
+  dpi = 200                            # Resolution in DPI (Dots Per Inch)
 )
 
 
@@ -74,7 +74,7 @@ p1 <- ggplot(case1_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
     plot = p1,                        # The plot object
     width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
     height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
-    dpi = 72                            # Resolution in DPI (Dots Per Inch)
+    dpi = 200                            # Resolution in DPI (Dots Per Inch)
   )
   
   
@@ -105,7 +105,7 @@ summary_c1 <- case1_all %>%
     plot = p2,                        # The plot object
     width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
     height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
-    dpi = 72                            # Resolution in DPI (Dots Per Inch)
+    dpi = 200                            # Resolution in DPI (Dots Per Inch)
   )
   
   summary_c2 <- case2_all %>%
@@ -135,7 +135,7 @@ summary_c1 <- case1_all %>%
     plot = p3,                        # The plot object
     width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
     height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
-    dpi = 72                            # Resolution in DPI (Dots Per Inch)
+    dpi = 200                           # Resolution in DPI (Dots Per Inch)
   )
   
   summary_c3 <- case3_all %>%
@@ -309,3 +309,8 @@ fwrite(case4_top, "SOLAR/Regresion/Top/case4_top.csv")
   
   
 }
+
+
+
+
+
