@@ -228,9 +228,7 @@ metrics_results <- final_results %>%
     .groups = 'drop'  # To avoid grouped output; modify if different behavior is desired
   )
 
-
-
-# View the computed metrics for each case
-print(metrics_results)
+fwrite(final_results, "SOLAR/Classification/Threshold/rawResults.csv")
+fwrite(metrics_results, "SOLAR/Classification/Threshold/metricsResults.csv")
 
 
