@@ -20,10 +20,10 @@ foreach(lib = librerias) %do% {
 
 # for each case, select the feature combination wiht lowest mape
 
-c1 <- read.csv("SOLAR/Regresion/Top/case1_top.csv") %>% arrange(MAPE_rf) %>% slice(1)
-c2 <- read.csv("SOLAR/Regresion/Top/case2_top.csv") %>% arrange(MAPE_rf) %>% slice(1)
-c3 <- read.csv("SOLAR/Regresion/Top/case3_top.csv") %>% arrange(MAPE_rf) %>% slice(1)
-c4 <- read.csv("SOLAR/Regresion/Top/case4_top.csv") %>% arrange(MAPE_rf) %>% slice(1)
+c1 <- read.csv("SOLAR/Regresion/Top/case1_top.csv") %>% arrange(RMSE_rf) %>% slice(1)
+c2 <- read.csv("SOLAR/Regresion/Top/case2_top.csv") %>% arrange(RMSE_rf) %>% slice(1)
+c3 <- read.csv("SOLAR/Regresion/Top/case3_top.csv") %>% arrange(RMSE_rf) %>% slice(1)
+c4 <- read.csv("SOLAR/Regresion/Top/case4_top.csv") %>% arrange(RMSE_rf) %>% slice(1)
 
 feats_con_auto <- fread("SOLAR/features_con_autoconsumo_ConPV.csv") #982 330
 feats_trampa <- fread("SOLAR/features_sin_autoconsumo_Trampa.csv") %>% slice(1:1000) #1000  312
@@ -87,6 +87,7 @@ for (col in feats){
 
 
 solar_data[which(is.infinite(solar_data$ENTROPY))]$ENTROPY <- 1
+solar_data$hasPV <- factor(solar_data$hasPV, levels = c(0, 1))
 
 
 cases <- c(1:4)
@@ -101,6 +102,7 @@ makePreds <- function(feats, train, test, threshold, case){
 
   pvList$predPV <- 0
   train <- train %>% select(all_of(feats), POT_AUT)
+  test_labels <- test$POT_AUT
   test <- test %>% select(all_of(feats))
   
   model <- randomForest(POT_AUT ~ ., data = train, ntree = 100)
@@ -109,6 +111,8 @@ makePreds <- function(feats, train, test, threshold, case){
   # With these predictions, try different thresholds to say if it has PV or not
   
   pvList$PredPot <- preds
+  # print(sum(is.na(pvList$PredPot)))  # Should be 0
+  pvList$RMSE <- rmse(test_labels, pvList$PredPot)
   
   pvList <- pvList %>%
     mutate(predPV = ifelse(pvList$PredPot < threshold, 0, 1))
@@ -120,15 +124,17 @@ makePreds <- function(feats, train, test, threshold, case){
 }
 
 results <- data.frame()
-globalvars <- c("makePreds", "solar_data", "permutations", "librerias", "cases", "c1", "c2", "c3", "c4", "results")
+thresholds <- seq(1, 3, by = 0.05)
+
+globalvars <- c("makePreds", "solar_data", "permutations", "librerias", "cases", "c1", "c2", "c3", "c4", "results", "thresholds")
 
 final_results <- foreach(case = cases, .combine = rbind, .options.future = list(seed = TRUE, add = TRUE, 
   globals = globalvars, packages = librerias)) %dofuture% {
 
     threshold = 3
     
-    # train <- data.frame()
-    # test <- data.frame()
+    foreach(threshold = thresholds, .combine = rbind, .options.future = list(seed = TRUE)) %dofuture% {
+      
     
     # Prepare training and testing data based on the case
     if(case == 1) {
@@ -184,7 +190,12 @@ final_results <- foreach(case = cases, .combine = rbind, .options.future = list(
       makePreds(feats, train, test, threshold, case)
       
     }
-  }
+      
+  }  
+}
+
+final_results$hasPV <- factor(final_results$hasPV, levels = c(0, 1))
+final_results$predPV <- factor(final_results$predPV, levels = c(0, 1))
 
 compute_metrics <- function(data){
   # Create confusion matrix based on predPV and actual hasPV
@@ -198,24 +209,25 @@ compute_metrics <- function(data){
   
   # Compute accuracy, sensitivity, and specificity
   accuracy <- (TP + TN) / (TP + TN + FP + FN)
-  sensitivity <- TP / (TP + FN)   # True Positive Rate
-  specificity <- TN / (TN + FP)   # True Negative Rate
+  sensitivity <- ifelse((TP + FN) == 0, NA, TP / (TP + FN))  # Handle division by zero for sensitivity
+  specificity <- ifelse((TN + FP) == 0, NA, TN / (TN + FP))  # Handle division by zero for specificity
+  
   
   return(data.frame(accuracy = accuracy, sensitivity = sensitivity, specificity = specificity))
 }
 
 
-final_results$hasPV <- as.factor(final_results$hasPV)
-final_results$predPV <- as.factor(final_results$predPV)
 
-# Group the final_results by Case and apply the compute_metrics function
+# Group the final_results by Case and threshold and apply the compute_metrics function
 metrics_results <- final_results %>%
-  group_by(Case) %>%
+  group_by(Case, Threshold) %>%
   summarise(
-    accuracy = accuracy(hasPV, predPV),
-    sensitivity = sensitivity(hasPV, predPV),
-    specificity = specificity(hasPV, predPV)
+    accuracy = mean(as.numeric(predPV == hasPV)),  # Alternatively, use compute_metrics() if it's applied row-wise
+    sensitivity = sum(predPV == 1 & hasPV == 1) / sum(hasPV == 1, na.rm = TRUE),  # True Positive Rate
+    specificity = sum(predPV == 0 & hasPV == 0) / sum(hasPV == 0, na.rm = TRUE),  # True Negative Rate
+    .groups = 'drop'  # To avoid grouped output; modify if different behavior is desired
   )
+
 
 
 # View the computed metrics for each case
