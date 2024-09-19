@@ -218,6 +218,7 @@ final_results_100_iters <- foreach(iteration = 1:100, .combine = rbind,
 })
 }
 # TODO fwrite final results
+fwrite(final_results_100_iters, "SOLAR/Regresion/Top/Top30.csv")
 
 
 # ONLY 1 time with all permutations
@@ -283,7 +284,6 @@ with_progress({
   }
 })
 
-#fwrite(final_results_100_iters, )
 
 
 
