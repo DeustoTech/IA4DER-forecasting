@@ -43,21 +43,41 @@ fwrite(case4_all, "SOLAR/Regresion/All/case4_all.csv")
 
 # PLOTS
 
-ggplot(regr, aes(x = factor(Train_test_Case), y = RMSE_rf)) +
+max_yaxis <- max(regr$RMSE_rf, na.rm = TRUE)  # Use na.rm = TRUE to handle any NA values
+
+
+rmse_all <- ggplot(regr, aes(x = factor(Train_test_Case), y = RMSE_rf)) +
   geom_boxplot() +
   labs(title = "RMSE_rf for each Case",
        x = "Case",
-       y = "RMSE_rf")
+       y = "RMSE_rf") + ylim(0, max_yaxis)
+
+ggsave(
+  filename = "SOLAR/Regresion/All/Plots/RMSE all cases.png",  # File name
+  plot = rmse_all,                        # The plot object
+  width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+  height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+  dpi = 72                            # Resolution in DPI (Dots Per Inch)
+)
 
 
 
 # Case 1
 {
-ggplot(case1_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
+p1 <- ggplot(case1_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
   geom_boxplot() +
   labs(title = "Case 1: Train t2 test t2",
        x = "Number of Features used",
-       y = "RMSE_rf")
+       y = "RMSE_rf") + ylim(0, max_yaxis)
+  ggsave(
+    filename = "SOLAR/Regresion/All/Plots/Case1.png",  # File name
+    plot = p1,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 72                            # Resolution in DPI (Dots Per Inch)
+  )
+  
+  
 
 summary_c1 <- case1_all %>%
   group_by(numFeats) %>%
@@ -74,11 +94,19 @@ summary_c1 <- case1_all %>%
 
 # Case 2
 {
-  ggplot(case2_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
+  p2 <- ggplot(case2_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
     geom_boxplot() +
     labs(title = "Case 2: Train t6 test t6",
          x = "Number of Features used",
-         y = "RMSE_rf")
+         y = "RMSE_rf") + ylim(0, max_yaxis)
+  
+  ggsave(
+    filename = "SOLAR/Regresion/All/Plots/Case2.png",  # File name
+    plot = p2,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 72                            # Resolution in DPI (Dots Per Inch)
+  )
   
   summary_c2 <- case2_all %>%
     group_by(numFeats) %>%
@@ -96,11 +124,19 @@ summary_c1 <- case1_all %>%
 
 # Case 3
 {
-  ggplot(case3_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
+  p3 <- ggplot(case3_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
     geom_boxplot() +
     labs(title = "Case 3: Train t2 test t6",
          x = "Number of Features used",
-         y = "RMSE_rf")
+         y = "RMSE_rf") + ylim(0, max_yaxis)
+  
+  ggsave(
+    filename = "SOLAR/Regresion/All/Plots/Case3.png",  # File name
+    plot = p3,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 72                            # Resolution in DPI (Dots Per Inch)
+  )
   
   summary_c3 <- case3_all %>%
     group_by(numFeats) %>%
@@ -118,11 +154,19 @@ summary_c1 <- case1_all %>%
 
 # Case 4
 {
-  ggplot(case4_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
+  p4 <- ggplot(case4_all, aes(x = as.factor(numFeats), y = RMSE_rf)) +
     geom_boxplot() +
     labs(title = "Case 4: Train t6 test t2",
          x = "Number of Features used",
-         y = "RMSE_rf")
+         y = "RMSE_rf") + ylim(0, max_yaxis)
+  
+  ggsave(
+    filename = "SOLAR/Regresion/All/Plots/Case4.png",  # File name
+    plot = p4,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 200                           # Resolution in DPI (Dots Per Inch)
+  )
   
   summary_c4 <- case4_all %>%
     group_by(numFeats) %>%
