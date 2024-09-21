@@ -311,6 +311,25 @@ fwrite(case4_top, "SOLAR/Regresion/Top/case4_top.csv")
 }
 
 
+# FROM REGR TO CLASSIFICATION, SHOW THE EVOLUTION OF CASE 3 ACCURACY FOR EACH THRESHOLD
+{
+classThres3 <- fread("SOLAR/Classification/Threshold/metricsResults.csv") %>% filter(Case == 3) %>% as_tibble()
 
 
+acc <- ggplot(classThres3, aes(x = Threshold, y = accuracy)) +
+  geom_line(color = "blue") +  # Line plot
+  geom_point(color = "red") +  # Add points
+  labs(
+    title = "Accuracy evolution for case 3",
+    x = "Threshold",
+    y = "Accuracy"
+  ) 
 
+ggsave(
+  filename = "SOLAR/Classification/Threshold/Evolution.png",  # File name
+  plot = acc,                        # The plot object
+  width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+  height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+  dpi = 200                           # Resolution in DPI (Dots Per Inch)
+)
+}

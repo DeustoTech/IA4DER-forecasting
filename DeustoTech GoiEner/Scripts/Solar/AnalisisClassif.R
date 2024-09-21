@@ -20,10 +20,13 @@ foreach(lib = librerias) %do% {
 classif <- read.csv("SOLAR/Classification/Models/allClassif.csv")
 
 # Create a new column 'numFeats' by counting commas + 1
-classif$numFeats <- sapply(regr$Grupo, function(x) {
+classif$numFeats <- sapply(classif$Grupo, function(x) {
   num_commas <- str_count(x, ",")
   return(num_commas + 1)
 })
+
+# CLASSIFICATION
+{
 classif_sorted <- classif %>% 
   arrange(numFeats, desc(rf_accuracy))
 
@@ -184,6 +187,253 @@ ggsave(
   }
 }
 
+# AUC GRAPHS
+{
+  plot_auc_accuracy <- function(data, case_num, title) {
+    data <- data %>% arrange(desc(rf_accuracy)) # Sort by accuracy
+    
+    ggplot(data, aes(x = seq_along(rf_accuracy), y = rf_accuracy)) +
+      geom_line(color = "blue", size = 1) +               # Line plot for accuracy
+      geom_area(fill = "skyblue", alpha = 0.4) +          # Shaded area under the curve
+      labs(
+        title = title,
+        x = "Observations",
+        y = "RF Accuracy"
+      ) +
+      theme_minimal() +                                   # Clean theme
+      theme(plot.title = element_text(hjust = 0.5))       # Center the plot title
+  }
+  
+  # Generate plots for each case
+  p1 <- plot_auc_accuracy(case1_all, 1, "AUC-like Graph for Case 1: Train t2 test t2")
+  p2 <- plot_auc_accuracy(case2_all, 2, "AUC-like Graph for Case 2: Train t6 test t6")
+  p3 <- plot_auc_accuracy(case3_all, 3, "AUC-like Graph for Case 3: Train t2 test t6")
+  p4 <- plot_auc_accuracy(case4_all, 4, "AUC-like Graph for Case 4: Train t6 test t2")
+  
+  # Display plots
+  print(p1)
+  print(p2)
+  print(p3)
+  print(p4)
+  
+  # Save plots as PNG
+  ggsave(filename = "SOLAR/Classification/Models/Plots/AUC_Case1_Accuracy.png", plot = p1, width = 833 / 72, height = 761 / 72, dpi = 200)
+  ggsave(filename = "SOLAR/Classification/Models/Plots/AUC_Case2_Accuracy.png", plot = p2, width = 833 / 72, height = 761 / 72, dpi = 200)
+  ggsave(filename = "SOLAR/Classification/Models/Plots/AUC_Case3_Accuracy.png", plot = p3, width = 833 / 72, height = 761 / 72, dpi = 200)
+  ggsave(filename = "SOLAR/Classification/Models/Plots/AUC_Case4_Accuracy.png", plot = p4, width = 833 / 72, height = 761 / 72, dpi = 200)
+}
+
+
+
+
+}
+
+# SENSITIVITY
+
+{
+classif_sorted <- classif %>% 
+  arrange(numFeats, desc(rf_sensitivity))
+
+
+# ALL COMBINATIONS
+case1_all <- classif %>% filter(Train_test_Case == 1)
+case2_all <- classif %>% filter(Train_test_Case == 2)
+case3_all <- classif %>% filter(Train_test_Case == 3)
+case4_all <- classif %>% filter(Train_test_Case == 4)
+
+
+# PLOTS
+
+max_yaxis <- max(classif$rf_sensitivity, na.rm = TRUE)  # Use na.rm = TRUE to handle any NA values
+
+
+sensi_all <- ggplot(classif, aes(x = factor(Train_test_Case), y = rf_sensitivity)) +
+  geom_boxplot() +
+  labs(title = "Sensitivity (rf) for each Case",
+       x = "Case",
+       y = "RF Sensitivity") + ylim(0, max_yaxis)
+
+ggsave(
+  filename = "SOLAR/Classification/Models/Plots/Sensitivity all cases.png",  # File name
+  plot = sensi_all,                        # The plot object
+  width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+  height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+  dpi = 200                            # Resolution in DPI (Dots Per Inch)
+)
+
+
+
+# Case 1
+{
+  p1 <- ggplot(case1_all, aes(x = as.factor(numFeats), y = rf_sensitivity)) +
+    geom_boxplot() +
+    labs(title = "Case 1: Train t2 test t2",
+         x = "Number of Features used",
+         y = "Sensitivity") + ylim(0, max_yaxis)
+  ggsave(
+    filename = "SOLAR/Classification/Models/Plots/Case1_sensi.png",  # File name
+    plot = p1,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 200                            # Resolution in DPI (Dots Per Inch)
+  )
+  
+  
+}
+
+# Case 2
+{
+  p2 <- ggplot(case2_all, aes(x = as.factor(numFeats), y = rf_sensitivity)) +
+    geom_boxplot() +
+    labs(title = "Case 2: Train t6 test t6",
+         x = "Number of Features used",
+         y = "Sensitivity") + ylim(0, max_yaxis)
+  ggsave(
+    filename = "SOLAR/Classification/Models/Plots/Case2_sensi.png",  # File name
+    plot = p2,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 200                            # Resolution in DPI (Dots Per Inch)
+  )
+  
+}
+
+# Case 3
+{
+  p3 <- ggplot(case3_all, aes(x = as.factor(numFeats), y = rf_sensitivity)) +
+    geom_boxplot() +
+    labs(title = "Case 3: Train t2 test t6",
+         x = "Number of Features used",
+         y = "Sensitivity") + ylim(0, max_yaxis)
+  ggsave(
+    filename = "SOLAR/Classification/Models/Plots/Case3_sensi.png",  # File name
+    plot = p3,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 200                            # Resolution in DPI (Dots Per Inch)
+  )
+  
+}
+
+# Case 4
+  {
+    p4 <- ggplot(case4_all, aes(x = as.factor(numFeats), y = rf_sensitivity)) +
+      geom_boxplot() +
+      labs(title = "Case 4: Train t6 test t2",
+           x = "Number of Features used",
+           y = "Sensitivity") + ylim(0, max_yaxis)
+    ggsave(
+      filename = "SOLAR/Classification/Models/Plots/Case4_sensi.png",  # File name
+      plot = p4,                        # The plot object
+      width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+      height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+      dpi = 200                            # Resolution in DPI (Dots Per Inch)
+    )
+  }
+} 
+
+
+# SPECIFICITY
+
+{
+  # Calculate the maximum y-axis value for rf_specificity
+  max_yaxis_specificity <- max(classif$rf_specificity, na.rm = TRUE)  # Use na.rm = TRUE to handle any NA values
+  
+  # Plot: Sensitivity (rf) for each Case
+  sensi_all_specificity <- ggplot(classif, aes(x = factor(Train_test_Case), y = rf_specificity)) +
+    geom_boxplot() +
+    labs(
+      title = "Specificity (rf) for each Case",
+      x = "Case",
+      y = "RF Specificity"
+    ) + ylim(0, max_yaxis_specificity)
+  
+  # Save the overall specificity plot
+  ggsave(
+    filename = "SOLAR/Classification/Models/Plots/Specificity_all_cases.png",  # File name
+    plot = sensi_all_specificity,           # The plot object
+    width = 833 / 72,                       # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                      # Height in inches (761 pixels / 72 DPI)
+    dpi = 200                               # Resolution in DPI (Dots Per Inch)
+  )
+  
+  # Case 1
+  {
+    p1_specificity <- ggplot(case1_all, aes(x = as.factor(numFeats), y = rf_specificity)) +
+      geom_boxplot() +
+      labs(
+        title = "Case 1: Train t2 test t2",
+        x = "Number of Features used",
+        y = "Specificity"
+      ) + ylim(0, max_yaxis_specificity)
+    
+    ggsave(
+      filename = "SOLAR/Classification/Models/Plots/Case1_specificity.png",  # File name
+      plot = p1_specificity,                 # The plot object
+      width = 833 / 72,                      # Width in inches (833 pixels / 72 DPI)
+      height = 761 / 72,                     # Height in inches (761 pixels / 72 DPI)
+      dpi = 200                              # Resolution in DPI (Dots Per Inch)
+    )
+  }
+  
+  # Case 2
+  {
+    p2_specificity <- ggplot(case2_all, aes(x = as.factor(numFeats), y = rf_specificity)) +
+      geom_boxplot() +
+      labs(
+        title = "Case 2: Train t6 test t6",
+        x = "Number of Features used",
+        y = "Specificity"
+      ) + ylim(0, max_yaxis_specificity)
+    
+    ggsave(
+      filename = "SOLAR/Classification/Models/Plots/Case2_specificity.png",  # File name
+      plot = p2_specificity,                 # The plot object
+      width = 833 / 72,                      # Width in inches (833 pixels / 72 DPI)
+      height = 761 / 72,                     # Height in inches (761 pixels / 72 DPI)
+      dpi = 200                              # Resolution in DPI (Dots Per Inch)
+    )
+  }
+  
+  # Case 3
+  {
+    p3_specificity <- ggplot(case3_all, aes(x = as.factor(numFeats), y = rf_specificity)) +
+      geom_boxplot() +
+      labs(
+        title = "Case 3: Train t2 test t6",
+        x = "Number of Features used",
+        y = "Specificity"
+      ) + ylim(0, max_yaxis_specificity)
+    
+    ggsave(
+      filename = "SOLAR/Classification/Models/Plots/Case3_specificity.png",  # File name
+      plot = p3_specificity,                 # The plot object
+      width = 833 / 72,                      # Width in inches (833 pixels / 72 DPI)
+      height = 761 / 72,                     # Height in inches (761 pixels / 72 DPI)
+      dpi = 200                              # Resolution in DPI (Dots Per Inch)
+    )
+  }
+  
+  # Case 4
+  {
+    p4_specificity <- ggplot(case4_all, aes(x = as.factor(numFeats), y = rf_specificity)) +
+      geom_boxplot() +
+      labs(
+        title = "Case 4: Train t6 test t2",
+        x = "Number of Features used",
+        y = "Specificity"
+      ) + ylim(0, max_yaxis_specificity)
+    
+    ggsave(
+      filename = "SOLAR/Classification/Models/Plots/Case4_specificity.png",  # File name
+      plot = p4_specificity,                 # The plot object
+      width = 833 / 72,                      # Width in inches (833 pixels / 72 DPI)
+      height = 761 / 72,                     # Height in inches (761 pixels / 72 DPI)
+      dpi = 200                              # Resolution in DPI (Dots Per Inch)
+    )
+  }
+  
+}
 
 
 
