@@ -198,5 +198,76 @@ with_progress({
 
 fwrite(final_results, "SOLAR/Classification/Models/allClassif.csv")
 
-# DO PULL BEFORE PUSHING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+# ONLY CASE 3 BEST COMBINATION WITH RF
+{
+  results <- data.frame(Iteration = integer(),
+                        Actual = numeric(),
+                        Predictions = numeric(),
+                        Predicted_Probabilities = numeric(),
+                        Accuracy = numeric())
+  
+  for(it in 1:100) {
+    # Filter data
+    t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+    t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+    
+    # Train and test index creation
+    train_idx <- createDataPartition(t2$hasPV, p = 0.8, list = FALSE)
+    test_idx <- createDataPartition(t6$hasPV, p = 0.2, list = FALSE)
+    
+    # Training and testing sets
+    train <- as.data.frame(solar_data[train_idx, ])
+    test <- as.data.frame(solar_data[test_idx, ])
+    
+    # Select the features
+    permutations <- c("AVG")  # Features to use for classification
+    
+    # Prepare the train and test sets for modeling
+    train_labels <- train$hasPV
+    train <- train %>% select(all_of(permutations), hasPV)
+    test_labels <- test$hasPV
+    
+    # Random Forest model
+    model_rf <- randomForest(hasPV ~ ., data = train, ntree = 100)
+    
+    # Get predicted probabilities for the positive class
+    predicted_probabilities <- predict(model_rf, newdata = test, type = "prob")[,2]
+    
+    # Convert probabilities to binary predictions (0 or 1) using a threshold of 0.5
+    predictions_rf <- ifelse(predicted_probabilities > 0.5, 1, 0)
+    
+    # Calculate accuracy for this iteration
+    accuracy_value <- mean(predictions_rf == test_labels)
+    
+    # Store predictions, actuals, probabilities, and accuracy for each observation in the test set
+    iter_results <- data.frame(
+      Iteration = rep(it, length(test_labels)),  # Replicate the iteration number
+      Actual = test_labels,                      # Actual class labels
+      Predictions = predictions_rf,              # Predicted class labels
+      Predicted_Probabilities = predicted_probabilities,  # Predicted probabilities
+      Accuracy = rep(accuracy_value, length(test_labels)) # Accuracy for each observation
+    )
+    
+    # Append the results of this iteration to the final results data frame
+    results <- rbind(results, iter_results)
+  }
+  
+  # Optionally, calculate AUC for the last iteration as an example
+  roc_obj <- roc(results$Actual[results$Iteration == it], 
+                 results$Predicted_Probabilities[results$Iteration == it])
+  
+  # Plot the ROC curve
+  roc_plot <- ggroc(roc_obj) +
+    labs(title = paste("ROC Curve - AUC:", round(auc(roc_obj), 3)),
+         x = "False Positive Rate",
+         y = "True Positive Rate") +
+    theme_minimal() +
+    coord_fixed()
+  
+  # Display the plot
+  print(roc_plot)
+  # Print AUC
+  print(paste("AUC for last iteration:", auc_value)) 
+}
 
