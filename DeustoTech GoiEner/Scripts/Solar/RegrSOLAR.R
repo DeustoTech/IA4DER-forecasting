@@ -221,6 +221,81 @@ final_results_100_iters <- foreach(iteration = 1:100, .combine = rbind,
 fwrite(final_results_100_iters, "SOLAR/Regresion/Top/Top30.csv")
 
 
+# ONLY CASE 3 BEST COMBINATION WITH RF
+
+
+train <- data.frame()
+test <- data.frame()
+
+# Initialize an empty data frame to store results
+results <- data.frame(Iteration = integer(),
+                      Actual = numeric(),
+                      Predictions = numeric(),
+                      RMSE = numeric())
+
+for(it in 1:100) {
+  # Filter data
+  t2 <- solar_data %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
+  t6 <- solar_data %>% filter(TarifCode == "96T1" | TarifCode == "97T2")
+  
+  # Train and test index creation
+  train_idx <- createDataPartition(t2$POT_AUT, p = 0.8, list = FALSE)
+  test_idx <- createDataPartition(t6$POT_AUT, p = 0.2, list = FALSE)
+  
+  # Training and testing sets
+  train <- as.data.frame(solar_data[train_idx, ])
+  test <- as.data.frame(solar_data[test_idx, ])
+  
+  # Select the features
+  permutations <- c(c3_list[[28]])  # SD AND ENERGY
+  
+  # Prepare the train and test sets for modeling
+  train_labels <- train$POT_AUT
+  train <- train %>% select(all_of(permutations), POT_AUT)
+  test_labels <- test$POT_AUT
+  
+  # Random Forest model
+  model_rf <- randomForest(POT_AUT ~ ., data = train, ntree = 100)
+  predictions_rf <- predict(model_rf, newdata = test)
+  
+  # Calculate RMSE for this iteration
+  rmse_value <- sqrt(mean((test_labels - predictions_rf)^2))
+  
+  # Store predictions, actuals, and RMSE for each observation in the test set
+  iter_results <- data.frame(
+    Iteration = rep(it, length(test_labels)),  # Replicate the iteration number
+    Actual = test_labels,                      # Actual values
+    Predictions = predictions_rf,              # Predictions
+    RMSE = rep(rmse_value, length(test_labels)) # RMSE for each observation
+  )
+  
+  # Append the results of this iteration to the final results data frame
+  results <- rbind(results, iter_results)
+}
+
+# View the first few rows of the results
+head(results)
+
+results$residuals <- results$Actual - results$Predictions
+
+ggplot(results, aes(sample = residuals)) +
+  stat_qq() +
+  stat_qq_line(color = "red", linetype = "dashed") +  # Add a reference line
+  labs(title = "Q-Q Plot of Residuals",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
+  theme_minimal()  # Use a clean theme
+
+
+
+ggplot(results, aes(x = Predictions, y = Actual)) +
+     geom_point(alpha = 0.5, color = "blue") +  # Scatter plot with some transparency
+     geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +  # 1:1 line
+     labs(title = "Actual vs Predicted Plot",
+                   x = "Actual Values",
+                   y = "Predicted Values") +
+     theme_minimal()  # Use a clean theme
+
 # ONLY 1 time with all permutations
 with_progress({
   # Initialize the outer progress for cases
@@ -286,101 +361,3 @@ with_progress({
 
 
 
-
-# OLD ANE CODE
-{
-resultadosT2 <- data.frame()
-resultadosT6 <- data.frame()
-
-c <- read.csv("SOLAR/resultadosPerms_regrs.csv") %>% arrange(desc(RMSE_rf)) %>% slice(1:20) %>% select(Grupo)
-c_list <- lapply(c$Grupo, function(x) unlist(strsplit(x, ",\\s*")))
-
-# Normalizar columnas
-for (col in group1){
-  if (col != "ZEROS"){
-    data_classif_imputed[[col]] <- data_classif_imputed[[col]] / data_classif_imputed$MAX
-    data_classif_imputed[[col]] <- replace_na(data_classif_imputed[[col]], 0)
-    
-  }
-}
-
-data_classif_imputed[which(is.infinite(data_classif_imputed$ENTROPY))]$ENTROPY <- 1
-ensure_levels_in_train <- function(data, categorical_columns) {
-  train_indices <- c()
-  for (col in categorical_columns) {
-    for (level in unique(data[[col]])) {
-      level_indices <- which(data[[col]] == level)
-      train_indices <- c(train_indices, sample(level_indices, 1))
-    }
-  }
-  return(unique(train_indices))
-}
-
-evaluar_modelo <- function(grupo_features, train, test) {
-  
-  train_labels <- train$POT_AUT
-  train <- train %>% select(all_of(grupo_features), POT_AUT)
-  
-  #test <- test %>% filter(TarifCode != "96T1" & TarifCode != "97T2") %>% select(all_of(grupo_features), POT_AUT)
-  test <- test %>% filter(TarifCode == "96T1" | TarifCode == "97T2") %>% select(all_of(grupo_features), POT_AUT)
-  
-  test_labels <- test$POT_AUT
-  
-  #linear regression
-  model_lm <- lm(POT_AUT ~ ., data = train)
-  predictions_lm <- predict(model_lm, newdata = test)
-  
-  #random forest
-  model_rf <- randomForest(POT_AUT ~ ., data = train, ntree = 100)
-  predictions_rf <- predict(model_rf, newdata = test)
-  
-  #svm
-  model_gbm <- caret::train(POT_AUT ~ ., data = train, method = 'gbm', trControl = trainControl(method = "cv", number = 10), verbose = FALSE)
-  predictions_gbm <- predict(model_gbm, newdata = test)
-  
-  #CALCULATE MAPES
-  mape_lm <- mape(test_labels, predictions_lm)
-  mape_rf <- mape(test_labels, predictions_rf)
-  mape_gbm <- mape(test_labels, predictions_gbm)
-  
-  rmse_lm <- rmse(test_labels, predictions_lm)
-  rmse_rf <- rmse(test_labels, predictions_rf)
-  rmse_gbm <- rmse(test_labels, predictions_gbm)
-  
-  return(c(mape_lm, mape_rf, mape_gbm, rmse_lm, rmse_rf, rmse_gbm))
-}
-
-
-permutations <- powerSet(group1, 9)
-  
-  for (i in 1:length(c_list)){
-    
-    grupo <- c_list[[i]]
-    print(grupo)
-    initial_train_indices <- ensure_levels_in_train(data_classif_imputed, categorical_columns)
-    data_train_initial <- data_classif_imputed[initial_train_indices, ]
-    remaining_data <- data_classif_imputed[-initial_train_indices, ]
-    
-    set.seed(123)
-    remaining_train_size <- floor(0.8 * nrow(data_classif_imputed)) - nrow(data_train_initial)
-    remaining_train_indices <- sample(seq_len(nrow(remaining_data)), size = remaining_train_size)
-    data_train <- rbind(data_train_initial, remaining_data[remaining_train_indices, ]) %>% filter(TarifCode != "96T1" & TarifCode != "97T2")
-    data_test <- remaining_data[-remaining_train_indices, ] 
-    metrics <- evaluar_modelo(grupo, data_train, data_test)
-    print(paste("Feature set", i, "/20 completed"))
-    resultadosT6 <- rbind(resultadosT6, c(toString(grupo), metrics[1], metrics[2], metrics[3], metrics[4], metrics[5], metrics[6]))
-  }
-
-colnames(resultadosT6) <- c("Grupo", "MAPE_lm", "MAPE_rf", "MAPE_gbm", "RMSE_lm", "RMSE_rf", "RMSE_gbm")
-fwrite(resultadosT6, "SOLAR/resultadosPerms_regrs_t6.csv", row.names = T)
-
-
-datat2 <- fread("SOLAR/resultadosPerms_regrs_t2.csv")
-datat6 <- fread("SOLAR/resultadosPerms_regrs_t6.csv")
-
-summary(datat2)
-
-data <- data %>% arrange(RMSE_rf)
-
-fwrite(data, "SOLAR/resultadosPerms_regrs_ord.csv", row.names = FALSE)
-}
