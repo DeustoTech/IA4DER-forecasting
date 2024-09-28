@@ -223,7 +223,7 @@ fwrite(final_results_100_iters, "SOLAR/Regresion/Top/Top30.csv")
 
 # ONLY CASE 3 BEST COMBINATION WITH RF
 
-
+{
 train <- data.frame()
 test <- data.frame()
 
@@ -278,6 +278,8 @@ head(results)
 
 results$residuals <- results$Actual - results$Predictions
 
+fwrite(results, "SOLAR/Regresion/case3_100times.csv")
+
 ggplot(results, aes(sample = residuals)) +
   stat_qq() +
   stat_qq_line(color = "red", linetype = "dashed") +  # Add a reference line
@@ -295,6 +297,26 @@ ggplot(results, aes(x = Predictions, y = Actual)) +
                    x = "Actual Values",
                    y = "Predicted Values") +
      theme_minimal()  # Use a clean theme
+
+# PP plot
+
+results <- results %>%
+  arrange(Predictions) %>%
+  mutate(
+    Prob_Actual = cumsum(Actual) / sum(Actual),  # Probabilidad acumulada de valores reales
+    Prob_Predicted = cumsum(Predictions) / sum(Predictions)  # Probabilidad acumulada de predicciones
+  )
+
+
+ggplot(results, aes(x = Prob_Predicted, y = Prob_Actual)) +
+  geom_line(color = "blue") +  # Línea de predicciones
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +  # Línea de referencia
+  labs(title = "PP Plot: Probabilidades Reales vs. Predicciones",
+       x = "Probabilidades Predichas",
+       y = "Probabilidades Reales") +
+  theme_minimal()  # Usar un tema limpio
+
+}
 
 # ONLY 1 time with all permutations
 with_progress({
