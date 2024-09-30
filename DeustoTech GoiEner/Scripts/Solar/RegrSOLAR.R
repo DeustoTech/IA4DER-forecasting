@@ -294,8 +294,8 @@ ggplot(results, aes(x = Predictions, y = Actual)) +
      geom_point(alpha = 0.5, color = "blue") +  # Scatter plot with some transparency
      geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +  # 1:1 line
      labs(title = "Actual vs Predicted Plot",
-                   x = "Actual Values",
-                   y = "Predicted Values") +
+                   x = "Predicted Values",
+                   y = "Actual Values") +
      theme_minimal()  # Use a clean theme
 
 # PP plot
