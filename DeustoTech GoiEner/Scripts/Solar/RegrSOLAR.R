@@ -422,5 +422,34 @@ with_progress({
       theme_minimal()  # Usar un tema limpio
     
     
+    results <- global_results %>%
+      arrange(Predictions) %>%
+      mutate(
+        Prob_Actual = cumsum(Actual) / sum(Actual),  # Probabilidad acumulada de valores reales
+        Prob_Predicted = cumsum(Predictions) / sum(Predictions)  # Probabilidad acumulada de predicciones
+      )
+    
+    
+    ggplot(results, aes(x = Prob_Predicted, y = Prob_Actual)) +
+      geom_line(color = "blue") +  # Línea de predicciones
+      geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +  # Línea de referencia
+      labs(title = "PP Plot: Probabilidades Reales vs. Predicciones",
+           x = "Probabilidades Predichas",
+           y = "Probabilidades Reales") +
+      theme_minimal()  # Usar un tema limpio
+    
+    
+    global_results$residuals <- global_results$Actual - global_results$Predictions
+    
+
+    ggplot(global_results, aes(sample = residuals)) +
+      stat_qq() +
+      stat_qq_line(color = "red", linetype = "dashed") +  # Add a reference line
+      labs(title = "Q-Q Plot of Residuals",
+           x = "Theoretical Quantiles",
+           y = "Sample Quantiles") +
+      theme_minimal()  # Use a clean theme
+    
+    
 }
 
