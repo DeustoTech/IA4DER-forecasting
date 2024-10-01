@@ -453,3 +453,75 @@ with_progress({
     
 }
 
+# GENERAL CASE: TRAIN AND TEST WITH ALL DATAPOINTS USING SD, ENTROPY
+{
+  
+  global_results <- data.frame(Actual = numeric(),
+                               Predictions = numeric(),
+                               RMSE = numeric())
+  
+  
+  general_data <- solar_data %>% select(POT_AUT, SD, ENTROPY)
+  
+  
+  # Prepare the train and test sets for modeling
+  labels <- general_data$POT_AUT
+  
+  # Random Forest model
+  model_rf <- randomForest(POT_AUT ~ ., data = general_data, ntree = 100)
+  predictions_rf <- predict(model_rf, newdata = general_data)
+  
+  # Calculate RMSE for this iteration
+  rmse_values <- sqrt((labels - predictions_rf)^2)
+  
+  # Store predictions, actuals, and RMSE for each observation in the test set
+  global_results <- data.frame(
+    Actual = labels,                      # Actual values
+    Predictions = predictions_rf,              # Predictions
+    RMSE = rmse_values                    # RMSE por observación
+  )
+  fwrite(global_results, "SOLAR/Regresion/GENERAL_MODEL_SD&ENTROPY.csv")
+  
+  
+  # Crear el gráfico con un filtro directo en ggplot
+  ggplot(global_results, aes(x = Predictions, y = Actual)) +
+    geom_point(data = subset(global_results,Actual < 10), 
+               alpha = 0.5, color = "blue") +  # Scatter plot con transparencia
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +  # Línea 1:1
+    labs(title = "Actual vs Predicted Plot (SD AND ENTROPY)",
+         x = "Predicted Values",
+         y = "Actual Values") +
+    theme_minimal()  # Usar un tema limpio
+  
+  
+  results <- global_results %>%
+    arrange(Predictions) %>%
+    mutate(
+      Prob_Actual = cumsum(Actual) / sum(Actual),  # Probabilidad acumulada de valores reales
+      Prob_Predicted = cumsum(Predictions) / sum(Predictions)  # Probabilidad acumulada de predicciones
+    )
+  
+  
+  ggplot(results, aes(x = Prob_Predicted, y = Prob_Actual)) +
+    geom_line(color = "blue") +  # Línea de predicciones
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +  # Línea de referencia
+    labs(title = "PP Plot: Probabilidades Reales vs. Predicciones (SD AND ENTROPY)",
+         x = "Probabilidades Predichas",
+         y = "Probabilidades Reales") +
+    theme_minimal()  # Usar un tema limpio
+  
+  
+  global_results$residuals <- global_results$Actual - global_results$Predictions
+  
+  
+  ggplot(global_results, aes(sample = residuals)) +
+    stat_qq() +
+    stat_qq_line(color = "red", linetype = "dashed") +  # Add a reference line
+    labs(title = "Q-Q Plot of Residuals (SD AND ENTROPY)",
+         x = "Theoretical Quantiles",
+         y = "Sample Quantiles") +
+    theme_minimal()  # Use a clean theme
+  
+  
+}
+
