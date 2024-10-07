@@ -232,3 +232,175 @@ fwrite(final_results, "SOLAR/Classification/Threshold/rawResults.csv")
 fwrite(metrics_results, "SOLAR/Classification/Threshold/metricsResults.csv")
 
 
+
+
+
+
+
+################### GENERAL CASE SD & ENERGY ###################
+{
+  
+  # Inicializar el dataframe para almacenar resultados
+  global_results <- data.frame(Actual = numeric(),
+                               PredPot = numeric(),
+                               RMSE = numeric(),
+                               PredPV = numeric(),
+                               hasPV = numeric(),
+                               Threshold = numeric())
+  
+  # Seleccionar las variables relevantes
+  pvList <- solar_data %>% select(POT_AUT, hasPV, SD, ENERGY)
+  
+  # Obtener los valores reales de POT_AUT y hasPV
+  real_pot <- pvList$POT_AUT
+  real_labels <- pvList$hasPV
+  
+  # Construir el modelo de Random Forest usando SD y ENERGY para predecir POT_AUT
+  model_rf <- randomForest(POT_AUT ~ SD + ENERGY, data = pvList, ntree = 100)
+  pot_predictions_rf <- predict(model_rf, newdata = pvList)
+  
+  # Calcular RMSE para cada observación y almacenar los valores predichos de potencia
+  rmse_values <- sqrt((real_pot - pot_predictions_rf)^2)
+  
+  # Secuencia de umbrales a probar
+  thresholds <- seq(1, 3, by = 0.05)
+  
+  # Bucle para evaluar cada umbral
+  for (threshold in thresholds) {
+    # Crear una columna predPV con la predicción de si tiene PV según el umbral actual
+    pvList <- pvList %>%
+      mutate(PredPot = pot_predictions_rf,
+             predPV = ifelse(PredPot < threshold, 0, 1))
+    
+    # Almacenar los resultados en global_results para cada umbral
+    results_iteration <- data.frame(
+      Actual = real_pot,
+      PredPot = pot_predictions_rf,
+      RMSE = rmse_values,
+      predPV = pvList$predPV,
+      hasPV = real_labels,
+      Threshold = rep(threshold, length(real_labels))
+    )
+    
+    global_results <- rbind(global_results, results_iteration)
+  }
+  
+  fwrite(global_results, "SOLAR/Classification/Threshold/General/RegrToClassif_SD&ENERGY.csv")
+  
+  metrics_results <- global_results %>%
+    group_by(Threshold) %>%
+    summarise(
+      accuracy = mean(as.numeric(predPV == hasPV)),  # Alternatively, use compute_metrics() if it's applied row-wise
+      sensitivity = sum(predPV == 1 & hasPV == 1) / sum(hasPV == 1, na.rm = TRUE),  # True Positive Rate
+      specificity = sum(predPV == 0 & hasPV == 0) / sum(hasPV == 0, na.rm = TRUE),  # True Negative Rate
+      .groups = 'drop'  # To avoid grouped output; modify if different behavior is desired
+    )
+  
+  fwrite(metrics_results, "SOLAR/Classification/Threshold/General/Metrics_SD&ENERGY.csv")
+  
+  acc <- ggplot(metrics_results, aes(x = Threshold, y = accuracy)) +
+    geom_line(color = "blue") +  # Line plot
+    geom_point(color = "red") +  # Add points
+    labs(
+      title = "Accuracy evolution for case SD & ENERGY",
+      x = "Threshold",
+      y = "Accuracy"
+    ) 
+  
+  ggsave(
+    filename = "SOLAR/Classification/Threshold/General/SD&ENERGY_Evolution.png",  # File name
+    plot = acc,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 200                           # Resolution in DPI (Dots Per Inch)
+  )
+  
+
+}
+
+
+################### GENERAL CASE SD & ENTROPY ###################
+{
+  
+  # Inicializar el dataframe para almacenar resultados
+  global_results <- data.frame(Actual = numeric(),
+                               PredPot = numeric(),
+                               RMSE = numeric(),
+                               PredPV = numeric(),
+                               hasPV = numeric(),
+                               Threshold = numeric())
+  
+  # Seleccionar las variables relevantes
+  pvList <- solar_data %>% select(POT_AUT, hasPV, SD, ENTROPY)
+  
+  # Obtener los valores reales de POT_AUT y hasPV
+  real_pot <- pvList$POT_AUT
+  real_labels <- pvList$hasPV
+  
+  # Construir el modelo de Random Forest usando SD y ENERGY para predecir POT_AUT
+  model_rf <- randomForest(POT_AUT ~ SD + ENTROPY, data = pvList, ntree = 100)
+  pot_predictions_rf <- predict(model_rf, newdata = pvList)
+  
+  # Calcular RMSE para cada observación y almacenar los valores predichos de potencia
+  rmse_values <- sqrt((real_pot - pot_predictions_rf)^2)
+  
+  # Secuencia de umbrales a probar
+  thresholds <- seq(1, 3, by = 0.05)
+  
+  # Bucle para evaluar cada umbral
+  for (threshold in thresholds) {
+    # Crear una columna predPV con la predicción de si tiene PV según el umbral actual
+    pvList <- pvList %>%
+      mutate(PredPot = pot_predictions_rf,
+             predPV = ifelse(PredPot < threshold, 0, 1))
+    
+    # Almacenar los resultados en global_results para cada umbral
+    results_iteration <- data.frame(
+      Actual = real_pot,
+      PredPot = pot_predictions_rf,
+      RMSE = rmse_values,
+      predPV = pvList$predPV,
+      hasPV = real_labels,
+      Threshold = rep(threshold, length(real_labels))
+    )
+    
+    global_results <- rbind(global_results, results_iteration)
+  }
+  
+  fwrite(global_results, "SOLAR/Classification/Threshold/General/RegrToClassif_SD&ENTROPY.csv")
+  
+  metrics_results <- global_results %>%
+    group_by(Threshold) %>%
+    summarise(
+      accuracy = mean(as.numeric(predPV == hasPV)),  # Alternatively, use compute_metrics() if it's applied row-wise
+      sensitivity = sum(predPV == 1 & hasPV == 1) / sum(hasPV == 1, na.rm = TRUE),  # True Positive Rate
+      specificity = sum(predPV == 0 & hasPV == 0) / sum(hasPV == 0, na.rm = TRUE),  # True Negative Rate
+      .groups = 'drop'  # To avoid grouped output; modify if different behavior is desired
+    )
+  
+  fwrite(metrics_results, "SOLAR/Classification/Threshold/General/Metrics_SD&ENTROPY.csv")
+  
+  acc <- ggplot(metrics_results, aes(x = Threshold, y = accuracy)) +
+    geom_line(color = "blue") +  # Line plot
+    geom_point(color = "red") +  # Add points
+    labs(
+      title = "Accuracy evolution for case SD & ENTROPY",
+      x = "Threshold",
+      y = "Accuracy"
+    ) 
+  
+  ggsave(
+    filename = "SOLAR/Classification/Threshold/General/SD&ENTROPY_Evolution.png",  # File name
+    plot = acc,                        # The plot object
+    width = 833 / 72,                   # Width in inches (833 pixels / 72 DPI)
+    height = 761 / 72,                  # Height in inches (761 pixels / 72 DPI)
+    dpi = 200                           # Resolution in DPI (Dots Per Inch)
+  )
+  
+  
+}
+
+
+
+
+
