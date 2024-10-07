@@ -441,14 +441,12 @@ with_progress({
     
     global_results$residuals <- global_results$Actual - global_results$Predictions
     
-
-    ggplot(global_results, aes(sample = residuals)) +
-      stat_qq() +
-      stat_qq_line(color = "red", linetype = "dashed") +  # Add a reference line
-      labs(title = "Q-Q Plot of Residuals",
-           x = "Theoretical Quantiles",
-           y = "Sample Quantiles") +
-      theme_minimal()  # Use a clean theme
+    
+    qqplot(global_results$Predictions, global_results$Actual, 
+           +        xlab = "Predicted Distribution", 
+           +        ylab = "Actual Distribution", 
+           +        main = "QQ Plot SD & ENERGY")
+    
     
     
 }
@@ -511,17 +509,12 @@ with_progress({
     theme_minimal()  # Usar un tema limpio
   
   
-  global_results$residuals <- global_results$Actual - global_results$Predictions
+
   
-  
-  ggplot(global_results, aes(sample = residuals)) +
-    stat_qq() +
-    stat_qq_line(color = "red", linetype = "dashed") +  # Add a reference line
-    labs(title = "Q-Q Plot of Residuals (SD AND ENTROPY)",
-         x = "Theoretical Quantiles",
-         y = "Sample Quantiles") +
-    theme_minimal()  # Use a clean theme
-  
+  qqplot(global_results$Predictions, global_results$Actual, 
+         +        xlab = "Predicted Distribution", 
+         +        ylab = "Actual Distribution", 
+         +        main = "QQ Plot SD & ENTROPY")
   
 }
 
