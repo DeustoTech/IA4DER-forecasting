@@ -271,3 +271,50 @@ fwrite(final_results, "SOLAR/Classification/Models/allClassif.csv")
   print(paste("AUC for last iteration:", auc_value)) 
 }
 
+
+
+######################### CLASSIF WITH GENERAL MODELS
+
+classif <- solar_data %>% select(ZERO, SD, MIN, hasPV)
+
+labels <- classif$hasPV
+
+model_rf <- randomForest(hasPV ~ ZERO + SD + MIN, data = classif, ntree = 100)
+predictions_rf <- predict(model_rf, newdata = classif)
+
+
+labels <- factor(labels, levels = c(0, 1))
+predictions_rf <- factor(predictions_rf, levels = c(0, 1))
+
+
+rf_accuracy <- accuracy(labels, predictions_rf)
+rf_sensitivity <- sensitivity(labels, predictions_rf)
+rf_specificity <- specificity(labels, predictions_rf)
+
+results_df <- data.frame(
+  ID = solar_data$ID,
+  Actual = labels,
+  Predicted = predictions_rf
+)
+
+results_df$Actual <- as.numeric(results_df$Actual)
+results_df$Predicted <- as.numeric(results_df$Predicted)
+
+fwrite(results_df, "SOLAR/Classification/Models/General_predictions_ZERO&SD&MIN.csv")
+
+roc_curve <- roc(results_df$Actual, results_df$Predicted)
+plot(roc_curve, main = paste("ROC Curve - AUC:", round(auc(roc_curve), 2)),
+     col = "blue", lwd = 2
+     )
+
+
+
+metrics_df <- data.frame(
+  Metric = c("Accuracy", "Sensitivity", "Specificity"),
+  Value = c(rf_accuracy, rf_sensitivity, rf_specificity)
+)
+
+fwrite(metrics_df, "SOLAR/Classification/Models/General_results_ZERO&SD&MIN.csv")
+
+  
+
