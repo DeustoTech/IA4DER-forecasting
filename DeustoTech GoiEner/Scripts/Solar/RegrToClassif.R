@@ -263,7 +263,7 @@ fwrite(metrics_results, "SOLAR/Classification/Threshold/metricsResults.csv")
   rmse_values <- sqrt((real_pot - pot_predictions_rf)^2)
   
   # Secuencia de umbrales a probar
-  thresholds <- seq(1, 3, by = 0.05)
+  thresholds <- seq(0, 3, by = 0.05)
   
   # Bucle para evaluar cada umbral
   for (threshold in thresholds) {
@@ -345,7 +345,7 @@ fwrite(metrics_results, "SOLAR/Classification/Threshold/metricsResults.csv")
   rmse_values <- sqrt((real_pot - pot_predictions_rf)^2)
   
   # Secuencia de umbrales a probar
-  thresholds <- seq(1, 3, by = 0.05)
+  thresholds <- seq(0, 3, by = 0.05)
   
   # Bucle para evaluar cada umbral
   for (threshold in thresholds) {
