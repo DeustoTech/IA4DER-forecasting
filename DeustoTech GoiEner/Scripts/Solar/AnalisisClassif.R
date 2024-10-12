@@ -44,6 +44,29 @@ fwrite(case3_all, "SOLAR/Classification/Models/case3_all.csv")
 fwrite(case4_all, "SOLAR/Classification/Models/case4_all.csv")
 
 
+# MEJOR GRUPO EN GENERAL
+
+# Combina los cuatro data frames en uno solo
+all_cases <- bind_rows(case1_all, case2_all, case3_all, case4_all)
+
+# Calcula el promedio de rf_accuracy para cada grupo en los cuatro casos
+group_performance <- all_cases %>%
+  group_by(Grupo) %>%
+  summarise(avg_rf_accuracy = mean(rf_accuracy, na.rm = TRUE)) %>%
+  arrange(desc(avg_rf_accuracy))
+
+# Muestra el grupo con el promedio de rf_accuracy más alto
+best_group <- group_performance %>% slice(1)
+
+# Ver los resultados
+print(group_performance)
+print(best_group) 
+
+# AUNQUE NO SEA EL MEJOR, VOY A USAR ZERO SD Y MIN PORQUE SON MENOS FEATURES
+
+fwrite(group_performance, "SOLAR/Classification/Models/Group_performance.csv")
+
+
 # PLOTS
 
 max_yaxis <- max(classif$rf_accuracy, na.rm = TRUE)  # Use na.rm = TRUE to handle any NA values
