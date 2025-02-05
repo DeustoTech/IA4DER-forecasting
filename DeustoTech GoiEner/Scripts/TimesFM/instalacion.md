@@ -18,8 +18,9 @@
     Chronos:
     ```pip install chronos-forecasting```
 
-    Seaborn (para gráficas):
+    Seaborn y matplotlib(para gráficas):
     ```pip install seaborn```
+    ```pip install matplotlib```
 
 4. Activar el entorno virtual
 5. Ejecutar el script forecasting.ipynb
