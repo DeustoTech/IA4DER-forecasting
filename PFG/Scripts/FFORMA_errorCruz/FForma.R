@@ -6,7 +6,6 @@ library(doParallel)
 
 
 
-
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", 
