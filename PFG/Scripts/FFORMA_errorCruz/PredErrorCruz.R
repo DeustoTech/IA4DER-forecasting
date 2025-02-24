@@ -52,7 +52,7 @@ for (col in colnames(datos)){
   }
 }
 
-fwrite(datos, "NUEVOS DATOS/pruebaDatos.csv")
+fwrite(datos, "NUEVOS DATOS/pruebaDatos")
 #coolumnas de tarifa
 tarifa <- c("cnae.provincia", "cp.provincia","p1", "p2","p3","p4","p5","p6","contracted_tariff")
 
@@ -239,7 +239,7 @@ plan(sequential)
 
 
 num_cores <- detectCores()
-cl <- makeCluster(2)
+cl <- makeCluster(num_cores-1)
 clusterExport(cl, c("tarifa", "trainIndex", "model_names",
                     "limpiarColumnas", "regresion_model_feats", "categoricas",
                     "index", "target"))
@@ -312,6 +312,67 @@ for (variable in target) {
       regresion_model_feats(modelo, modeloE, variable, trainSet, testSet, testID)
   }
 }
+
+
+# Configuración de paralelismo
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+# Cargar datos
+datos <- fread("NUEVOS DATOS/pruebaDatos.csv")
+
+# Definir modelos y variables objetivo
+model_names <- c("rf")  # Puedes añadir otros modelos aquí
+target <- c("mean_error", "rw_error", "naive_error", "simple_error",
+            "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
+
+# Función para limpiar y dividir datos
+limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
+  cleanSet <- dataset %>% select(all_of(colsDesc), !!sym(target), id)
+  trainSet <- cleanSet[trainIndex, ]
+  testSet <- cleanSet[-trainIndex, ]
+  return(list(trainSet = trainSet, testSet = testSet))
+}
+
+# Función de regresión (simplificada para ejemplo)
+regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet, testSet, testID) {
+  predicciones_log <- runif(nrow(testSet), 0, 1)  # Simulación de predicciones
+  namePred <- paste("Predicted", modeloE, "tarifa", model_type, sep = "_")
+  
+  resultados <- data.frame(ID = testID$id, Predicciones = predicciones_log)
+  colnames(resultados) <- c("ID", namePred)
+  
+  # Escribir progresivamente
+  write.table(resultados, file = paste0("Resultados_", model_type, ".csv"), 
+              sep = ",", row.names = FALSE, col.names = !file.exists(paste0("Resultados_", model_type, ".csv")),
+              append = TRUE)
+}
+
+# División del dataset en train/test
+set.seed(0)
+index <- 0.70
+trainIndex <- sample(1:nrow(datos), index * nrow(datos))
+
+# Procesamiento en paralelo con escritura progresiva
+foreach(variable = target, .combine = 'c', .packages = c("dplyr", "data.table", "randomForest")) %dopar% {
+  modeloE <- gsub("_.*$", "", variable)
+  datosN <- datos %>% select(id, variable) %>% filter(!is.na(.data[[variable]]))
+  sets_limpios <- limpiarColumnas(trainIndex, "id", variable, datosN)
+  
+  testID <- sets_limpios$testSet %>% select(id)
+  trainSet <- sets_limpios$trainSet %>% select(-id)
+  testSet <- sets_limpios$testSet %>% select(-id)
+  
+  for (modelo in model_names) {
+    regresion_model_feats(modelo, modeloE, variable, trainSet, testSet, testID)
+  }
+}
+
+# Cerrar cluster
+stopCluster(cl)
+
+
 
 ##PRUEBAS DE DATOS IGUALES
 
