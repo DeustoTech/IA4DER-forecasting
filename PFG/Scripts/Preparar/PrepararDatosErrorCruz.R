@@ -5,18 +5,34 @@ library(doParallel)
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
-               "lattice", "forecast", "Metrics", "fable", 
-               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'car', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
-               "randomForest", "mice", "mltools", "zoo") 
+               "lattice", "Metrics", "fable", 
+               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", 
+                 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
+               "randomForest", "mltools", "zoo") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
+library(foreach)
+library(doParallel)
 
+# Vector con todas las librerías necesarias
+librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
+               "forecast", "Metrics", "fable", "data.table", "xts", "future",
+               "foreach", "doParallel", "RSNNS", "TTR", "quantmod", "car", "e1071",
+               "nnet", "tools", "doFuture", "neuralnet", "gbm", "randomForest", 
+               "mltools", "zoo", "mlr3", "mlr3tuning", "paradox", "mlr3learners", "stringr")
+
+# Instalar y cargar las librerías
+foreach(lib = librerias) %do% {
+  if (!require(lib, character.only = TRUE)) {
+    install.packages(lib, dependencies = TRUE)
+    library(lib, character.only = TRUE)
+  }
+}
 
 #JUNTAR DATOS DE PREDICCIONES
-folder <- "PFG/NUEVOS DATOS/goi4_pst_preds"
+folder <- "NUEVOS DATOS/goi4_pst_preds"
 files_2 <- list.files(path = folder, pattern = "\\.csv$", full.names = TRUE)
 data_list <- list()
 
@@ -40,11 +56,11 @@ for (file in files_2) {
 combined_df <- rbindlist(data_list, use.names = TRUE, fill = TRUE)
 column_order <- c("id", "dia", "hora", "real", setdiff(names(combined_df), c("id", "dia", "hora", "real")))
 setcolorder(combined_df, column_order)
-fwrite(combined_df, "PFG/NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_preds.csv")
+fwrite(combined_df, "NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_preds.csv")
 
 
 #JUNTAR DATOS DE ERRORES
-folder <- "PFG/NUEVOS DATOS/goi4_pst_mape"
+folder <- "NUEVOS DATOS/goi4_pst_mape"
 files_1 <- list.files(path = folder, pattern = "\\.csv$", full.names = TRUE)
 data_list <- list()
 
@@ -60,24 +76,24 @@ for (file in files_1) {
 }
 
 combined_df <- rbindlist(data_list, use.names = TRUE, fill = TRUE)
-fwrite(combined_df, "PFG/NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_mape.csv")
+fwrite(combined_df, "NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_mape.csv")
 
 
 #JUNTAR AMBOS
 
-errors <- fread("PFG/NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_mape.csv")
-preds <- fread("PFG/NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_preds.csv")
+errors <- fread("NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_mape.csv")
+preds <- fread("NUEVOS DATOS/DATOS ERROR CRUZ/goi4_pst_preds.csv")
 colnames(preds)[colnames(preds) == "real_pred"] <- "real"
 errorsYpreds <- merge(errors, preds, by = "id")
 errorsYpreds <- na.omit(errorsYpreds)
 
-fwrite(errorsYpreds, "PFG/NUEVOS DATOS/DATOS ERROR CRUZ/combined_data_NEW.csv", row.names = FALSE)
+fwrite(errorsYpreds, "NUEVOS DATOS/DATOS ERROR CRUZ/combined_data_NEW.csv", row.names = FALSE)
 
 #JUNTAR CON METADATA (features)
-combined <- fread("PFG/NUEVOS DATOS/DATOS ERROR CRUZ/combined_data_NEW.csv")
-metadata <- fread("PFG/NUEVOS DATOS/OriginalData/metadata.csv")
+combined <- fread("NUEVOS DATOS/DATOS ERROR CRUZ/combined_data_NEW.csv")
+metadata <- fread("NUEVOS DATOS/OriginalData/metadata.csv")
 
 colnames(metadata)[colnames(metadata) == "user"] <- "id"
 
 allMetadata <- merge(combined, metadata, by = "id")
-fwrite(allMetadata, "PFG/NUEVOS DATOS/DATOS ERROR CRUZ/allMetadata.csv", row.names = FALSE)
+fwrite(allMetadata, "NUEVOS DATOS/DATOS ERROR CRUZ/allMetadata.csv", row.names = FALSE)
