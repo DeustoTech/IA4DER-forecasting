@@ -212,6 +212,31 @@ model_names <- c("svm")
 target <- c("mean_error", "rw_error", "naive_error", "simple_error",
             "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 
+library(furrr)
+options(future.globals.maxSize = 850 * 1024^2) 
+plan(multisession, workers = detectCores() - 1)
+
+future_pmap(list(variable = target), function(variable) {
+  datosN <- datos %>% 
+    select(all_of(c(tarifa, "id", variable))) %>%
+    filter(contracted_tariff != "6.2TD") %>%
+    mutate(cp.provincia = as.integer(cp.provincia)) %>%
+    filter(!is.na(.data[[variable]])) %>%
+    as.data.frame()
+  
+  sets_limpios <- limpiarColumnas(trainIndex, tarifa, variable, datosN)
+  
+  testID <- sets_limpios$testSet %>% select(id)
+  trainSet <- sets_limpios$trainSet %>% select(-id)
+  testSet <- sets_limpios$testSet %>% select(-id)
+  
+  map(model_names, function(modelo) {
+    regresion_model_feats(modelo, gsub("_.*$", "", variable), variable, trainSet, testSet, testID)
+  })
+})
+
+plan(sequential)
+
 
 
 for (variable in target) {
