@@ -8,7 +8,7 @@ librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
                "lattice", "Metrics", "fable", 
                "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
                "randomForest", "mltools", "zoo", "mlr3", "mlr3tuning", "paradox", "mlr3learners",
-               "stringr") 
+               "stringr", "parallel") 
 
 foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
@@ -52,7 +52,7 @@ for (col in colnames(datos)){
   }
 }
 
-
+fwrite(datos, "NUEVOS DATOS/pruebaDatos.csv")
 #coolumnas de tarifa
 tarifa <- c("cnae.provincia", "cp.provincia","p1", "p2","p3","p4","p5","p6","contracted_tariff")
 
@@ -208,7 +208,7 @@ trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 
 modelos <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 model_names <- c("lm", "rf", "gbm", "svm", "nn")
-model_names <- c("svm")
+model_names <- c("rf")
 target <- c("mean_error", "rw_error", "naive_error", "simple_error",
             "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 
@@ -238,7 +238,51 @@ future_pmap(list(variable = target), function(variable) {
 plan(sequential)
 
 
+num_cores <- detectCores()
+cl <- makeCluster(2)
+clusterExport(cl, c("tarifa", "trainIndex", "model_names",
+                    "limpiarColumnas", "regresion_model_feats", "categoricas",
+                    "index", "target"))
+clusterEvalQ(cl, {
+  library(dplyr)
+  library(randomForest)
+  library(data.table)
+  datos <- fread("NUEVOS DATOS/pruebaDatos.csv")
+})
 
+parLapply(cl, target, function(variable) {
+  
+  modeloE <- gsub("_.*$", "", variable)
+  
+  datosN <- as.data.frame(datos)
+  datosN <- datosN %>% select(all_of(c(tarifa, "id", variable)))
+  
+  print(names(datosN))
+  
+  # ajustes adicionales
+  datosN <- datosN[datosN$contracted_tariff != "6.2TD", ]
+  datosN$cp.provincia <- as.integer(datosN$cp.provincia)
+  
+  datosN <- datosN[!is.na(datosN[[variable]]), ] %>% as.data.frame()
+  
+  sets_limpios <- limpiarColumnas(trainIndex, tarifa, variable, datosN)
+  
+  testID <- sets_limpios$testSet %>% select(id)
+  trainSet <- sets_limpios$trainSet %>% select(-id)
+  testSet <- sets_limpios$testSet %>% select(-id)
+  
+  print(paste("Trainset: ", nrow(trainSet), "filas. Testset: ", nrow(testSet), "filas."))
+  
+  for (modelo in model_names) {
+    regresion_model_feats(modelo, modeloE, variable, trainSet, testSet, testID)
+  }
+  
+  return(TRUE) # opcional para control de ejecución
+})
+
+stopCluster(cl)
+
+### NORMAL
 for (variable in target) {
   modeloE <- gsub("_.*$", "",variable)
   
