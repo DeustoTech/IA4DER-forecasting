@@ -5,10 +5,9 @@ library(doParallel)
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
-               "lattice", "forecast", "Metrics", "fable", 
-               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", "TTR", 
-               'quantmod', 'car', 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
-               "randomForest", "mice", "mltools", "zoo", "mlr3", "mlr3tuning", "paradox", "mlr3learners",
+               "lattice", "Metrics", "fable", 
+               "data.table", "xts", "future", "fable", "foreach", "doParallel", "RSNNS", 'e1071', 'nnet', 'tools', 'doFuture', 'neuralnet', 'gbm', 
+               "randomForest", "mltools", "zoo", "mlr3", "mlr3tuning", "paradox", "mlr3learners",
                "stringr") 
 
 foreach(lib = librerias) %do% {
@@ -23,7 +22,7 @@ foreach(lib = librerias) %do% {
 #metadataNew$id <- metadataNew$user
 #metadataNew <- metadataNew %>% select(-user)
 
-metadataNew <- fread("PFG/NUEVOS DATOS/DATOS ERROR CRUZ/allMetadata.csv")
+metadataNew <- fread("NUEVOS DATOS/DATOS ERROR CRUZ/allMetadata.csv")
 #metadataNew <- metadataNew %>%
 #  mutate(across(
 #    .cols = starts_with("p") & matches("^p[0-9]$"), # seleccionar solo las columnas que comienzan con "p" y tienen un único número
@@ -196,7 +195,7 @@ regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet
     
     # Escribir el dataframe en un archivo CSV
 
-    write.csv(resultados, file = paste("PFG/NuevosResultados/PrediccionError/", "PredError_", modeloE, "_", model_type, "_", "tarifa", ".csv", sep = ""), row.names = FALSE)
+    write.csv(resultados, file = paste("NuevosResultados/PrediccionError/", "PredError_", modeloE, "_", model_type, "_", "tarifa", ".csv", sep = ""), row.names = FALSE)
     
   
   return(resultados)
