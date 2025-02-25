@@ -17,15 +17,7 @@ foreach(lib = librerias) %do% {
 }
 
 #EJECUTAR
-#combined_data <- fread("PFG/NUEVOS DATOS/combined_data.csv")
-metadataNew <- fread("PFG/NUEVOS DATOS/metadata.csv")
-
-#para que el id se llame igual en ambos datasets
-#metadataNew$id <- metadataNew$user
-#metadataNew <- metadataNew %>% select(-user)
-
-metadataNew <- fread("PFG/NUEVOS DATOS/allMetadata.csv")
-metadataNew <- fread("PFG/NUEVOS DATOS/allMetadataDEF.csv")
+metadataNew <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/allMetadataDEF.csv")
 #metadataNew <- metadataNew %>%
 #  mutate(across(
 #    .cols = starts_with("p") & matches("^p[0-9]$"), # seleccionar solo las columnas que comienzan con "p" y tienen un único número
@@ -214,7 +206,7 @@ regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet
     
     # Escribir el dataframe en un archivo CSV
 
-    write.csv(resultados, file = paste("PFG/NuevosResultados/PrediccionErrorNuevo/", "PredError_", modeloE, "_", model_type, "_", "tarifa", ".csv", sep = ""), row.names = FALSE)
+    write.csv(resultados, file = paste("NuevosResultados/PrediccionErrorNuevo/PrediccionRMSE/", "PredRmse_", modeloE, "_", model_type, "_", "tarifa", ".csv", sep = ""), row.names = FALSE)
     
   
   return(resultados)
@@ -228,10 +220,10 @@ trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 modelos <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 model_names <- c("lm", "rf", "gbm", "svm", "nn")
 model_names <- c("lm")
-target <- c("mean_error", "rw_error", "naive_error", "simple_error",
-            "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 target <- c("mean_mape", "rw_mape", "naive_mape", "simple_mape",
             "lr_mape", "ann_mape", "svm_mape", "arima_mape", "ses_mape", "ens_mape")
+target <- c("mean_rmse", "rw_rmse", "naive_rmse", "simple_rmse",
+            "lr_rmse", "ann_rmse", "svm_rmse", "arima_rmse", "ses_rmse", "ens_rmse")
 
 
 for (variable in target) {
