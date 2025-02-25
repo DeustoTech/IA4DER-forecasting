@@ -314,7 +314,14 @@ for (variable in target) {
 }
 
 
-# Configuración de paralelismo
+
+library(foreach)
+library(doParallel)
+library(data.table)
+library(dplyr)
+library(randomForest)  # Importante: Añadir esta librería
+
+# Configurar paralelización
 num_cores <- detectCores() - 1
 cl <- makeCluster(num_cores)
 registerDoParallel(cl)
@@ -322,10 +329,14 @@ registerDoParallel(cl)
 # Cargar datos
 datos <- fread("NUEVOS DATOS/pruebaDatos.csv")
 
-# Definir modelos y variables objetivo
-model_names <- c("rf")  # Puedes añadir otros modelos aquí
+# Variables objetivo
 target <- c("mean_error", "rw_error", "naive_error", "simple_error",
             "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
+
+# División de datos en train/test
+set.seed(0)
+index <- 0.70
+trainIndex <- sample(1:nrow(datos), index * nrow(datos))
 
 # Función para limpiar y dividir datos
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
@@ -335,28 +346,29 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   return(list(trainSet = trainSet, testSet = testSet))
 }
 
-# Función de regresión (simplificada para ejemplo)
-regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet, testSet, testID) {
-  predicciones_log <- runif(nrow(testSet), 0, 1)  # Simulación de predicciones
-  namePred <- paste("Predicted", modeloE, "tarifa", model_type, sep = "_")
+# Función para entrenar y predecir con Random Forest
+regresion_model_feats <- function(modeloE, target_variable, trainSet, testSet, testID) {
+  # Entrenar el modelo Random Forest
+  rf_model <- randomForest(as.formula(paste(target_variable, "~ .")),
+                           data = trainSet, ntree = 100, importance = TRUE)
   
-  resultados <- data.frame(ID = testID$id, Predicciones = predicciones_log)
-  colnames(resultados) <- c("ID", namePred)
+  # Hacer predicciones
+  predicciones_rf <- predict(rf_model, newdata = testSet)
   
-  # Escribir progresivamente
-  write.table(resultados, file = paste0("Resultados_", model_type, ".csv"), 
-              sep = ",", row.names = FALSE, col.names = !file.exists(paste0("Resultados_", model_type, ".csv")),
-              append = TRUE)
+  # Formato del nombre del archivo
+  namePred <- paste("PredError", modeloE, "rf_tarifa", sep = "_")
+  
+  # Guardar resultados
+  resultados <- data.frame(ID = testID$id, Predicciones = predicciones_rf)
+  
+  file_name <- paste0(namePred, ".csv")
+  write.table(resultados, file = file_name, sep = ",", row.names = FALSE, 
+              col.names = !file.exists(file_name), append = TRUE)
 }
 
-# División del dataset en train/test
-set.seed(0)
-index <- 0.70
-trainIndex <- sample(1:nrow(datos), index * nrow(datos))
-
-# Procesamiento en paralelo con escritura progresiva
-foreach(variable = target, .combine = 'c', .packages = c("dplyr", "data.table", "randomForest")) %dopar% {
-  modeloE <- gsub("_.*$", "", variable)
+# Procesamiento en paralelo
+foreach(variable = target, .packages = c("randomForest", "dplyr", "data.table")) %dopar% {
+  modeloE <- gsub("_.*$", "", variable)  # Extraer parte inicial del nombre
   datosN <- datos %>% select(id, variable) %>% filter(!is.na(.data[[variable]]))
   sets_limpios <- limpiarColumnas(trainIndex, "id", variable, datosN)
   
@@ -364,14 +376,12 @@ foreach(variable = target, .combine = 'c', .packages = c("dplyr", "data.table", 
   trainSet <- sets_limpios$trainSet %>% select(-id)
   testSet <- sets_limpios$testSet %>% select(-id)
   
-  for (modelo in model_names) {
-    regresion_model_feats(modelo, modeloE, variable, trainSet, testSet, testID)
-  }
+  # Ejecutar modelo y guardar resultados
+  regresion_model_feats(modeloE, variable, trainSet, testSet, testID)
 }
 
 # Cerrar cluster
 stopCluster(cl)
-
 
 
 ##PRUEBAS DE DATOS IGUALES
