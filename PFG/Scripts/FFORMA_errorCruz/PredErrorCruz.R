@@ -202,7 +202,7 @@ regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet
 }
 
 set.seed(0)
-index <- 0.02
+index <- 0.7
 feats_nrow <- nrow(datos)
 trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 
