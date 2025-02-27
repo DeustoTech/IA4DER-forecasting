@@ -21,7 +21,6 @@ foreach(lib = librerias) %do% {
 #para que el id se llame igual en ambos datasets
 #metadataNew$id <- metadataNew$user
 #metadataNew <- metadataNew %>% select(-user)
-
 metadataNew <- fread("NUEVOS DATOS/DATOS ERROR CRUZ/allMetadata.csv")
 #metadataNew <- metadataNew %>%
 #  mutate(across(
@@ -87,7 +86,8 @@ limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
   
   trainSet2 <- cleanSet2[trainIndexClean, ]
   trainSet <- bind_rows(trainSet, trainSet2)
-  testSet <- dataset #esto es porque el testset habia que usarlo entero (preguntar!!) cleanSet2[-trainIndexClean, ] 
+  testSet <- cleanSet[1,] 
+  #testSet <- dataset #esto es porque el testset habia que usarlo entero (preguntar!!) cleanSet2[-trainIndexClean, ] 
   
   #asegurarnos que cada columna tiene al menos 3 niveles
   #se eliminan las columnas categoricas que tienen 2 o menos niveles
@@ -139,8 +139,8 @@ regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet
       
       model <- e1071::tune(e1071::svm, as.formula(paste(log_variable, "~ . - ", target_variable)),
                     data = trainSet, ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4)))
-      
-      
+      print(paste("Mejores hiperparametros para el modelo", modeloE))
+      print(model$best.model)
       predicciones_log <- exp(predict(model$best.model, newdata = testSet )) - 1
       predicciones_log <- na.approx(predicciones_log, na.rm = FALSE, rule = 2)
       
@@ -202,13 +202,13 @@ regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet
 }
 
 set.seed(0)
-index <- 0.70
+index <- 0.02
 feats_nrow <- nrow(datos)
 trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 
 modelos <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 model_names <- c("lm", "rf", "gbm", "svm", "nn")
-model_names <- c("rf")
+model_names <- c("svm")
 target <- c("mean_error", "rw_error", "naive_error", "simple_error",
             "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 
