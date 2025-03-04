@@ -19,35 +19,22 @@ foreach(lib = librerias) %do% {
 
 
 # Leer
+folder <- "NuevosResultados/PrediccionError/"
 
-folder <- "PFG/NuevosResultados/PrediccionError/"
-
-# Definir una función para buscar archivos por patrón en todas las carpetas de modelos
+# Función para buscar archivos por patrón en una carpeta (sin subcarpetas)
 buscar_archivos_por_modelo <- function(folder, pattern) {
-  # Obtener una lista de todas las subcarpetas dentro de la carpeta principal
-  subcarpetas <- list.dirs(folder, recursive = FALSE)
-  
-  # Inicializar una lista para guardar los resultados
-  archivos_modelo <- character()
-  
-  # Iterar sobre cada subcarpeta para buscar archivos que coincidan con el patrón
-  for (subcarpeta in subcarpetas) {
-    archivos_encontrados <- list.files(subcarpeta, pattern = pattern, recursive = TRUE, full.names = TRUE)
-    archivos_modelo <- c(archivos_modelo, archivos_encontrados)
-  }
-  
+  archivos_modelo <- list.files(folder, pattern = pattern, full.names = TRUE)
   return(archivos_modelo)
 }
 
+# Buscar archivos por cada modelo directamente en la carpeta base
 model_files <- list(
-  # Buscar archivos por cada tipo de modelo
-  lm <- buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$"),
-  rf <- buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
-  gbm <- buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$"),
-  svm <- buscar_archivos_por_modelo(folder, "_svm_tarifa.*\\.csv$"),
-  nn <- buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
+  lm = buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$"),
+  #rf = buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
+  gbm = buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$"),
+  #svm = buscar_archivos_por_modelo(folder, "_svm_tarifa.*\\.csv$"),
+  nn = buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
 )
-
 
 # Función para leer archivos y combinarlos en un único dataframe
 combinar_archivos_en_df <- function(archivos_modelo) {
@@ -69,7 +56,7 @@ mezcla <- merge(prueba1, prueba2, by="ID")
 
 
 lm_df <- combinar_archivos_en_df(model_files[[1]])
-fwrite(lm_df, "PFG/Resultados/PrediccionErrorTestEntero/combined_lm.csv")
+fwrite(lm_df, "ResultadosNuevos/PrediccionError/combined_lm.csv")
 rf_df <- combinar_archivos_en_df(model_files[[2]])
 fwrite(rf_df, "PFG/Resultados/PrediccionErrorTestEntero/combined_rf.csv")
 gbm_df <- combinar_archivos_en_df(model_files[[3]])
@@ -89,36 +76,6 @@ combinedPreds <- lm_df %>%
 
 
 fwrite(combinedPreds, "PFG/Resultados/PrediccionErrorTestEntero/combinedPreds.csv")
-
-############### CON LOS NUEVOS DATOS ################################
-
-combinar_archivos_por_id <- function(modelo, pattern, carpeta, columna_id) {
-  
-  archivos <- list.files(carpeta, pattern = pattern, full.names = TRUE)
-  lista_datos <- lapply(archivos, read.csv)
-  if (length(lista_datos) == 0) {
-    stop("No se encontraron archivos para el modelo: ", modelo)
-  }
-  datos_combinados <- lista_datos[[1]]
-  
-  for (i in 2:length(lista_datos)) {
-    datos_combinados <- merge(datos_combinados, lista_datos[[i]], by = columna_id, all = TRUE)
-  }
-  archivo_salida <- file.path(carpeta, paste0("combined_", modelo, ".csv"))
-  write.csv(datos_combinados, archivo_salida, row.names = FALSE)
-  
-  cat("Archivos combinados por '", columna_id, "' y guardados en:", archivo_salida, "\n")
-}
-
-
-combinar_archivos_por_id("lm", "_lm_tarifa", "NuevosResultados/PrediccionError/", "ID")
-combinar_archivos_por_id("gbm", "_gbm_tarifa", "NuevosResultados/PrediccionError/", "ID")
-combinar_archivos_por_id("nn", "_nn_tarifa", "NuevosResultados/PrediccionError/", "ID")
-
-
-
-
-
 
 #LEER ARCHIVOS PARA PBARRA
 feats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
