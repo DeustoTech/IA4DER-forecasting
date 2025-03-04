@@ -96,4 +96,6 @@ metadata <- fread("NUEVOS DATOS/OriginalData/metadata.csv")
 colnames(metadata)[colnames(metadata) == "user"] <- "id"
 
 allMetadata <- merge(combined, metadata, by = "id")
+column_order <- c("id", "dia", "hora", "real", setdiff(names(allMetadata), c("id", "dia", "hora", "real")))
+setcolorder(allMetadata, column_order)
 fwrite(allMetadata, "NUEVOS DATOS/DATOS ERROR CRUZ/allMetadata.csv", row.names = FALSE)

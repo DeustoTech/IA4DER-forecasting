@@ -20,7 +20,7 @@ foreach(lib = librerias) %do% {
 
 # Leer
 
-folder <- "PFG/Resultados/PrediccionErrorTestEntero"
+folder <- "PFG/NuevosResultados/PrediccionError/"
 
 # Definir una función para buscar archivos por patrón en todas las carpetas de modelos
 buscar_archivos_por_modelo <- function(folder, pattern) {
@@ -80,6 +80,7 @@ nn_df <- combinar_archivos_en_df(model_files[[5]])
 fwrite(nn_df, "PFG/Resultados/PrediccionErrorTestEntero/combined_nn.csv")
 
 
+
 combinedPreds <- lm_df %>%
   full_join(gbm_df, by = c("ID", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) %>%
   full_join(nn_df, by = c("ID", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) %>%
@@ -88,6 +89,35 @@ combinedPreds <- lm_df %>%
 
 
 fwrite(combinedPreds, "PFG/Resultados/PrediccionErrorTestEntero/combinedPreds.csv")
+
+############### CON LOS NUEVOS DATOS ################################
+
+combinar_archivos_por_id <- function(modelo, pattern, carpeta, columna_id) {
+  
+  archivos <- list.files(carpeta, pattern = pattern, full.names = TRUE)
+  lista_datos <- lapply(archivos, read.csv)
+  if (length(lista_datos) == 0) {
+    stop("No se encontraron archivos para el modelo: ", modelo)
+  }
+  datos_combinados <- lista_datos[[1]]
+  
+  for (i in 2:length(lista_datos)) {
+    datos_combinados <- merge(datos_combinados, lista_datos[[i]], by = columna_id, all = TRUE)
+  }
+  archivo_salida <- file.path(carpeta, paste0("combined_", modelo, ".csv"))
+  write.csv(datos_combinados, archivo_salida, row.names = FALSE)
+  
+  cat("Archivos combinados por '", columna_id, "' y guardados en:", archivo_salida, "\n")
+}
+
+
+combinar_archivos_por_id("lm", "_lm_tarifa", "NuevosResultados/PrediccionError/", "ID")
+combinar_archivos_por_id("gbm", "_gbm_tarifa", "NuevosResultados/PrediccionError/", "ID")
+combinar_archivos_por_id("nn", "_nn_tarifa", "NuevosResultados/PrediccionError/", "ID")
+
+
+
+
 
 
 #LEER ARCHIVOS PARA PBARRA
