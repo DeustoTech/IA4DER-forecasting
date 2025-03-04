@@ -53,7 +53,7 @@ for (col in colnames(datos)){
 
 fwrite(datos, "NUEVOS DATOS/pruebaDatos")
 #coolumnas de tarifa
-
+tarifa <- c("cnae.provincia", "cp.provincia","p1", "p2","p3","p4","p5","p6","contracted_tariff")
 
 #FUNCION LIMPIAR COLUMNAS que genera el trainset y el dataset
 limpiarColumnas <- function(trainIndex, colsDesc, target, dataset) {
