@@ -53,7 +53,6 @@ for (col in colnames(datos)){
 
 fwrite(datos, "NUEVOS DATOS/pruebaDatos")
 #coolumnas de tarifa
-tarifa <- c("cnae.provincia", "cp.provincia","p1", "p2","p3","p4","p5","p6","contracted_tariff")
 
 
 #FUNCION LIMPIAR COLUMNAS que genera el trainset y el dataset
@@ -208,7 +207,6 @@ trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 
 modelos <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 model_names <- c("lm", "rf", "gbm", "svm", "nn")
-model_names <- c("svm")
 target <- c("mean_error", "rw_error", "naive_error", "simple_error",
             "lr_error", "ann_error", "svm_error", "arima_error", "ses_error", "ens_error")
 
