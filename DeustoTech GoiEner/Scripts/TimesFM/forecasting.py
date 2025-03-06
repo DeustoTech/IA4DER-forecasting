@@ -27,7 +27,7 @@ tfm = timesfm.TimesFm(
       hparams=timesfm.TimesFmHparams(
           context_len=CONTEXT_LEN,  # Example input length
           horizon_len=HORIZON_LEN,  # Example output length
-          backend='gpu', # "cpu" si no se tiene cuda
+          backend='cpu', # "cpu" si no se tiene cuda
           per_core_batch_size=32,
           input_patch_len=32,
           output_patch_len=128,
@@ -42,8 +42,8 @@ tfm = timesfm.TimesFm(
 
 
 pipeline = chronos.BaseChronosPipeline.from_pretrained(
-    "amazon/chronos-t5-small",  # use "amazon/chronos-bolt-small" for the corresponding Chronos-Bolt model
-    device_map="cuda",  # use "cpu" for CPU inference
+    "amazon/chronos-bolt-mini",  # use "amazon/chronos-bolt-small" for the corresponding Chronos-Bolt model
+    device_map="cpu",  # use "cpu" for CPU inference
     torch_dtype=torch.bfloat16,
 )
 
