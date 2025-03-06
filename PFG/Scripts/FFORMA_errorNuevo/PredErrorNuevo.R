@@ -18,11 +18,11 @@ foreach(lib = librerias) %do% {
 
 #EJECUTAR
 metadataNew <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/allMetadataDEF.csv")
-#metadataNew <- metadataNew %>%
-#  mutate(across(
-#    .cols = starts_with("p") & matches("^p[0-9]$"), # seleccionar solo las columnas que comienzan con "p" y tienen un único número
-#    .fns = ~ifelse(is.na(.), 0, .) # reemplazar los valores NA por 0
-#  ))
+metadataNew <- metadataNew %>%
+  mutate(across(
+    .cols = starts_with("p") & matches("^p[0-9]$"), # seleccionar solo las columnas que comienzan con "p" y tienen un único número
+    .fns = ~ifelse(is.na(.), 0, .) # reemplazar los valores NA por 0
+  ))
 
 
 #combinar datos y quitar NA
@@ -46,6 +46,38 @@ for (col in colnames(datos)){
     datos[[col]] <- as.factor(datos[[col]])
   }
 }
+
+datos$cp.provincia <- as.numeric(as.character(datos$cp.provincia))
+datos$cp.provincia[is.na(datos$cp.provincia)] <- median(datos$cp.provincia, na.rm = TRUE)
+datos$cnae.provincia <- as.numeric(as.character(datos$cnae.provincia))
+datos$cnae.provincia[is.na(datos$cnae.provincia)] <- median(datos$cnae.provincia, na.rm = TRUE)
+
+setDT(datos) 
+datos <- datos[, .SD[Reduce(`&`, lapply(.SD, is.finite))]]
+
+
+numerical_columns <- c("real", "mean_pred", "rw_pred", "naive_pred", "simple_pred",
+                       "lr_pred", "ann_pred", "svm_pred", "arima_pred", "ses_pred", 
+                       "ens_pred", "mean_mape", "mean_rmse", "rw_mape", "rw_rmse", 
+                       "naive_mape", "naive_rmse", "simple_mape", "simple_rmse", 
+                       "lr_mape", "lr_rmse", "ann_mape", "ann_rmse", "svm_mape", 
+                       "svm_rmse", "arima_mape", "arima_rmse", "ses_mape", "ses_rmse", 
+                       "ens_mape", "ens_rmse")
+
+# Agrupar por id y dia y calcular la media para las columnas numéricas
+datos_reducidos <- datos %>%
+  select(-hora) %>%
+  group_by(id, dia) %>%
+  summarise(across(all_of(numerical_columns), mean, na.rm = TRUE), 
+            # Para las columnas no numéricas, mantener el primer valor
+            across(c("contract_start_date", "contracted_tariff", "self_consumption_type", 
+                     "province", "municipality", "zip_code", "cnae", "cp.provincia", "cnae.provincia"), 
+                   ~ first(.), .names = "first_{.col}")) %>%
+  ungroup()
+
+# Ver los primeros registros del dataset reducido
+head(datos_reducidos)
+
 
 
 #coolumnas de tarifa
