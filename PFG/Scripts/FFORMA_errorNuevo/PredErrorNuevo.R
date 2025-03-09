@@ -64,19 +64,13 @@ numerical_columns <- c("real", "mean_pred", "rw_pred", "naive_pred", "simple_pre
                        "svm_rmse", "arima_mape", "arima_rmse", "ses_mape", "ses_rmse", 
                        "ens_mape", "ens_rmse")
 
-# Agrupar por id y dia y calcular la media para las columnas numéricas
-datos_reducidos <- datos %>%
-  select(-hora) %>%
-  group_by(id, dia) %>%
-  summarise(across(all_of(numerical_columns), mean, na.rm = TRUE), 
-            # Para las columnas no numéricas, mantener el primer valor
-            across(c("contract_start_date", "contracted_tariff", "self_consumption_type", 
-                     "province", "municipality", "zip_code", "cnae", "cp.provincia", "cnae.provincia"), 
-                   ~ first(.), .names = "first_{.col}")) %>%
-  ungroup()
+datos <- datos %>% select (- dia, - hora)
 
-# Ver los primeros registros del dataset reducido
-head(datos_reducidos)
+non_numerical_columns <- setdiff(names(datos), c("id", numerical_columns))
+
+datos_reducidos <- datos[, c(.SD[, lapply(.SD, mean, na.rm = TRUE), .SDcols = numerical_columns],  # Media en numéricas
+                             .SD[, lapply(.SD, first), .SDcols = non_numerical_columns]),           # Primer valor en no numéricas
+                         by = id]
 
 
 
@@ -238,7 +232,7 @@ regresion_model_feats <- function(model_type, modeloE, target_variable, trainSet
     
     # Escribir el dataframe en un archivo CSV
 
-    write.csv(resultados, file = paste("NuevosResultados/PrediccionErrorNuevo/PrediccionRMSE/", "PredRmse_", modeloE, "_", model_type, "_", "tarifa", ".csv", sep = ""), row.names = FALSE)
+    write.csv(resultados, file = paste("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/", "PredMapeRed_", modeloE, "_", model_type, "_", "tarifa", ".csv", sep = ""), row.names = FALSE)
     
   
   return(resultados)
@@ -251,7 +245,7 @@ trainIndex <- sample(1:feats_nrow, index * feats_nrow)
 
 modelos <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 model_names <- c("lm", "rf", "gbm", "svm", "nn")
-model_names <- c("lm")
+model_names <- c("svm")
 target <- c("mean_mape", "rw_mape", "naive_mape", "simple_mape",
             "lr_mape", "ann_mape", "svm_mape", "arima_mape", "ses_mape", "ens_mape")
 target <- c("mean_rmse", "rw_rmse", "naive_rmse", "simple_rmse",
@@ -261,7 +255,7 @@ target <- c("mean_rmse", "rw_rmse", "naive_rmse", "simple_rmse",
 for (variable in target) {
   modeloE <- gsub("_.*$", "",variable)
   
-  datosN <- as.data.frame(datos)
+  datosN <- as.data.frame(datos_reducidos)
   datosN <- datosN %>% select(all_of(c(tarifa, "id", variable))) #seleccionar id, target y columnas de tarifa
   
   print(names(datosN))
