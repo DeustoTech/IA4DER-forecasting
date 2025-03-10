@@ -248,6 +248,7 @@ model_names <- c("lm", "rf", "gbm", "svm", "nn")
 model_names <- c("svm")
 target <- c("mean_mape", "rw_mape", "naive_mape", "simple_mape",
             "lr_mape", "ann_mape", "svm_mape", "arima_mape", "ses_mape", "ens_mape")
+target <- c("svm_mape", "arima_mape", "ses_mape", "ens_mape")
 target <- c("mean_rmse", "rw_rmse", "naive_rmse", "simple_rmse",
             "lr_rmse", "ann_rmse", "svm_rmse", "arima_rmse", "ses_rmse", "ens_rmse")
 
