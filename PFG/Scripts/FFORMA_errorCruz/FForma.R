@@ -19,7 +19,7 @@ foreach(lib = librerias) %do% {
 
 
 # Leer
-folder <- "NuevosResultados/PrediccionError/"
+folder <- "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO"
 
 # Función para buscar archivos por patrón en una carpeta (sin subcarpetas)
 buscar_archivos_por_modelo <- function(folder, pattern) {
@@ -30,9 +30,9 @@ buscar_archivos_por_modelo <- function(folder, pattern) {
 # Buscar archivos por cada modelo directamente en la carpeta base
 model_files <- list(
   lm = buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$"),
-  #rf = buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
+  rf = buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
   gbm = buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$"),
-  #svm = buscar_archivos_por_modelo(folder, "_svm_tarifa.*\\.csv$"),
+  svm = buscar_archivos_por_modelo(folder, "_svm_tarifa.*\\.csv$"),
   nn = buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
 )
 
@@ -46,7 +46,18 @@ combinar_archivos_en_df <- function(archivos_modelo) {
   combined <- Reduce(function(x, y) merge(x, y, by = "ID", all = T), lista_de_dfs[1:10])
   return(combined)
   
+}
+
+combinar_archivos_en_df <- function(archivos_modelo) {
+  lista_dfs <- lapply(archivos_modelo, fread)
+  ids_iguales <- all(sapply(lista_dfs[-1], function(df) all(df[[1]] == lista_dfs[[1]][[1]])))
+  if (!ids_iguales) {
+    stop("Los IDs no están en el mismo orden en todos los archivos.")
   }
+  lista_dfs_sin_id <- lapply(lista_dfs[-1], function(df) df[, -1, with = FALSE])
+  df_combinado <- cbind(lista_dfs[[1]], do.call(cbind, lista_dfs_sin_id))
+  return(df_combinado)
+}
   
 ## COMPROBACION ##
 prueba1 <- fread("PFG/Resultados/PrediccionError/ann/PredError_ann_lm_tarifa.csv")
@@ -56,15 +67,15 @@ mezcla <- merge(prueba1, prueba2, by="ID")
 
 
 lm_df <- combinar_archivos_en_df(model_files[[1]])
-fwrite(lm_df, "ResultadosNuevos/PrediccionError/combined_lm.csv")
+fwrite(lm_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combined_lm.csv")
 rf_df <- combinar_archivos_en_df(model_files[[2]])
-fwrite(rf_df, "PFG/Resultados/PrediccionErrorTestEntero/combined_rf.csv")
+fwrite(rf_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combined_rf.csv")
 gbm_df <- combinar_archivos_en_df(model_files[[3]])
-fwrite(gbm_df, "PFG/Resultados/PrediccionErrorTestEntero/combined_gbm.csv")
+fwrite(gbm_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combined_gbm.csv")
 svm_df <- combinar_archivos_en_df(model_files[[4]])
-fwrite(svm_df, "PFG/Resultados/PrediccionErrorTestEntero/combined_svm.csv")
+fwrite(svm_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combined_svm.csv")
 nn_df <- combinar_archivos_en_df(model_files[[5]])
-fwrite(nn_df, "PFG/Resultados/PrediccionErrorTestEntero/combined_nn.csv")
+fwrite(nn_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combined_nn.csv")
 
 
 
@@ -75,21 +86,21 @@ combinedPreds <- lm_df %>%
   full_join(rf_df, by = c("ID", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm"))
 
 
-fwrite(combinedPreds, "PFG/Resultados/PrediccionErrorTestEntero/combinedPreds.csv")
+fwrite(combinedPreds, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combinedPreds.csv")
 
 #LEER ARCHIVOS PARA PBARRA
-feats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
-combinedPreds <- fread("PFG/Resultados/PrediccionErrorTestEntero/combinedPreds.csv")
+feats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
+combinedPreds <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combinedPreds.csv")
 feats$ID <- feats$id
-feats <- feats %>% select(-id, -V1_error)
+feats <- feats %>% select(-id)
 
 #colsY <- grep("\\.y$", names(combinedPreds), value = TRUE)
 #combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsY), with = FALSE]
 #colsX <- grep("\\.x$", names(combinedPreds), value = TRUE)
 #combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsX), with = FALSE]
 
-feats$Real <- feats$real_pred
-feats <- feats %>% select(-real_pred)
+feats$Real <- feats$real
+feats <- feats %>% select(-real)
 datosCombinados <- merge(combinedPreds, feats, by = "ID")
 #fwrite(datosCombinados, "PFG/datosParaPBarra.csv")
 #datosCombinados <- fread("datosParaPBarra.csv")
@@ -166,7 +177,7 @@ for (i in 1:nrow(datosCombinados)) {
       for (modeloC in modelosC) {
         
         #en vez de predicted column hay que poner el mape de verdad
-        predicted_column <- paste(modeloC, "_error", sep = "")
+        predicted_column <- paste(modeloC, "_mape", sep = "")
         pred_median_column <- paste(modeloC, "_pred", sep = "")
         
         predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
@@ -194,12 +205,12 @@ for (i in 1:nrow(datosCombinados)) {
 }
 
 
-fwrite(pb, "PFG/Resultados/ResultadosTestEntero/pBarras.csv")
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv")
 
 
 
 #AÑADIR ENSEMBLE
-pBarra_df <- fread("PFG/Resultados/ResultadosTestEntero/pBarras.csv")
+pBarra_df <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv")
 
 # Calculamos PBarra_Ensemble para cada conjunto de features
 features <- c("tarifa")
@@ -210,11 +221,11 @@ for(feature in features){
   pBarra_df[, paste0("PBarra_Ensemble_", feature) := rowMeans(.SD, na.rm = TRUE), .SDcols = columnas] # Calcula la media y añade la nueva columna
 }
 
-fwrite(pBarra_df, "PFG/Resultados/ResultadosTestEntero/pBarras.csv", row.names = FALSE)
+fwrite(pBarra_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv", row.names = FALSE)
 
 
 #CALCULAR MAPE
-pBarra_df <- fread("PFG/Resultados/ResultadosTestEntero/pBarras.csv")
+pBarra_df <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv")
 
 calculate_mape <- function(actual, predicted) {
   error <- abs((actual - predicted) / actual) * 100
@@ -233,9 +244,9 @@ for (col in pbarra_columns) {
 
 pBarra_df <- as.data.table(pBarra_df)
 
-fwrite(pBarra_df, 'PFG/Resultados/ResultadosTestEntero/pBarrasMAPE.csv', row.names = FALSE)
+fwrite(pBarra_df, 'NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv', row.names = FALSE)
 
-pBarrasMAPE <- fread("PFG/Resultados/ResultadosTestEntero/pBarrasMAPE.csv")
+pBarrasMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
 
 summary(pBarrasMAPE)
 
