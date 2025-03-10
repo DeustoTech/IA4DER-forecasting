@@ -53,6 +53,8 @@ generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
          y = "Valor")
 }
 
+
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
 # Llamada a la función con diferentes tipos de modelo
 generar_grafico_pBarraMAPE(datosMAPE, "lm")
 generar_grafico_pBarraMAPE(datosMAPE, "rf")
@@ -66,7 +68,7 @@ generar_grafico_pBarraMAPE(datosMAPE, "RealError")
 #################################
 
 #GRAFICOS CON MAPES NORMALES Y MAPES DEL PBARRA (FUNCIONA REGULAR)
-allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
+allFeats <- fread("NUEVOS DATOS/combined_data.csv")
 
 datosMAPE_long <- datosMAPE %>%
   select(contains("MAPE")) %>%
@@ -134,8 +136,8 @@ dev.off()
 
 
 # Leer los datos
-datosMAPE <- fread("PFG/Resultados/ResultadosTestEntero/pBarrasMAPE.csv")
-allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
+allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
 
 # Combinar y transformar los datos a formato largo
 combined_long <- bind_rows(
@@ -143,12 +145,12 @@ combined_long <- bind_rows(
     select(contains("MAPE")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
   allFeats %>%
-    select(contains("error")) %>%
+    select(contains("_mape")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 )
 
 # Filtrar variables innecesarias
-combined_long <- filter(combined_long, !Variable %in% c("V1_error", "PBarra_errorMape"))
+combined_long <- filter(combined_long, !Variable %in% c( "PBarra_errorMape"))
 
 # Calcular Q1, Q3 y IQR para cada variable y filtrar outliers
 combined_long <- combined_long %>%
@@ -187,12 +189,12 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 ################################################
 
 # Leer los datos
-datosMAPE <- fread("PFG/Resultados/ResultadosTestEntero/pBarrasMAPE.csv")
-allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
+allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
 
 # Seleccionar las columnas relevantes
 datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_nn_tarifa_MAPE, PBarra_svm_tarifa_MAPE, PBarra_errorMape_MAPE, PBarra_Ensemble_tarifa_MAPE)
-allFeats <- allFeats %>% select(ens_error)
+allFeats <- allFeats %>% select(ens_mape)
 
 # Combinar y transformar los datos a formato largo
 combined_long <- bind_rows(
@@ -200,7 +202,7 @@ combined_long <- bind_rows(
     select(contains("MAPE")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
   allFeats %>%
-    select(contains("error")) %>%
+    select(contains("_mape")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 )
 
@@ -245,8 +247,8 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 ############################################
 
 # Leer los datos
-datosMAPE <- fread("PFG/Resultados/ResultadosTestEntero/pBarrasMAPE.csv")
-allFeats <- fread("PFG/NUEVOS DATOS/combined_data.csv")
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
+allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
 
 # Combinar y transformar los datos a formato largo
 combined_long <- bind_rows(
@@ -254,7 +256,7 @@ combined_long <- bind_rows(
     select(contains("MAPE")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
   allFeats %>%
-    select(contains("error")) %>%
+    select(contains("_mape")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 )
 
@@ -263,13 +265,13 @@ combined_long <- filter(combined_long, Variable != "V1_error")
 combined_long <- filter(combined_long, Variable != "PBarra_errorMape")
 
 # Iniciar el archivo PDF para los gráficos y tablas
-pdf("PFG/Resultados/ResultadosTestEntero/MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5)
+pdf("NuevosResultados/FFORMA/MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5)
 
 # Definir los grupos de modelos
 model_groups <- list(
   tarifa = grep("tarifa", combined_long$Variable, value = TRUE),
   realError = grep("errorMape_MAPE", combined_long$Variable, value = TRUE),
-  mediana = grep("_error$", combined_long$Variable, value = TRUE)
+  mediana = grep("_mape$", combined_long$Variable, value = TRUE)
 )
 
 # Iterar sobre cada grupo
