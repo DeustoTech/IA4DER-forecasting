@@ -19,7 +19,7 @@ foreach(lib = librerias) %do% {
 
 
 # Leer
-folder <- "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE"
+folder <- "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO"
 
 # Función para buscar archivos por patrón en una carpeta (sin subcarpetas)
 buscar_archivos_por_modelo <- function(folder, pattern) {
@@ -29,13 +29,24 @@ buscar_archivos_por_modelo <- function(folder, pattern) {
 
 # Buscar archivos por cada modelo directamente en la carpeta base
 model_files <- list(
-  lm = buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$")
-  #rf = buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
-  #gbm = buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$"),
-  #svm = buscar_archivos_por_modelo(folder, "_svm_tarifa.*\\.csv$"),
-  #nn = buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
+  lm = buscar_archivos_por_modelo(folder, "_lm_.*\\.csv$"),
+  rf = buscar_archivos_por_modelo(folder, "_rf_.*\\.csv$"),
+  gbm = buscar_archivos_por_modelo(folder, "_gbm_.*\\.csv$"),
+  svm = buscar_archivos_por_modelo(folder, "_svm_tarifa.*\\.csv$"),
+  nn = buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
 )
 
+# Función para leer archivos y combinarlos en un único dataframe
+combinar_archivos_en_df <- function(archivos_modelo) {
+  # Inicializar una lista para almacenar dataframes
+  lista_de_dfs <- lapply(archivos_modelo, fread)
+  #combined <- lista_de_dfs %>% bind_rows() %>% group_by(ID)
+  #combined <- combined %>% 
+  #  distinct(ID, .keep_all = TRUE)
+  combined <- Reduce(function(x, y) merge(x, y, by = "ID", all = T), lista_de_dfs[1:10])
+  return(combined)
+  
+}
 
 combinar_archivos_en_df <- function(archivos_modelo) {
   lista_dfs <- lapply(archivos_modelo, fread)
@@ -47,7 +58,7 @@ combinar_archivos_en_df <- function(archivos_modelo) {
   df_combinado <- cbind(lista_dfs[[1]], do.call(cbind, lista_dfs_sin_id))
   return(df_combinado)
 }
-  
+
 ## COMPROBACION ##
 prueba1 <- fread("PFG/Resultados/PrediccionError/ann/PredError_ann_lm_tarifa.csv")
 prueba2 <- fread("PFG/Resultados/PrediccionError/arima/PredError_arima_nn_tarifa.csv")
@@ -56,7 +67,7 @@ mezcla <- merge(prueba1, prueba2, by="ID")
 
 
 lm_df <- combinar_archivos_en_df(model_files[[1]])
-fwrite(lm_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/combined_lm.csv")
+fwrite(lm_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combined_lm.csv")
 rf_df <- combinar_archivos_en_df(model_files[[2]])
 fwrite(rf_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combined_rf.csv")
 gbm_df <- combinar_archivos_en_df(model_files[[3]])
@@ -160,37 +171,37 @@ for (i in 1:nrow(datosCombinados)) {
 
 
 for (i in 1:nrow(datosCombinados)) {
-      # Restablecer numerador y denominador para cada combinación de modeloP y feature
-      numerador <- 0
-      denominador <- 0
-      for (modeloC in modelosC) {
-        
-        #en vez de predicted column hay que poner el mape de verdad
-        predicted_column <- paste(modeloC, "_mape", sep = "")
-        pred_median_column <- paste(modeloC, "_pred", sep = "")
-        
-        predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
-        pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
-        
-        # Sumar al denominador, ignorando NA
-        if (!is.na(predicted_value)) {
-          denominador <- denominador + predicted_value
-        }
-        
-        # Sumar al numerador, solo si ambos valores no son NA
-        if (!is.na(predicted_value) && !is.na(pred_median_value)) {
-          numerador <- numerador + (predicted_value * pred_median_value)
-        }
-      }
-      
-      pBarra_name <- paste("PBarra_errorMape")
-      
-      # Asignar el valor calculado de pBarra en pb
-      if(denominador != 0) {
-        pb[i, pBarra_name] <- numerador / denominador
-      } else {
-        pb[i, pBarra_name] <- NA  # Asignar NA si el denominador es cero
-      }
+  # Restablecer numerador y denominador para cada combinación de modeloP y feature
+  numerador <- 0
+  denominador <- 0
+  for (modeloC in modelosC) {
+    
+    #en vez de predicted column hay que poner el mape de verdad
+    predicted_column <- paste(modeloC, "_mape", sep = "")
+    pred_median_column <- paste(modeloC, "_pred", sep = "")
+    
+    predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
+    pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
+    
+    # Sumar al denominador, ignorando NA
+    if (!is.na(predicted_value)) {
+      denominador <- denominador + predicted_value
+    }
+    
+    # Sumar al numerador, solo si ambos valores no son NA
+    if (!is.na(predicted_value) && !is.na(pred_median_value)) {
+      numerador <- numerador + (predicted_value * pred_median_value)
+    }
+  }
+  
+  pBarra_name <- paste("PBarra_errorMape")
+  
+  # Asignar el valor calculado de pBarra en pb
+  if(denominador != 0) {
+    pb[i, pBarra_name] <- numerador / denominador
+  } else {
+    pb[i, pBarra_name] <- NA  # Asignar NA si el denominador es cero
+  }
 }
 
 
@@ -228,7 +239,7 @@ pBarra_df <- pBarra_df %>%
 model_names <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
 pbarra_columns <- grep("PBarra", names(pBarra_df), value=TRUE)
 for (col in pbarra_columns) {
-    pBarra_df[paste0(col,"_MAPE")] <- calculate_mape(pBarra_df$Real, pBarra_df[[col]])
+  pBarra_df[paste0(col,"_MAPE")] <- calculate_mape(pBarra_df$Real, pBarra_df[[col]])
 }
 
 pBarra_df <- as.data.table(pBarra_df)

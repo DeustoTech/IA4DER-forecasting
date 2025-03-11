@@ -76,6 +76,7 @@ datos_reducidos <- datos[, c(.SD[, lapply(.SD, mean, na.rm = TRUE), .SDcols = nu
 fwrite(datos_reducidos, "NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
 
 
+
 #coolumnas de tarifa
 tarifa <- c("cnae.provincia", "cp.provincia","p1", "p2","p3","p4","p5","p6","contracted_tariff")
 
