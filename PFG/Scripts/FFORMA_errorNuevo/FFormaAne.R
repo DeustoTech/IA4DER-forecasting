@@ -36,17 +36,6 @@ model_files <- list(
   nn = buscar_archivos_por_modelo(folder, "_nn_.*\\.csv$")
 )
 
-# Función para leer archivos y combinarlos en un único dataframe
-combinar_archivos_en_df <- function(archivos_modelo) {
-  # Inicializar una lista para almacenar dataframes
-  lista_de_dfs <- lapply(archivos_modelo, fread)
-  #combined <- lista_de_dfs %>% bind_rows() %>% group_by(ID)
-  #combined <- combined %>% 
-  #  distinct(ID, .keep_all = TRUE)
-  combined <- Reduce(function(x, y) merge(x, y, by = "ID", all = T), lista_de_dfs[1:10])
-  return(combined)
-  
-}
 
 combinar_archivos_en_df <- function(archivos_modelo) {
   lista_dfs <- lapply(archivos_modelo, fread)
@@ -59,11 +48,6 @@ combinar_archivos_en_df <- function(archivos_modelo) {
   return(df_combinado)
 }
 
-## COMPROBACION ##
-prueba1 <- fread("PFG/Resultados/PrediccionError/ann/PredError_ann_lm_tarifa.csv")
-prueba2 <- fread("PFG/Resultados/PrediccionError/arima/PredError_arima_nn_tarifa.csv")
-mezcla <- merge(prueba1, prueba2, by="ID")
-##
 
 
 lm_df <- combinar_archivos_en_df(model_files[[1]])
@@ -94,17 +78,10 @@ combinedPreds <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/RED
 feats$ID <- feats$id
 feats <- feats %>% select(-id)
 
-#colsY <- grep("\\.y$", names(combinedPreds), value = TRUE)
-#combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsY), with = FALSE]
-#colsX <- grep("\\.x$", names(combinedPreds), value = TRUE)
-#combinedPreds <- combinedPreds[, !(names(combinedPreds) %in% colsX), with = FALSE]
 
 feats$Real <- feats$real
 feats <- feats %>% select(-real)
 datosCombinados <- merge(combinedPreds, feats, by = "ID")
-#fwrite(datosCombinados, "PFG/datosParaPBarra.csv")
-#datosCombinados <- fread("datosParaPBarra.csv")
-
 
 #CALCULAR P BARRA
 
