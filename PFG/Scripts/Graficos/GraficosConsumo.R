@@ -28,14 +28,14 @@ all(modelosBaseRed_clean$Real == modelosFforma_clean$Real)
 
 datos_grafico <- modelosBaseRed_clean %>%
   select(ID, Real, mean_pred, rw_pred, naive_pred, simple_pred, lr_pred, ann_pred, svm_pred, arima_pred, ses_pred, ens_pred) %>%
-  pivot_longer(cols = -c(ID, Real), names_to = "Modelo", values_to = "Prediccion") %>%
+  pivot_longer(cols = -c(ID), names_to = "Modelo", values_to = "Prediccion") %>%
   bind_rows(
     modelosFforma_clean %>%
       select(ID, Real, PBarra_lm_tarifa, PBarra_rf_tarifa, PBarra_gbm_tarifa, PBarra_nn_tarifa, PBarra_svm_tarifa, PBarra_Ensemble_tarifa) %>%
       pivot_longer(cols = -c(ID, Real), names_to = "Modelo", values_to = "Prediccion")
   )
 
-primeros_ids <- head(modelosBaseRed_clean$ID, 5)
+primeros_ids <- head(modelosBaseRed_clean$ID, 2)
 datos_filtrados <- datos_grafico %>%
   filter(ID %in% primeros_ids)
 
