@@ -17,6 +17,8 @@ modelosBaseRed$Real <- modelosBaseRed$real
 modelosBaseRed <- modelosBaseRed %>% select(ID, Real, mean_pred, rw_pred, naive_pred, simple_pred, lr_pred, ann_pred, svm_pred, arima_pred, ses_pred, ens_pred)
 modelosFforma <- modelosFforma %>% select(ID, Real, PBarra_lm_tarifa, PBarra_rf_tarifa, PBarra_gbm_tarifa, PBarra_nn_tarifa, PBarra_svm_tarifa, PBarra_Ensemble_tarifa, PBarra_errorMape)
 
+
+
 modelosFforma_clean <- modelosFforma %>%
   distinct(ID, .keep_all = TRUE)
 modelosBaseRed_clean <- modelosBaseRed %>%
