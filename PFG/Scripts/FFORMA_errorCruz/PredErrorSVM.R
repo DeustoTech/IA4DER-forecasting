@@ -263,5 +263,15 @@ for (variable in target) {
   resultados[[nameMAPE]] <- mape_values
 }
 
+X_train <- train_data %>% select(-id, -all_of(target))  # Variables predictoras
+Y_train <- train_data %>% select(all_of(paste0("log_", target))) 
+
+library(kernlab)
+
+final_model <- ksvm(as.matrix(X_train), as.matrix(Y_train), kernel = "rbfdot", 
+                    C = svm_tune$best.parameters$cost, 
+                    kpar = list(sigma = 1 / svm_tune$best.parameters$gamma))
+
+
 # ✅ Guardar resultados
 write.csv(resultados, file = "NuevosResultados/PrediccionError/PredError_SVM.csv", row.names = FALSE)
