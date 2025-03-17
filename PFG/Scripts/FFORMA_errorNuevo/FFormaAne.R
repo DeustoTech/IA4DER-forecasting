@@ -109,6 +109,7 @@ pb$Real_arima <- datosCombinados$Real_arima
 pb$Real_ses <- datosCombinados$Real_ses
 pb$Real_ens <- datosCombinados$Real_ens
 
+pb <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasPRUEBA.csv")
 
 #BUCLE QUE HACE PBARRA
 for (i in 1:nrow(datosCombinados)) {
@@ -152,6 +153,10 @@ for (i in 1:nrow(datosCombinados)) {
 ultima_fila_procesada <- max(which(!is.na(pb$PBarra_svm_tarifa)))
 print(ultima_fila_procesada)
 
+total_iterations <- (nrow(pb) - ultima_fila_procesada) * length(modelosP) * length(features)
+pb_progress <- txtProgressBar(min = 0, max = total_iterations, style = 3)
+progress_counter <- 0
+
 for (i in (ultima_fila_procesada + 1):nrow(datosCombinados)) {
   for (modeloP in modelosP) {
     for (feature in features) {
@@ -184,9 +189,24 @@ for (i in (ultima_fila_procesada + 1):nrow(datosCombinados)) {
       }
     }
   }
+  if (i %% 1000 == 0 || i == nrow(pb)) {
+    fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasPRUEBA.csv")
+  }
+  
+  # Actualizar la barra de progreso
+  progress_counter <- progress_counter + length(modelosP) * length(features)
+  setTxtProgressBar(pb_progress, progress_counter)
+  
 }
 
-fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasPRUEBA.csv")
+close(pb_progress)
+
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv")
+
+
+total_iterations <- nrow(pb) * length(modelosP) * length(features)
+pb_progress <- txtProgressBar(min = 0, max = total_iterations, style = 3)
+progress_counter <- 0
 
 for (i in 1:nrow(datosCombinados)) {
   # Restablecer numerador y denominador para cada combinación de modeloP y feature
@@ -220,6 +240,9 @@ for (i in 1:nrow(datosCombinados)) {
   } else {
     pb[i, pBarra_name] <- NA  # Asignar NA si el denominador es cero
   }
+  
+  progress_counter <- progress_counter + length(modelosP) * length(features)
+  setTxtProgressBar(pb_progress, progress_counter)
 }
 
 
@@ -267,4 +290,5 @@ fwrite(pBarra_df, 'NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasM
 pBarrasMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
 
 summary(pBarrasMAPE)
+
 
