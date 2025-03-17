@@ -123,10 +123,10 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 
 # Leer los datos
 datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
-allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
+allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 # Seleccionar las columnas relevantes
-datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_nn_tarifa_MAPE, PBarra_svm_tarifa_MAPE, PBarra_errorMape_MAPE, PBarra_Ensemble_tarifa_MAPE)
+datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_nn_tarifa_MAPE, PBarra_svm_tarifa_MAPE, PBarra_Ensemble_tarifa_MAPE)
 allFeats <- allFeats %>% select(ens_mape)
 
 # Combinar y transformar los datos a formato largo
@@ -181,7 +181,7 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 
 # Leer los datos
 datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
-allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
+allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 # Combinar y transformar los datos a formato largo
 combined_long <- bind_rows(
@@ -203,7 +203,6 @@ pdf("NuevosResultados/FFORMA/MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5
 # Definir los grupos de modelos
 model_groups <- list(
   tarifa = grep("tarifa", combined_long$Variable, value = TRUE),
-  realError = grep("errorMape_MAPE", combined_long$Variable, value = TRUE),
   mediana = grep("_mape$", combined_long$Variable, value = TRUE)
 )
 

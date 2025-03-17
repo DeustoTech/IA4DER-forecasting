@@ -73,15 +73,18 @@ combinedPreds <- lm_df %>%
 fwrite(combinedPreds, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combinedPreds.csv")
 
 #LEER ARCHIVOS PARA PBARRA
-feats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
+feats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 combinedPreds <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combinedPreds.csv")
 feats$ID <- feats$id
 feats <- feats %>% select(-id)
-
-
+feats <- feats %>% select(ID, dia, hora, real, mean_pred, rw_pred, naive_pred, simple_pred, lr_pred, ann_pred, svm_pred, arima_pred, ses_pred, ens_pred, mean_mape, rw_mape, naive_mape, simple_mape, lr_mape, ann_mape, svm_mape, arima_mape, ses_mape, ens_mape)
+combinedPreds <- combinedPreds %>% select(ID, starts_with("Real_"), starts_with("Predicted_"), starts_with("MAPE_"))
 feats$Real <- feats$real
 feats <- feats %>% select(-real)
-datosCombinados <- merge(combinedPreds, feats, by = "ID")
+
+datosCombinados <- feats %>%
+  left_join(combinedPreds, by = "ID")
+
 
 #CALCULAR P BARRA
 
@@ -146,6 +149,44 @@ for (i in 1:nrow(datosCombinados)) {
   }
 }
 
+ultima_fila_procesada <- max(which(!is.na(pb$PBarra_svm_tarifa)))
+print(ultima_fila_procesada)
+
+for (i in (ultima_fila_procesada + 1):nrow(datosCombinados)) {
+  for (modeloP in modelosP) {
+    for (feature in features) {
+      
+      numerador <- 0
+      denominador <- 0
+      
+      for (modeloC in modelosC) {
+        predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
+        pred_median_column <- paste(modeloC, "_pred", sep = "")
+        
+        predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
+        pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
+        
+        if (!is.na(predicted_value)) {
+          denominador <- denominador + predicted_value
+        }
+        
+        if (!is.na(predicted_value) && !is.na(pred_median_value)) {
+          numerador <- numerador + (predicted_value * pred_median_value)
+        }
+      }
+      
+      pBarra_name <- paste("PBarra", modeloP, feature, sep = "_")
+      
+      if (denominador != 0) {
+        pb[i, pBarra_name] <- numerador / denominador
+      } else {
+        pb[i, pBarra_name] <- NA
+      }
+    }
+  }
+}
+
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasPRUEBA.csv")
 
 for (i in 1:nrow(datosCombinados)) {
   # Restablecer numerador y denominador para cada combinación de modeloP y feature
