@@ -159,33 +159,8 @@ for (variable in target) {
   
   return(resultados)
 }
-library(foreach)
-library(doParallel)
-library(e1071)
-library(dplyr)
-library(data.table)
-library(zoo)
-library(Metrics)
 
-# Cargar datos
-metadataNew <- fread("NUEVOS DATOS/DATOS ERROR CRUZ/allMetadata.csv")
-datos <- metadataNew
 
-# Procesamiento de datos
-datos$cp.provincia <- substr(datos$zip_code, 1, 2)
-datos$cnae.provincia <- substr(datos$cnae, 1, 1)
-datos <- datos %>% select(-contract_end_date)
-
-num_cols <- names(datos)[sapply(datos, is.numeric)]
-datos[, (num_cols) := lapply(.SD, function(x) ifelse(is.na(x), mean(x, na.rm = TRUE), x)), .SDcols = num_cols]
-
-char_cols <- names(datos)[sapply(datos, is.character)]
-datos[, (char_cols) := lapply(.SD, as.factor), .SDcols = char_cols]
-
-categoricas <- c("contracted_tariff", "self_consumption_type", "province", "municipality")
-for (col in categoricas) {
-  datos[[col]] <- as.factor(datos[[col]])
-}
 
 # Variables objetivo y descriptivas
 target <- c("mean_error", "rw_error", "naive_error", "simple_error",
@@ -254,12 +229,14 @@ for (variable in target) {
 # ✅ 1. Tuneo de hiperparámetros con conjunto de validación
 formula <- as.formula(paste(paste0("log_", target), collapse = " + ", "~ . - id -", paste(target, collapse = " - ")))
 
-svm_tune <- tune(
+svm_tune <- e1071::tune(
   e1071::svm, 
-  train.x = formula, 
+  log_mean_error ~ . - id - mean_error - rw_error - naive_error - simple_error - 
+    lr_error - ann_error - svm_error - arima_error - ses_error - ens_error,
   data = val_data,
   ranges = list(gamma = 10^(-3:2), cost = 10^(-4:4))
 )
+
 best_model <- svm_tune$best.model
 print("Mejores hiperparámetros encontrados:")
 print(svm_tune$best.parameters)
