@@ -186,7 +186,7 @@ allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 # Combinar y transformar los datos a formato largo
 combined_long <- bind_rows(
   datosMAPE %>%
-    select(contains("MAPE")) %>%
+    select(contains("tarifa_MAPE")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
   allFeats %>%
     select(contains("_mape")) %>%
@@ -197,17 +197,27 @@ combined_long <- bind_rows(
 combined_long <- filter(combined_long, Variable != "V1_error")
 combined_long <- filter(combined_long, Variable != "PBarra_errorMape")
 
+# Verificar que tenemos datos
+print(paste("Total de filas en combined_long:", nrow(combined_long)))
+print(paste("Variables únicas:", paste(unique(combined_long$Variable), collapse=", ")))
+
 # Iniciar el archivo PDF para los gráficos y tablas
 pdf("NuevosResultados/FFORMA/MAPE_PBarra_Boxplots.pdf", width = 11, height = 8.5)
 
-# Definir los grupos de modelos
+# Definir los grupos de modelos - asegurarse de que los patrones coincidan con tus datos
 model_groups <- list(
-  tarifa = grep("tarifa", combined_long$Variable, value = TRUE),
-  mediana = grep("_mape$", combined_long$Variable, value = TRUE)
+  tarifa = grep("tarifa_MAPE", combined_long$Variable, value = TRUE),
+  mediana = grep("_mape", combined_long$Variable, value = TRUE)
 )
+
+# Verificar los grupos
+print("Grupos identificados:")
+print(model_groups)
 
 # Iterar sobre cada grupo
 for (group_name in names(model_groups)) {
+  print(paste("Procesando grupo:", group_name))
+  
   # Filtrar y calcular cuartiles para eliminar outliers
   vars_subset_for_plot <- combined_long %>%
     filter(Variable %in% model_groups[[group_name]]) %>%
@@ -221,6 +231,8 @@ for (group_name in names(model_groups)) {
     ) %>%
     filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
     ungroup()
+  
+  print(paste("Filas después de filtrar outliers:", nrow(vars_subset_for_plot)))
   
   # Calcular resumen estadístico
   vars_subset_for_summary <- vars_subset_for_plot %>%
@@ -237,32 +249,51 @@ for (group_name in names(model_groups)) {
   
   # Identificar la fila con la mediana más baja
   lowest_median_row <- which.min(vars_subset_for_summary$Median)
+  print(paste("Fila con mediana más baja:", lowest_median_row))
   
-  # Generar tabla con tableGrob
-  table_grob <- tableGrob(vars_subset_for_summary, rows = NULL)
-  
-  # Colorear la fila con la mediana más baja
-  table_grob <- gtable_add_grob(
-    table_grob, 
-    list(rectGrob(gp = gpar(fill = "red", alpha = 0.5))), 
-    t = lowest_median_row + 1, # +1 porque la cabecera es la primera fila
-    l = 1,
-    b = lowest_median_row + 1,
-    r = ncol(vars_subset_for_summary)
-  )
-  
-  # Dibujar el boxplot si hay datos después de eliminar outliers
+  # Generar gráfico de boxplot si hay datos
   if (nrow(vars_subset_for_plot) > 0) {
     p <- ggplot(vars_subset_for_plot, aes(x = Variable, y = MAPE)) +
       geom_boxplot() +
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
       labs(title = paste("MAPE -", group_name), x = "", y = "MAPE")
+    
+    # Imprimir explícitamente en el dispositivo PDF
     print(p)
+  } else {
+    print(paste("No hay datos para el grupo", group_name, "después de filtrar outliers"))
   }
   
-  # Nueva página para la tabla
+  # Preparar los datos de la tabla para imprimir
+  # Convertir a dataframe normal para mejor manipulación
+  summary_df <- as.data.frame(vars_subset_for_summary)
+  
+  # Formatea los números para mejor visualización
+  formatted_summary <- summary_df
+  numeric_cols <- sapply(formatted_summary, is.numeric)
+  formatted_summary[, numeric_cols] <- round(formatted_summary[, numeric_cols], 4)
+  
+  # Generar tabla con grid.table (más estable que tableGrob)
   grid.newpage()
-  grid.draw(table_grob)
+  
+  # Agregar título a la tabla
+  grid.text(paste("Resumen estadístico -", group_name), 
+            x = 0.5, y = 0.9, 
+            gp = gpar(fontsize = 14, fontface = "bold"))
+  
+  # Crear tabla usando grid.table
+  grid.table(formatted_summary, 
+             rows = NULL,
+             theme = ttheme_minimal(
+               core = list(
+                 bg_params = list(
+                   fill = c(rep("white", lowest_median_row - 1), "pink", 
+                            rep("white", nrow(formatted_summary) - lowest_median_row))
+                 ),
+                 fg_params = list(fontface = "plain")
+               ),
+               colhead = list(fg_params = list(fontface = "bold"))
+             ))
   
   # Añadir una nueva página para el siguiente grupo si no es el último
   if (group_name != tail(names(model_groups), n = 1)) {
@@ -272,8 +303,7 @@ for (group_name in names(model_groups)) {
 
 # Cerrar el archivo PDF
 dev.off()
-
-
+print("PDF generado correctamente")
 
 
 
