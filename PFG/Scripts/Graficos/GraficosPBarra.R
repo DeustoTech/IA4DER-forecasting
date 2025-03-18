@@ -305,10 +305,30 @@ for (group_name in names(model_groups)) {
 dev.off()
 print("PDF generado correctamente")
 
+### CREAR DATOS FINALES ###
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
+allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv",  mmap = FALSE)
 
+datosMAPE <- datosMAPE %>% select(ID, Real, contains("PBarra_"))
+allFeats$ID <- allFeats$id
+allFeats$Real <- allFeats$real
+allFeats <- allFeats %>% select(ID, dia, hora, Real, contains("_pred"), contains("_mape"))
 
+setDT(allFeats)
+setDT(datosMAPE)
+ids_comunes <- intersect(allFeats$ID, datosMAPE$ID)
+allFeats_filtrado <- allFeats[ID %in% ids_comunes]
+datosMAPE_filtrado <- datosMAPE[ID %in% ids_comunes]
 
+datosTODO <- merge(datosMAPE, allFeats, by = c("ID", "Real"))
 
+if (identical(allFeats_filtrado$ID, datosMAPE_filtrado$ID)) {
+  cat("✅ El orden de los IDs coincide. Podés usar cbind() tranquilo.\n")
+  df_final <- cbind(allFeats_filtrado, datosMAPE_filtrado[, -1, with = FALSE])
+  
+} else {
+  cat("El orden de los IDs no coincide. No es seguro hacer cbind().\n")
+}
 
 filtrarDataFrameMAPE <- function(data, modelo) {
 
