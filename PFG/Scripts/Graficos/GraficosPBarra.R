@@ -307,28 +307,176 @@ print("PDF generado correctamente")
 
 ### CREAR DATOS FINALES ###
 datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
-allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv",  mmap = FALSE)
+allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 datosMAPE <- datosMAPE %>% select(ID, Real, contains("PBarra_"))
 allFeats$ID <- allFeats$id
 allFeats$Real <- allFeats$real
 allFeats <- allFeats %>% select(ID, dia, hora, Real, contains("_pred"), contains("_mape"))
 
-setDT(allFeats)
-setDT(datosMAPE)
-ids_comunes <- intersect(allFeats$ID, datosMAPE$ID)
-allFeats_filtrado <- allFeats[ID %in% ids_comunes]
-datosMAPE_filtrado <- datosMAPE[ID %in% ids_comunes]
+datosMAPE[, index := 1:.N, by = .(ID, Real)]
+allFeats[, index := 1:.N, by = .(ID, Real)]
+df_merged <- merge(datosMAPE, allFeats, by = c("ID", "Real", "index"), all = FALSE)
 
-datosTODO <- merge(datosMAPE, allFeats, by = c("ID", "Real"))
+fwrite(df_merged, "NuevosResultados/FFORMA/modelosFINALES.csv")
 
-if (identical(allFeats_filtrado$ID, datosMAPE_filtrado$ID)) {
-  cat("✅ El orden de los IDs coincide. Podés usar cbind() tranquilo.\n")
-  df_final <- cbind(allFeats_filtrado, datosMAPE_filtrado[, -1, with = FALSE])
+combined_long <- bind_rows(
+  df_merged %>%
+    select(contains("MAPE"), contains("_mape")) %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
+)
+
+combined_long <- combined_long %>%
+  group_by(Variable) %>%
+  mutate(
+    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    upper_limit = Q3 + 1.5 * IQR,
+    lower_limit = Q1 - 1.5 * IQR
+  ) %>%
+  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
+  ungroup()
+
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+variables_baja_mediana <- head(medianas$Variable, 5)
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "MAPE - Análisis de Variables", x = "", y = "MAPE") +
+  guides(fill = FALSE) 
+
+
+### GRAFICO DE LINEAS ###
+df_merged[, tiempo := paste0(dia, ":", hora)]
+df_long <- melt(df_merged, id.vars = c("tiempo"), 
+                measure.vars = c("Real", "PBarra_lm_tarifa", "PBarra_rf_tarifa", 
+                                 "PBarra_gbm_tarifa", "PBarra_nn_tarifa", 
+                                 "PBarra_svm_tarifa", "PBarra_Ensemble_tarifa",
+                                 "mean_pred", "rw_pred", "naive_pred", 
+                                 "simple_pred", "lr_pred", "ann_pred", 
+                                 "svm_pred", "arima_pred", "ses_pred", "ens_pred"),
+                variable.name = "Modelo", value.name = "Valor")
+ggplot(df_long, aes(x = tiempo, y = Valor, color = Modelo, group = Modelo)) +
+  geom_line() +  
+  labs(title = "Comparación de Modelos vs Valor Real",
+       x = "Día:Hora",
+       y = "Predicción / Real",
+       color = "Modelos") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  
+
+
+df_merged <- fread("NuevosResultados/FFORMA/modelosFINALES.csv")
+
+datos_media <- df_merged %>%
+  group_by(dia, hora) %>%
+  summarise(
+    Real = mean(Real, na.rm = TRUE),
+    FFORMA_lm = mean(PBarra_lm_tarifa, na.rm = TRUE),  
+    FFORMA_rf = mean(PBarra_rf_tarifa, na.rm = TRUE),  
+    FFORMA_gbm = mean(PBarra_gbm_tarifa, na.rm = TRUE), 
+    FFORMA_nn = mean(PBarra_nn_tarifa, na.rm = TRUE),  
+    FFORMA_svm = mean(PBarra_svm_tarifa, na.rm = TRUE), 
+    FFORMA_Ensemble = mean(PBarra_Ensemble_tarifa, na.rm = TRUE),  
+    mean_pred = mean(mean_pred, na.rm = TRUE),
+    rw_pred = mean(rw_pred, na.rm = TRUE),
+    naive_pred = mean(naive_pred, na.rm = TRUE),
+    simple_pred = mean(simple_pred, na.rm = TRUE),
+    lr_pred = mean(lr_pred, na.rm = TRUE),
+    ann_pred = mean(ann_pred, na.rm = TRUE),
+    svm_pred = mean(svm_pred, na.rm = TRUE),
+    arima_pred = mean(arima_pred, na.rm = TRUE),
+    ses_pred = mean(ses_pred, na.rm = TRUE),
+    ens_pred = mean(ens_pred, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  mutate(hora = factor(hora, levels = 0:23))
+
+datos_grafico <- datos_media %>%
+  pivot_longer(cols = c(ends_with("_pred"), contains("FFORMA")), 
+               names_to = "Modelo", 
+               values_to = "Prediccion")
+
+pdf("NuevosResultados/FFORMA/modelos_finales_prediccion_media.pdf", width = 10, height = 6)
+
+for (d in unique(datos_grafico$dia)) {
   
-} else {
-  cat("El orden de los IDs no coincide. No es seguro hacer cbind().\n")
+  datos_dia <- datos_grafico %>% filter(dia == d)
+  
+  p <- ggplot(datos_dia, aes(x = hora, y = Prediccion, color = Modelo, group = Modelo)) +
+    geom_line() +
+    geom_line(aes(y = Real, group = 1), color = "black", linetype = "dashed") +  # Línea de datos reales
+    labs(title = paste("Predicciones Promedio vs Real - Día", d),
+         x = "Hora",
+         y = "Consumo Promedio (media) (kWh)") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Mejor visibilidad del eje X
+  
+  print(p)
 }
+
+dev.off()
+
+datos_mediana <- df_merged %>%
+  group_by(dia, hora) %>%
+  summarise(
+    Real = median(Real, na.rm = TRUE),
+    FFORMA_lm = median(PBarra_lm_tarifa, na.rm = TRUE),  
+    FFORMA_rf = median(PBarra_rf_tarifa, na.rm = TRUE),  
+    FFORMA_gbm = median(PBarra_gbm_tarifa, na.rm = TRUE), 
+    FFORMA_nn = median(PBarra_nn_tarifa, na.rm = TRUE),  
+    FFORMA_svm = median(PBarra_svm_tarifa, na.rm = TRUE), 
+    FFORMA_Ensemble = median(PBarra_Ensemble_tarifa, na.rm = TRUE),  
+    mean_pred = median(mean_pred, na.rm = TRUE),
+    rw_pred = median(rw_pred, na.rm = TRUE),
+    naive_pred = median(naive_pred, na.rm = TRUE),
+    simple_pred = median(simple_pred, na.rm = TRUE),
+    lr_pred = median(lr_pred, na.rm = TRUE),
+    ann_pred = median(ann_pred, na.rm = TRUE),
+    svm_pred = median(svm_pred, na.rm = TRUE),
+    arima_pred = median(arima_pred, na.rm = TRUE),
+    ses_pred = median(ses_pred, na.rm = TRUE),
+    ens_pred = median(ens_pred, na.rm = TRUE)
+  ) %>%
+  ungroup() %>%
+  mutate(hora = factor(hora, levels = 0:23))
+
+datos_grafico <- datos_mediana %>%
+  pivot_longer(cols = c(ends_with("_pred"), contains("FFORMA")), 
+               names_to = "Modelo", 
+               values_to = "Prediccion")
+
+pdf("NuevosResultados/FFORMA/modelos_finales_prediccion_mediana.pdf", width = 10, height = 6)
+
+for (d in unique(datos_grafico$dia)) {
+  
+  datos_dia <- datos_grafico %>% filter(dia == d)
+  
+  p <- ggplot(datos_dia, aes(x = hora, y = Prediccion, color = Modelo, group = Modelo)) +
+    geom_line() +
+    geom_line(aes(y = Real, group = 1), color = "black", linetype = "dashed") +  # Línea de datos reales
+    labs(title = paste("Predicciones Mediana vs Real - Día", d),
+         x = "Hora",
+         y = "Consumo Promedio (mediana) (kWh)") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Mejor visibilidad del eje X
+  
+  print(p)
+}
+
+dev.off()
+
+
+
+#######
 
 filtrarDataFrameMAPE <- function(data, modelo) {
 
