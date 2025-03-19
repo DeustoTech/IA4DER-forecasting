@@ -474,7 +474,18 @@ for (d in unique(datos_grafico$dia)) {
 
 dev.off()
 
+# Aplicar summary() a todas las columnas y convertirlo en un dataframe ordenado
+summary_table <- as.data.frame(t(summary(df_merged))) %>%
+  rownames_to_column(var = "Variable")  # Convertir nombres de fila en columna "Variable"
 
+# Renombrar columnas para claridad
+colnames(summary_table) <- c("Variable", "Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max", "NA's")
+
+# Mostrar la tabla
+print(summary_table)
+
+# Guardar como CSV para revisión
+write.csv(summary_table, "summary_table.csv", row.names = FALSE)
 
 #######
 
