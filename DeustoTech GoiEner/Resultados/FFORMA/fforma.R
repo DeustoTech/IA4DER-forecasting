@@ -17,7 +17,8 @@ BASE   <- c("mean_pred","rw_pred","naive_pred","simple_pred","lr_pred","ann_pred
 PRED   <- c("dia","hora","p","zip_code","cnae") # "contracted_tariff"
 ERRORS <- c(MAPE, RMSE)
 
-df <- fread("allMetadata_errorAne.csv")
+df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/allMetadata_errorAne.csv")
+df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/allMetadataDEF.csv") #carpeta donde lo guarda ane
 
 ## clean data
 df[sapply(df, is.infinite)] <- NA
@@ -46,8 +47,9 @@ for (e in MAPE) df[,(e):=get(e)/mmape]
 
 ## Model
 SAMPLE <- "100000"
-train  <- df[sample(.N,as.numeric(SAMPLE)),c(..PRED,..ERRORS)]
-test   <- df[sample(.N,as.numeric(SAMPLE)),c(..PRED,..BASE,"real")]
+SAMPLE <- "TODO"
+train  <- df[,c(..PRED,..ERRORS)]
+test   <- df[,c(..PRED,..BASE,"real")]
 rm(df)
 
 pdf(paste("fig/",SAMPLE,"-train-scaterplots.pdf"))
