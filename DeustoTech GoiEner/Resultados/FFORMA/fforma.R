@@ -3,6 +3,7 @@ library(caret)
 library(doFuture)
 library(scales)
 library(stringr)
+library(skimr)
 
 registerDoFuture()
 plan(multicore)
@@ -14,6 +15,8 @@ dir.create(file.path("./", "fig"),   showWarnings = FALSE)
 MAPE   <- c("mean_mape","rw_mape","naive_mape","simple_mape","lr_mape","ann_mape","svm_mape","arima_mape","ses_mape","ens_mape")
 RMSE   <- c("mean_rmse","rw_rmse","naive_rmse","simple_rmse","lr_rmse","ann_rmse","svm_rmse","arima_rmse","ses_rmse","ens_rmse")
 BASE   <- c("mean_base","rw_base","naive_base","simple_base","lr_base","ann_base","svm_base","arima_base","ses_base","ens_base")
+FF_WM  <- stringr::str_replace(BASE,"base","fforma_svn_mape_weight")
+FF_WR  <- stringr::str_replace(BASE,"base","fforma_svn_rmse_weight")
 PRED   <- c("dia","hora","p","zip_code","cnae") # "contracted_tariff"
 ERRORS <- c(MAPE, RMSE)
 
@@ -48,7 +51,7 @@ mmape <- max(df[,..MAPE],na.rm=T)
 for (e in MAPE) df[,(e):=get(e)/mmape]
 
 ## Model
-SAMPLE <- "1000"
+SAMPLE <- "10000"
 train  <- df[,c(..PRED,..ERRORS)][sample(.N,as.numeric(SAMPLE))]
 test   <- df[,c(..PRED,..BASE,"real")] #[sample(.N,2*as.numeric(SAMPLE))]
 
@@ -84,36 +87,43 @@ for (e in ERRORS)
 dev.off()
 plan(sequential)
 
-for (e in BASE)
-{
-  mm <- readRDS(paste("model/",SAMPLE,"-",stringr::str_replace(e,"base","mape"),".rds",sep=""))
-  mr <- readRDS(paste("model/",SAMPLE,"-",stringr::str_replace(e,"base","rmse"),".rds",sep=""))
+plan(multisession, workers=5)
+rm(train)
 
-  test[,(stringr::str_replace(e,"base","fforma_svn_mape_weight")):=1/predict(mm, newdata = test)]
-  test[,(stringr::str_replace(e,"base","fforma_svn_rmse_weight")):=1/predict(mr, newdata = test)]
+pre_m <- foreach (e=BASE,.combine=cbind) %dofuture% { 
+  setNames(data.table(1/predict(readRDS(paste("model/",SAMPLE,"-",stringr::str_replace(e,"base","mape"),".rds",sep="")), newdata = test)),
+          (stringr::str_replace(e,"base","fforma_svm_mape_weight")))
 }
 
-FFORMA_WM <- stringr::str_replace(BASE,"base","fforma_svn_mape_weight")
-FFORMA_WR <- stringr::str_replace(BASE,"base","fforma_svn_rmse_weight")
+fwrite(pre_m,file="fforma_svm_mape_error_prediction.csv")
 
-test[, fforma_svm_mape := rowSums(test[, ..BASE] * test[,..FFORMA_WM],na.rm=T) / rowSums(test[,..FFORMA_WM],na.rm=T)]
-test[, fforma_svm_rmse := rowSums(test[, ..BASE] * test[,..FFORMA_WR],na.rm=T) / rowSums(test[,..FFORMA_WR],na.rm=T)]
-test[, fforma_min_mape := rowSums(test[, ..BASE] * med_base_mape_weight,na.rm=T) / sum(med_base_mape_weight,na.rm=T)]
-test[, fforma_min_rmse := rowSums(test[, ..BASE] * med_base_rmse_weight,na.rm=T) / sum(med_base_rmse_weight,na.rm=T)]
+test[, fforma_svm_mape_base := rowSums(test[, ..BASE] * pre_m / rowSums(pre_m,na.rm=T),na.rm=T)]
+test[, fforma_min_mape_base := rowSums(test[, ..BASE] * med_base_mape_weight / sum(med_base_mape_weight,na.rm=T),na.rm=T)]
 
-z <- test$real != 0
-cat("RMSE FFORMA SVM MAPE","RMSE FFORMA SVM RMSE", "MAPE FFORMA SVM MAPE","MAPE FFORMA SVM RMSE","\n",  
-      sep=",",file=paste(SAMPLE,"-resultados.csv",sep=""))
-cat(sqrt(mean((test$real - test$fforma_svm_mape)*(test$real - test$fforma_svm_mape))),
-    sqrt(mean((test$real - test$fforma_svm_rmse)*(test$real - test$fforma_svm_rmse))),
-    mean(abs(test$real[z] - test$fforma_svm_mape[z])/test$real[z]),
-    mean(abs(test$real[z] - test$fforma_svm_rmse[z])/test$real[z]),"\n",
-      sep=",",file=paste(SAMPLE,"-resultados.csv",sep=""),append=T)
+for (e in c(BASE,"fforma_svm_mape_base","fforma_min_mape_base"))
+{
+  i <- paste(e,"_mape",sep="")
+  test[,(i) := as.matrix(abs(test[,"real"] - test[,..e])/test[,"real"])]
+}
+
+pdf(paste("fig/",SAMPLE,"-test-boxplot.pdf"),width=20)
+  boxplot(test[,19:30],outline=F,names=stringr::str_split_i(names(test[,19:30]),"_",i=1))
+dev.off()
 
 pdf(paste("fig/",SAMPLE,"-test-scaterplots.pdf"))
   plot(test$real,test$fforma_svm_mape,main="MAPE errors")
-  plot(test$real,test$fforma_svm_rmse,main="RMSE errors")
+  plot(test$real,test$fforma_min_mape,main="MIN errors")
 dev.off()
 
+test[sapply(test, is.infinite)] <- NA
+skim(test)
 
-
+# pre_r <- foreach (e=BASE,.combine=cbind) %dofuture% { 
+#   setNames(data.table(1/predict(readRDS(paste("model/",SAMPLE,"-",stringr::str_replace(e,"base","rmse"),".rds",sep="")), newdata = test)),
+#           (stringr::str_replace(e,"base","fforma_svm_rmse_weight")))
+# }
+# 
+# fwrite(pre_r,file="fforma_svm_rmse_error_prediction.csv")
+# 
+# test[, fforma_svm_rmse_base := rowSums(test[, ..BASE] * pre_r,na.rm=T) / rowSums(pre_r,na.rm=T)]
+# test[, fforma_min_rmse_base := rowSums(test[, ..BASE] * med_base_rmse_weight,na.rm=T) / sum(med_base_rmse_weight,na.rm=T)]
