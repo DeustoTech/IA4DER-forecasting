@@ -101,8 +101,6 @@ test[, fforma_svm_rmse := rowSums(test[, ..BASE] * test[,..FFORMA_WR],na.rm=T) /
 test[, fforma_min_mape := rowSums(test[, ..BASE] * med_base_mape_weight,na.rm=T) / sum(med_base_mape_weight,na.rm=T)]
 test[, fforma_min_rmse := rowSums(test[, ..BASE] * med_base_rmse_weight,na.rm=T) / sum(med_base_rmse_weight,na.rm=T)]
 
-fwrite(test,"prediction.csv")
-
 z <- test$real != 0
 cat("RMSE FFORMA SVM MAPE","RMSE FFORMA SVM RMSE", "MAPE FFORMA SVM MAPE","MAPE FFORMA SVM RMSE","\n",  
       sep=",",file=paste(SAMPLE,"-resultados.csv",sep=""))
