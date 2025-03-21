@@ -476,6 +476,7 @@ for (d in unique(datos_grafico$dia)) {
 
 dev.off()
 
+
 # Aplicar summary() a todas las columnas y convertirlo en un dataframe ordenado
 summary_table <- as.data.frame(t(summary(df_merged))) %>%
   rownames_to_column(var = "Variable")  # Convertir nombres de fila en columna "Variable"
