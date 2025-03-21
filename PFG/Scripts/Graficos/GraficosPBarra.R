@@ -127,7 +127,7 @@ allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 # Seleccionar las columnas relevantes
 datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_nn_tarifa_MAPE, PBarra_svm_tarifa_MAPE, PBarra_Ensemble_tarifa_MAPE)
-allFeats <- allFeats %>% select(ens_mape)
+allFeats <- allFeats %>% select(contains("_mape"))
 
 # Combinar y transformar los datos a formato largo
 combined_long <- bind_rows(
@@ -170,10 +170,12 @@ combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana
 # Generar el gráfico
 ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   geom_boxplot() +
+  stat_summary(fun = median, geom = "text", aes(label = round(..y.., 2)), 
+               vjust = -0.5, color = "black", size = 3.5) +  # Etiquetas con la mediana
   scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(title = "MAPE - Análisis de Variables Ensemble", x = "", y = "MAPE") +
-  guides(fill = FALSE) # Para no mostrar la leyenda
+  guides(fill = FALSE) 
 
 
 #Q3 + 1.5*(Q3-Q1)
@@ -317,7 +319,7 @@ allFeats <- allFeats %>% select(ID, dia, hora, Real, contains("_pred"), contains
 datosMAPE[, index := 1:.N, by = .(ID, Real)]
 allFeats[, index := 1:.N, by = .(ID, Real)]
 df_merged <- merge(datosMAPE, allFeats, by = c("ID", "Real", "index"), all = FALSE)
-
+df_merged <- df_merged %>% select(-index)
 fwrite(df_merged, "NuevosResultados/FFORMA/modelosFINALES.csv")
 
 combined_long <- bind_rows(
