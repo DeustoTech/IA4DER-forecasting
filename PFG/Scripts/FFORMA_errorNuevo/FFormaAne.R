@@ -83,6 +83,8 @@ combinedPreds <- combinedPreds %>% select(ID, starts_with("Real_"), starts_with(
 feats$Real <- feats$real
 feats <- feats %>% select(-real)
 
+combinedPreds <- combinedPreds %>% distinct(ID, .keep_all = TRUE)
+
 datosCombinados <- feats %>%
   left_join(combinedPreds, by = "ID")
 
@@ -118,14 +120,14 @@ progress_counter <- 0
 #BUCLE QUE HACE PBARRA
 for (i in 1:nrow(datosCombinados)) {
   for (modeloP in modelosP) {
-      # Restablecer numerador y denominador para cada combinación de modeloP y feature
+      # Restablecer numerador y denominador para cada combinación de modeloP 
       numerador <- 0
       denominador <- 0
       for (modeloC in modelosC) {
         
         #en vez de predicted column hay que poner el mape de verdad
-        predicted_column <- paste("Predicted", modeloC, "tarifa", modeloP, sep = "_")
-        pred_median_column <- paste(modeloC, "_pred", sep = "")
+        predicted_column <- paste("Predicted", modeloC, "tarifa", modeloP, sep = "_") #la prediccion del error
+        pred_median_column <- paste(modeloC, "_pred", sep = "") #la prediccion del consumo
         
         predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
         pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
@@ -253,3 +255,114 @@ summary(pBarrasMAPE)
 
 
 
+
+#################3 intentar nueva forma de ffroma ###############3
+setDT(datosCombinados)
+pb <- data.table(ID = datosCombinados$ID)
+
+modelosC <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
+modelosP <- c("lm", "rf", "gbm", "nn", "svm")
+
+# Precalcular todas las columnas de consumo
+pred_cols <- paste0(modelosC, "_pred")
+
+# Ahora hacemos todo el proceso vectorizado por cada modelo P:
+for (modeloP in modelosP) {
+  
+  # Construimos las columnas de MAPE para ese modeloP
+  mape_cols <- paste0("MAPE_", modelosC, "_tarifa_", modeloP)
+  
+  # Extraemos todas las columnas necesarias en una tabla auxiliar
+  aux <- datosCombinados[, c(pred_cols, mape_cols), with = FALSE]
+  
+  # Cambiar nombres para facilitar operaciones
+  setnames(aux, pred_cols, paste0("consumo_", modelosC))
+  setnames(aux, mape_cols, paste0("mape_", modelosC))
+  
+  # Calcular los pesos = 1 / mape (para cada columna de modeloC)
+  for (mc in modelosC) {
+    aux[, paste0("w_", mc) := 1 / get(paste0("mape_", mc))]
+  }
+  
+  # Numerador = sumatoria de (consumo * w)
+  numerador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("consumo_", mc)) * get(paste0("w_", mc)))) ]
+  
+  # Denominador = sumatoria de los pesos
+  denominador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("w_", mc)))) ]
+  
+  # Calcular pbarra
+  pbarra_name <- paste0("PBarra_", modeloP, "_tarifa")
+  pb[, (pbarra_name) := numerador / denominador]
+  
+  cat("Calculado PBarra para modelo", modeloP, "\n")
+}
+
+# Guardar resultados
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv")
+
+
+
+##############3 otra forma de hacer pbarra #############
+feats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+combinedPreds <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO/combinedPreds.csv")
+feats$ID <- feats$id
+feats <- feats %>% select(-id)
+feats <- feats %>% select(ID, dia, hora, real, mean_pred, rw_pred, naive_pred, simple_pred, lr_pred, ann_pred, svm_pred, arima_pred, ses_pred, ens_pred, mean_mape, rw_mape, naive_mape, simple_mape, lr_mape, ann_mape, svm_mape, arima_mape, ses_mape, ens_mape)
+combinedPreds <- combinedPreds %>% select(ID, starts_with("Real_"), starts_with("Predicted_"), starts_with("MAPE_"))
+feats$Real <- feats$real
+feats <- feats %>% select(-real)
+
+combinedPreds <- combinedPreds %>% distinct(ID, .keep_all = TRUE)
+
+datosCombinadosENTERO <- feats %>%
+  left_join(combinedPreds, by = "ID")
+
+datosCombinados <- datosCombinadosENTERO
+setDT(datosCombinados)
+cols <- c("ID", "Real", "dia", "hora", "mean_pred", "rw_pred", "naive_pred", "simple_pred", "lr_pred", "ann_pred", "svm_pred", "arima_pred", "ses_pred", "ens_pred",
+          "mean_mape", "rw_mape", "naive_mape", "simple_mape", "lr_mape", "ann_mape", "svm_mape", "arima_mape", "ses_mape", "ens_mape")
+pb <- datosCombinados[, ..cols]
+
+modelosC <- c("mean", "rw", "naive", "simple", "lr", "ann", "svm", "arima", "ses", "ens")
+modelosP <- c("lm", "rf", "gbm", "nn", "svm")
+pred_cols <- paste0(modelosC, "_pred")
+
+for (modeloP in modelosP) {
+  
+  mape_cols <- paste0("Predicted_", modelosC, "_tarifa_", modeloP)
+  #mape_cols <- paste0(modelosC, "_mape")
+  aux <- datosCombinados[, c(pred_cols, mape_cols), with = FALSE]  # Extraemos todas las columnas necesarias en una tabla auxiliar
+  
+  setnames(aux, pred_cols, paste0("consumo_", modelosC))
+  setnames(aux, mape_cols, paste0("mape_", modelosC))
+  
+  # Calcular los pesos = 1 / mape (para cada columna de modeloC)
+  for (mc in modelosC) {
+    aux[, paste0("w_", mc) := 1 / get(paste0("mape_", mc))]
+  }
+  
+  numerador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("consumo_", mc)) * get(paste0("w_", mc)))) ]
+  denominador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("w_", mc)))) ]
+  pbarra_name <- paste0("FFORMA_", modeloP, "_tarifa")
+  pb[, (pbarra_name) := numerador / denominador]
+  
+  cat("Calculado FFORMA para modelo", modeloP, "\n")
+}
+
+#añadir ensemble
+pb_cols <- paste0("FFORMA_", modelosP, "_tarifa")
+pb[, FFORMA_Ensemble_tarifa := rowMeans(.SD, na.rm = TRUE), .SDcols = pb_cols]
+
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA.csv")
+
+#calcular MAPE
+pb_cols <- paste0("FFORMA_", modelosP, "_tarifa")
+pb_cols <- c(pb_cols, "FFORMA_Ensemble_tarifa")  # También incluimos el ensemble
+
+for (col_name in pb_cols) {
+  mape_col <- paste0(col_name, "_MAPE")
+  
+  pb[, (mape_col) := abs((Real - get(col_name)) / Real) * 100]
+}
+
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA_MAPE.csv")

@@ -122,25 +122,20 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 ################################################
 
 # Leer los datos
-datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA_MAPE.csv")
 allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 # Seleccionar las columnas relevantes
-datosMAPE <- datosMAPE %>% select(PBarra_lm_tarifa_MAPE, PBarra_rf_tarifa_MAPE, PBarra_gbm_tarifa_MAPE, PBarra_nn_tarifa_MAPE, PBarra_svm_tarifa_MAPE, PBarra_Ensemble_tarifa_MAPE)
-allFeats <- allFeats %>% select(contains("_mape"))
+datosMAPE <- datosMAPE %>% select(contains("_MAPE"), contains("_mape"))
+
 
 # Combinar y transformar los datos a formato largo
 combined_long <- bind_rows(
   datosMAPE %>%
-    select(contains("MAPE")) %>%
-    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
-  allFeats %>%
-    select(contains("_mape")) %>%
+    select(contains("_MAPE"), contains("_mape")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 )
 
-# Filtrar la variable innecesaria
-combined_long <- filter(combined_long, Variable != "V1_error")
 
 # Calcular Q1, Q3, IQR y filtrar outliers
 combined_long <- combined_long %>%
@@ -170,12 +165,12 @@ combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana
 # Generar el gráfico
 ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   geom_boxplot() +
-  stat_summary(fun = median, geom = "text", aes(label = round(..y.., 2)), 
+  stat_summary(fun = median, geom = "text", aes(label = round(after_stat(y), 2)), 
                vjust = -0.5, color = "black", size = 3.5) +  # Etiquetas con la mediana
   scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(title = "MAPE - Análisis de Variables Ensemble", x = "", y = "MAPE") +
-  guides(fill = FALSE) 
+  guides(fill = none()) 
 
 
 #Q3 + 1.5*(Q3-Q1)
@@ -376,18 +371,18 @@ ggplot(df_long, aes(x = tiempo, y = Valor, color = Modelo, group = Modelo)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))  
 
 
-df_merged <- fread("NuevosResultados/FFORMA/modelosFINALES.csv")
+df_merged <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA_MAPE.csv")
 
 datos_media <- df_merged %>%
   group_by(dia, hora) %>%
   summarise(
     Real = mean(Real, na.rm = TRUE),
-    FFORMA_lm = mean(PBarra_lm_tarifa, na.rm = TRUE),  
-    FFORMA_rf = mean(PBarra_rf_tarifa, na.rm = TRUE),  
-    FFORMA_gbm = mean(PBarra_gbm_tarifa, na.rm = TRUE), 
-    FFORMA_nn = mean(PBarra_nn_tarifa, na.rm = TRUE),  
-    FFORMA_svm = mean(PBarra_svm_tarifa, na.rm = TRUE), 
-    FFORMA_Ensemble = mean(PBarra_Ensemble_tarifa, na.rm = TRUE),  
+    FFORMA_lm = mean(FFORMA_lm_tarifa, na.rm = TRUE),  
+    FFORMA_rf = mean(FFORMA_rf_tarifa, na.rm = TRUE),  
+    FFORMA_gbm = mean(FFORMA_gbm_tarifa, na.rm = TRUE), 
+    FFORMA_nn = mean(FFORMA_nn_tarifa, na.rm = TRUE),  
+    FFORMA_svm = mean(FFORMA_svm_tarifa, na.rm = TRUE), 
+    FFORMA_Ensemble = mean(FFORMA_Ensemble_tarifa, na.rm = TRUE),  
     mean_pred = mean(mean_pred, na.rm = TRUE),
     rw_pred = mean(rw_pred, na.rm = TRUE),
     naive_pred = mean(naive_pred, na.rm = TRUE),
@@ -431,12 +426,12 @@ datos_mediana <- df_merged %>%
   group_by(dia, hora) %>%
   summarise(
     Real = median(Real, na.rm = TRUE),
-    FFORMA_lm = median(PBarra_lm_tarifa, na.rm = TRUE),  
-    FFORMA_rf = median(PBarra_rf_tarifa, na.rm = TRUE),  
-    FFORMA_gbm = median(PBarra_gbm_tarifa, na.rm = TRUE), 
-    FFORMA_nn = median(PBarra_nn_tarifa, na.rm = TRUE),  
-    FFORMA_svm = median(PBarra_svm_tarifa, na.rm = TRUE), 
-    FFORMA_Ensemble = median(PBarra_Ensemble_tarifa, na.rm = TRUE),  
+    FFORMA_lm = median(FFORMA_lm_tarifa, na.rm = TRUE),  
+    FFORMA_rf = median(FFORMA_rf_tarifa, na.rm = TRUE),  
+    FFORMA_gbm = median(FFORMA_gbm_tarifa, na.rm = TRUE), 
+    FFORMA_nn = median(FFORMA_nn_tarifa, na.rm = TRUE),  
+    FFORMA_svm = median(FFORMA_svm_tarifa, na.rm = TRUE), 
+    FFORMA_Ensemble = median(FFORMA_Ensemble_tarifa, na.rm = TRUE),  
     mean_pred = median(mean_pred, na.rm = TRUE),
     rw_pred = median(rw_pred, na.rm = TRUE),
     naive_pred = median(naive_pred, na.rm = TRUE),
@@ -477,18 +472,30 @@ for (d in unique(datos_grafico$dia)) {
 dev.off()
 
 
-# Aplicar summary() a todas las columnas y convertirlo en un dataframe ordenado
-summary_table <- as.data.frame(t(summary(df_merged))) %>%
-  rownames_to_column(var = "Variable")  # Convertir nombres de fila en columna "Variable"
+########## tabla resultados ############
+cols_mape <- grep("(_mape|_MAPE)$", names(df_merged), value = TRUE)
+resumen_list <- lapply(cols_mape, function(col) {
+  valores <- df_merged[[col]]
+  q1 <- quantile(valores, 0.25, na.rm = TRUE)
+  q3 <- quantile(valores, 0.75, na.rm = TRUE)
+  limite_sup <- q3 + 1.5 * (q3 - q1)
+  valores_filtrados <- valores[valores <= limite_sup]
+  data.table(
+    variable = col,
+    mean = mean(valores_filtrados, na.rm = TRUE),
+    sd = sd(valores_filtrados, na.rm = TRUE),
+    p0 = quantile(valores_filtrados, 0, na.rm = TRUE),
+    p25 = quantile(valores_filtrados, 0.25, na.rm = TRUE),
+    median = quantile(valores_filtrados, 0.5, na.rm = TRUE),
+    p75 = quantile(valores_filtrados, 0.75, na.rm = TRUE),
+    p100 = quantile(valores_filtrados, 1, na.rm = TRUE),
+    outliers_eliminados = sum(valores > limite_sup, na.rm = TRUE)
+  )
+})
+summary_modelosFINALES <- rbindlist(resumen_list)
+fwrite(summary_modelosFINALES, "NuevosResultados/FFORMA/summary_modelosFINALES.csv")
+print(summary_modelosFINALES)
 
-# Renombrar columnas para claridad
-colnames(summary_table) <- c("Variable", "Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max", "NA's")
-
-# Mostrar la tabla
-print(summary_table)
-
-# Guardar como CSV para revisión
-write.csv(summary_table, "summary_table.csv", row.names = FALSE)
 
 #######
 
