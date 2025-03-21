@@ -329,8 +329,8 @@ pred_cols <- paste0(modelosC, "_pred")
 
 for (modeloP in modelosP) {
   
-  mape_cols <- paste0("Predicted_", modelosC, "_tarifa_", modeloP)
-  #mape_cols <- paste0(modelosC, "_mape")
+  mape_cols <- paste0("Predicted_", modelosC, "_tarifa_", modeloP) #prediccion del error
+  #mape_cols <- paste0(modelosC, "_mape") #error normal
   aux <- datosCombinados[, c(pred_cols, mape_cols), with = FALSE]  # Extraemos todas las columnas necesarias en una tabla auxiliar
   
   setnames(aux, pred_cols, paste0("consumo_", modelosC))
