@@ -110,19 +110,21 @@ pb$Real_arima <- datosCombinados$Real_arima
 pb$Real_ses <- datosCombinados$Real_ses
 pb$Real_ens <- datosCombinados$Real_ens
 
-pb <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasPRUEBA.csv")
+
+total_iterations <- nrow(pb) * length(modelosP) * length(modelosC)
+pb_progress <- txtProgressBar(min = 0, max = total_iterations, style = 3)
+progress_counter <- 0
 
 #BUCLE QUE HACE PBARRA
 for (i in 1:nrow(datosCombinados)) {
   for (modeloP in modelosP) {
-    for (feature in features) {
       # Restablecer numerador y denominador para cada combinación de modeloP y feature
       numerador <- 0
       denominador <- 0
       for (modeloC in modelosC) {
         
         #en vez de predicted column hay que poner el mape de verdad
-        predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
+        predicted_column <- paste("Predicted", modeloC, "tarifa", modeloP, sep = "_")
         pred_median_column <- paste(modeloC, "_pred", sep = "")
         
         predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
@@ -130,16 +132,16 @@ for (i in 1:nrow(datosCombinados)) {
         
         # Sumar al denominador, ignorando NA
         if (!is.na(predicted_value)) {
-          denominador <- denominador + predicted_value
+          denominador <- denominador + (predicted_value ^ -1)
         }
         
         # Sumar al numerador, solo si ambos valores no son NA
         if (!is.na(predicted_value) && !is.na(pred_median_value)) {
-          numerador <- numerador + (predicted_value * pred_median_value)
+          numerador <- numerador + ((predicted_value ^ -1) * pred_median_value)
         }
       }
       
-      pBarra_name <- paste("PBarra", modeloP, feature, sep = "_")
+      pBarra_name <- paste("PBarra", modeloP, "tarifa", sep = "_")
       
       # Asignar el valor calculado de pBarra en pb
       if(denominador != 0) {
@@ -147,64 +149,21 @@ for (i in 1:nrow(datosCombinados)) {
       } else {
         pb[i, pBarra_name] <- NA  # Asignar NA si el denominador es cero
       }
-    }
-  }
-}
-
-ultima_fila_procesada <- max(which(!is.na(pb$PBarra_svm_tarifa)))
-print(ultima_fila_procesada)
-
-total_iterations <- (nrow(pb) - ultima_fila_procesada) * length(modelosP) * length(features)
-pb_progress <- txtProgressBar(min = 0, max = total_iterations, style = 3)
-progress_counter <- 0
-
-for (i in (ultima_fila_procesada + 1):nrow(datosCombinados)) {
-  for (modeloP in modelosP) {
-    for (feature in features) {
-      
-      numerador <- 0
-      denominador <- 0
-      
-      for (modeloC in modelosC) {
-        predicted_column <- paste("Predicted", modeloC, feature, modeloP, sep = "_")
-        pred_median_column <- paste(modeloC, "_pred", sep = "")
-        
-        predicted_value <- datosCombinados[i, ..predicted_column, with = FALSE][[1]]
-        pred_median_value <- datosCombinados[i, ..pred_median_column, with = FALSE][[1]]
-        
-        if (!is.na(predicted_value)) {
-          denominador <- denominador + predicted_value
-        }
-        
-        if (!is.na(predicted_value) && !is.na(pred_median_value)) {
-          numerador <- numerador + (predicted_value * pred_median_value)
-        }
-      }
-      
-      pBarra_name <- paste("PBarra", modeloP, feature, sep = "_")
-      
-      if (denominador != 0) {
-        pb[i, pBarra_name] <- numerador / denominador
-      } else {
-        pb[i, pBarra_name] <- NA
-      }
-    }
   }
   if (i %% 1000 == 0 || i == nrow(pb)) {
-    fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasPRUEBA.csv")
+    fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv")
   }
   
   # Actualizar la barra de progreso
   progress_counter <- progress_counter + length(modelosP) * length(features)
   setTxtProgressBar(pb_progress, progress_counter)
-  
 }
 
 close(pb_progress)
 
 fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarras.csv")
 
-
+ultima_fila <- max(which(is.na(pb$PBarra_lm_tarifa)))
 total_iterations <- nrow(pb) * length(modelosP) * length(features)
 pb_progress <- txtProgressBar(min = 0, max = total_iterations, style = 3)
 progress_counter <- 0
