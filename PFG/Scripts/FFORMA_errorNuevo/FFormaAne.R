@@ -252,3 +252,4 @@ pBarrasMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarr
 summary(pBarrasMAPE)
 
 
+
