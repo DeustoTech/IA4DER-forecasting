@@ -3,7 +3,23 @@
 library(foreach)
 library(doParallel)
 
+librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
+               "forecast", "Metrics", "fable", "data.table", "xts", 
+               "future", "foreach", "doParallel", "RSNNS", "TTR", 
+               "quantmod", "car", "e1071", "nnet", "tools", "doFuture", 
+               "neuralnet", "gbm", "randomForest", "mice", "mltools", "zoo",
+               "scales", "stringr", "skimr")
 
+# Comprobar qué paquetes no están instalados
+paquetes_faltantes <- librerias[!(librerias %in% installed.packages()[, "Package"])]
+
+# Instalar los paquetes que faltan
+if (length(paquetes_faltantes) > 0) {
+  install.packages(paquetes_faltantes)
+}
+
+# Cargar todos los paquetes
+invisible(lapply(librerias, library, character.only = TRUE))
 # añadir las librerias nuevas en este vector
 
 librerias <- c("ggplot2", "lattice", "caret", "fpp3", "class",
@@ -16,9 +32,14 @@ foreach(lib = librerias) %do% {
   library(lib, character.only = TRUE)
 }
 
-library(scales)
-library(stringr)
-library(skimr)
+library(data.table)
+library(mlr3)
+library(mlr3learners)
+library(mlr3tuning)
+library(mlr3verse)
+library(paradox)
+library(xgboost)
+library(kknn)
 
 #EJECUTAR
 metadataNew <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/allMetadataDEF.csv")
@@ -72,24 +93,23 @@ df <- df[, !cols_na_threshold, with = FALSE]
 
 fwrite(df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO2/preds_MAPE_reducido.csv")
 
+
+###############
+
+df <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO2/preds_MAPE_reducido.csv")
+
 target <- "mean_mape"
 
-library(data.table)
-library(mlr3)
-library(mlr3learners)
-library(mlr3tuning)
-library(mlr3verse)
-library(paradox)
-library(xgboost)
-library(kknn)
 
 features <- setdiff(
   names(df), 
-  c("id", "dia", "real", grep("_pred", names(df), value = TRUE), grep("_mape", names(df), value = TRUE), target)
+  c( grep("_pred", names(df), value = TRUE), grep("_mape", names(df), value = TRUE), target)
 )
 
 dataset_modelo <- df[, c(features, target), with = FALSE]
 dataset_modelo <- dataset_modelo[, lapply(.SD, function(x) ifelse(is.na(x), median(x, na.rm = TRUE), x))]
+id_column <- dataset_modelo$id
+dataset_modelo <- dataset_modelo[, !"id", with = FALSE]
 dataset_modelo <- dataset_modelo[, lapply(.SD, function(x) if (is.character(x)) as.factor(x) else x)]
 dataset_modelo <- dataset_modelo[, lapply(.SD, function(x) {
   if (is.character(x) || is.factor(x)) {
@@ -98,12 +118,15 @@ dataset_modelo <- dataset_modelo[, lapply(.SD, function(x) {
     x
   }
 })]
+dataset_modelo$id <- id_column
+
+################3
 
 task <- TaskRegr$new(id = "predict_mape", backend = dataset_modelo, target = target)
 learners <- list(
   lrn("regr.ranger", id = "RandomForest"),
   lrn("regr.xgboost", id = "XGBoost"),
-  lrn("regr.svm", id = "SVM"),
+  #lrn("regr.svm", id = "SVM"),
   lrn("regr.kknn", id = "KNN"),
   lrn("regr.lm", id = "LinearRegression")
 )
@@ -149,16 +172,97 @@ auto_tuner_rf$train(task)
 auto_tuner_rf$archive
 
 
+task <- TaskRegr$new(id = "predict_mape", backend = dataset_modelo, target = target)
+
+# ------------ 3. Entrenar un modelo final (Random Forest) y predecir --------------
+learner_rf <- lrn("regr.xgboost", id = "XGBoost")
+learner_rf$train(task)
+pred_rf <- learner_rf$predict(task)
+
+# ------------ 4. Guardar resultados en CSV --------------
+resultados <- data.table(
+  id = dataset_modelo$id,
+  dia = dataset_modelo$dia,
+  real = dataset_modelo$real,
+  Predicted_mape_mean = pred_rf$response,
+  Error_mape_mean = abs(pred_rf$response - dataset_modelo$mean_mape)
+)
+
+fwrite(resultados, "resultados_mape_mean.csv")
+
+
+#############3
+
+dataset_modelo <- dataset_modelo[1:15000, ]
+
+task <- TaskRegr$new(id = "predict_mape", backend = dataset_modelo, target = target)
+
+tune_and_train <- function(learner_id, search_space, file_name) {
+  learner <- lrn(learner_id)
+  at <- AutoTuner$new(
+    learner = learner,
+    resampling = rsmp("holdout"),  # tuning rápido
+    measure = msr("regr.mape"),   # Usar MAPE como métrica de evaluación
+    search_space = search_space,
+    tuner = tnr("random_search"),
+    terminator = trm("evals", n_evals = 10)  # tuning rápido
+  )
+  
+  at$train(task)
+  pred <- at$predict(task)
+  
+  resultados <- data.table(
+    id = dataset_modelo$id,
+    dia = dataset_modelo$dia,
+    real = dataset_modelo$real,
+    predicted_mape_mean = pred$response,
+    error_mape_mean = abs((pred$response - dataset_modelo$mean_mape) / dataset_modelo$mean_mape) * 100
+  )
+  
+  fwrite(resultados, file_name)
+}
+
+# Random Forest
+tune_and_train("regr.ranger", ps(
+  mtry = p_int(1, length(features)),
+  min.node.size = p_int(1, 10),
+  num.trees = p_int(100, 300)
+), "resultados_rf.csv")
+
+# XGBoost
+tune_and_train("regr.xgboost", ps(
+  eta = p_dbl(0.01, 0.3),
+  max_depth = p_int(3, 8),
+  nrounds = p_int(50, 150)
+), "resultados_xgboost.csv")
+
+# SVM
+tune_and_train("regr.svm", ps(
+  cost = p_dbl(0.1, 10),
+  gamma = p_dbl(0.01, 0.1)
+), "resultados_svm.csv")
+
+# KNN
+tune_and_train("regr.kknn", ps(
+  k = p_int(3, 15)
+), "resultados_knn.csv")
+
+# Linear Regression (sin tuning, solo entrenamiento directo)
+learner_lm <- lrn("regr.lm")
+learner_lm$train(task)
+pred_lm <- learner_lm$predict(task)
+resultados_lm <- data.table(
+  id = datos_reducidos$id,
+  dia = datos_reducidos$dia,
+  real = datos_reducidos$real,
+  predicted_mape_mean = pred_lm$response,
+  error_mape_mean = abs((pred_lm$response - datos_reducidos$mean_mape) / datos_reducidos$mean_mape) * 100
+)
+fwrite(resultados_lm, "resultados_linear_regression.csv")
 
 
 
-
-
-
-
-
-
-
+##############3
 
 df_model <- df[, c(features, target), with = FALSE]
 
