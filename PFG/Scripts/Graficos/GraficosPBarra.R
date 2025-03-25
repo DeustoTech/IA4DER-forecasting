@@ -15,7 +15,6 @@ foreach(lib = librerias) %do% {
 }
 
 
-
 ############ GRAFICOS INDIVIDUALES #############
 
 generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
