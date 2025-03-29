@@ -15,114 +15,8 @@ foreach(lib = librerias) %do% {
 }
 
 
-############ GRAFICOS INDIVIDUALES #############
-
-generar_grafico_pBarraMAPE <- function(data, tipo_modelo) {
-  # Definimos las columnas basadas en el tipo de modelo
-  columnas <- switch(tipo_modelo,
-                     "lm" = c("PBarra_lm_tarifa_MAPE"),
-                     "rf" = c("PBarra_rf_tarifa_MAPE"),
-                     "gbm" = c("PBarra_gbm_tarifa_MAPE"),
-                     "nn" = c("PBarra_nn_tarifa_MAPE"),
-                     "svm" = c("PBarra_svm_tarifa_MAPE"),
-                     "Ensemble" = c("PBarra_Ensemble_tarifa_MAPE"),
-                     "RealError" = c("PBarra_errorMape_MAPE"),
-                     stop("Tipo de modelo no reconocido"))
-  
-  # Filtrar los datos utilizando el criterio Q3 + 1.5 * IQR para los outliers
-  data_filtrado <- data %>%
-    mutate(across(all_of(columnas), function(x) {
-      Q1 <- quantile(x, 0.25, na.rm = TRUE)
-      Q3 <- quantile(x, 0.75, na.rm = TRUE)
-      IQR <- Q3 - Q1
-      upper_limit <- Q3 + 1.5 * IQR
-      lower_limit <- Q1 - 1.5 * IQR
-      ifelse(x > upper_limit | x < lower_limit, NA, x)
-    }))
-  
-  # Preparar los datos para el gráfico
-  data_melt <- reshape2::melt(data_filtrado, measure.vars = columnas, na.rm = TRUE)
-  
-  # Generar el gráfico
-  ggplot(data_melt, aes(x = variable, y = value)) +
-    geom_boxplot() +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-    labs(title = paste("PBarra del modelo", tipo_modelo),
-         x = "Variable",
-         y = "Valor")
-}
-
-
-datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
-# Llamada a la función con diferentes tipos de modelo
-generar_grafico_pBarraMAPE(datosMAPE, "lm")
-generar_grafico_pBarraMAPE(datosMAPE, "rf")
-generar_grafico_pBarraMAPE(datosMAPE, "gbm")
-generar_grafico_pBarraMAPE(datosMAPE, "nn")
-generar_grafico_pBarraMAPE(datosMAPE, "svm")
-generar_grafico_pBarraMAPE(datosMAPE, "Ensemble")
-generar_grafico_pBarraMAPE(datosMAPE, "RealError")
-
-
-######################################
-
-
-# Leer los datos
-datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
-allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE_reducido.csv")
-
-# Combinar y transformar los datos a formato largo
-combined_long <- bind_rows(
-  datosMAPE %>%
-    select(contains("MAPE")) %>%
-    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE"),
-  allFeats %>%
-    select(contains("_mape")) %>%
-    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
-)
-
-# Filtrar variables innecesarias
-combined_long <- filter(combined_long, !Variable %in% c( "PBarra_errorMape"))
-
-# Calcular Q1, Q3 y IQR para cada variable y filtrar outliers
-combined_long <- combined_long %>%
-  group_by(Variable) %>%
-  mutate(
-    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
-    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
-    IQR = Q3 - Q1,
-    upper_limit = Q3 + 1.5 * IQR,
-    lower_limit = Q1 - 1.5 * IQR
-  ) %>%
-  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
-  ungroup()
-
-# Calcular las medianas
-medianas <- combined_long %>%
-  group_by(Variable) %>%
-  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
-  arrange(Mediana)
-
-# Seleccionar las variables con la mediana más baja
-variables_baja_mediana <- head(medianas$Variable, 5)
-
-# Asignar colores en función de las variables con mediana más baja
-combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
-
-# Generar el gráfico
-ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
-  geom_boxplot() +
-  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "MAPE - Análisis de Variables", x = "", y = "MAPE") +
-  guides(fill = FALSE) # Para no mostrar la leyenda
-
-
-################################################
-
 # Leer los datos
 datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA_MAPE.csv")
-allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 # Seleccionar las columnas relevantes
 datosMAPE <- datosMAPE %>% select(contains("_MAPE"), contains("_mape"))
@@ -134,7 +28,6 @@ combined_long <- bind_rows(
     select(contains("_MAPE"), contains("_mape")) %>%
     pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
 )
-
 
 # Calcular Q1, Q3, IQR y filtrar outliers
 combined_long <- combined_long %>%
@@ -169,7 +62,7 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(title = "MAPE - Análisis de Variables Ensemble", x = "", y = "MAPE") +
-  guides(fill = none()) 
+  guides(fill = "none") 
 
 
 #Q3 + 1.5*(Q3-Q1)
@@ -302,7 +195,7 @@ dev.off()
 print("PDF generado correctamente")
 
 ### CREAR DATOS FINALES ###
-datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA_MAPE.csv")
 allFeats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 datosMAPE <- datosMAPE %>% select(ID, Real, contains("PBarra_"))
@@ -351,37 +244,17 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 
 
 ### GRAFICO DE LINEAS ###
-df_merged[, tiempo := paste0(dia, ":", hora)]
-df_long <- melt(df_merged, id.vars = c("tiempo"), 
-                measure.vars = c("Real", "PBarra_lm_tarifa", "PBarra_rf_tarifa", 
-                                 "PBarra_gbm_tarifa", "PBarra_nn_tarifa", 
-                                 "PBarra_svm_tarifa", "PBarra_Ensemble_tarifa",
-                                 "mean_pred", "rw_pred", "naive_pred", 
-                                 "simple_pred", "lr_pred", "ann_pred", 
-                                 "svm_pred", "arima_pred", "ses_pred", "ens_pred"),
-                variable.name = "Modelo", value.name = "Valor")
-ggplot(df_long, aes(x = tiempo, y = Valor, color = Modelo, group = Modelo)) +
-  geom_line() +  
-  labs(title = "Comparación de Modelos vs Valor Real",
-       x = "Día:Hora",
-       y = "Predicción / Real",
-       color = "Modelos") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))  
-
-
 df_merged <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA_MAPE.csv")
 
 datos_media <- df_merged %>%
   group_by(dia, hora) %>%
   summarise(
     Real = mean(Real, na.rm = TRUE),
-    FFORMA_lm = mean(FFORMA_lm_tarifa, na.rm = TRUE),  
-    FFORMA_rf = mean(FFORMA_rf_tarifa, na.rm = TRUE),  
-    FFORMA_gbm = mean(FFORMA_gbm_tarifa, na.rm = TRUE), 
-    FFORMA_nn = mean(FFORMA_nn_tarifa, na.rm = TRUE),  
-    FFORMA_svm = mean(FFORMA_svm_tarifa, na.rm = TRUE), 
-    FFORMA_Ensemble = mean(FFORMA_Ensemble_tarifa, na.rm = TRUE),  
+    FFORMA_lm = mean(FFORMA_lm, na.rm = TRUE),  
+    FFORMA_rf = mean(FFORMA_rf, na.rm = TRUE),  
+    FFORMA_xgboost = mean(FFORMA_xgboost, na.rm = TRUE), 
+    FFORMA_knn = mean(FFORMA_knn, na.rm = TRUE),  
+    FFORMA_Ensemble = mean(FFORMA_Ensemble, na.rm = TRUE),  
     mean_pred = mean(mean_pred, na.rm = TRUE),
     rw_pred = mean(rw_pred, na.rm = TRUE),
     naive_pred = mean(naive_pred, na.rm = TRUE),
@@ -425,12 +298,11 @@ datos_mediana <- df_merged %>%
   group_by(dia, hora) %>%
   summarise(
     Real = median(Real, na.rm = TRUE),
-    FFORMA_lm = median(FFORMA_lm_tarifa, na.rm = TRUE),  
-    FFORMA_rf = median(FFORMA_rf_tarifa, na.rm = TRUE),  
-    FFORMA_gbm = median(FFORMA_gbm_tarifa, na.rm = TRUE), 
-    FFORMA_nn = median(FFORMA_nn_tarifa, na.rm = TRUE),  
-    FFORMA_svm = median(FFORMA_svm_tarifa, na.rm = TRUE), 
-    FFORMA_Ensemble = median(FFORMA_Ensemble_tarifa, na.rm = TRUE),  
+    FFORMA_lm = median(FFORMA_lm, na.rm = TRUE),  
+    FFORMA_rf = median(FFORMA_rf, na.rm = TRUE),  
+    FFORMA_xgboost = median(FFORMA_xgboost, na.rm = TRUE), 
+    FFORMA_knn = median(FFORMA_knn, na.rm = TRUE),  
+    FFORMA_Ensemble = median(FFORMA_Ensemble, na.rm = TRUE),  
     mean_pred = median(mean_pred, na.rm = TRUE),
     rw_pred = median(rw_pred, na.rm = TRUE),
     naive_pred = median(naive_pred, na.rm = TRUE),
