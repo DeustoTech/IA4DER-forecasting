@@ -16,7 +16,7 @@ foreach(lib = librerias) %do% {
 
 
 # Leer los datos
-datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/FFORMA_MAPE.csv")
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/FFORMA_MAPE.csv")
 
 # Seleccionar las columnas relevantes
 datosMAPE <- datosMAPE %>% select(contains("_MAPE"), contains("_mape"))
