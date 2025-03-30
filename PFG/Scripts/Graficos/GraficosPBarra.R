@@ -15,8 +15,9 @@ foreach(lib = librerias) %do% {
 }
 
 
+#GRAFICO PARA MODELOS BASE Y FFORMA QUE ESTAN EN EL MISMO ARCHIVO
 # Leer los datos
-datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/FFORMA_MAPE.csv")
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
 
 # Seleccionar las columnas relevantes
 datosMAPE <- datosMAPE %>% select(contains("_MAPE"), contains("_mape"))
@@ -67,6 +68,158 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 
 #Q3 + 1.5*(Q3-Q1)
 ############################################
+#GRAFICO PARA MODELOS BASE Y FFORMA QUE ESTAN EN EL MISMO ARCHIVO + MODELOS FINETUNING Y ETC
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+datosMAPE <- datosMAPE %>% select(contains("_MAPE"), contains("_mape"))
+
+combined_long <- bind_rows(
+  datosMAPE %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
+)
+
+archivos <- c(
+  "bolt_mini_fixed_errors.csv", "bolt_tiny_fixed_errors.csv", "chronos_t5_small_fixed_errors.csv", 
+  "timesfm_fixed_errors.csv"
+)
+
+ruta_archivos <- "NuevosResultados/TimesFM/errores/"
+
+for (archivo in archivos) {
+  df <- fread(file.path(ruta_archivos, archivo))
+  nombre_variable <- gsub("_errors.csv", "", archivo)
+  df_largo <- df %>%
+    select(mape) %>%
+    mutate(Variable = nombre_variable) %>%
+    rename(MAPE = mape)
+  combined_long <- bind_rows(combined_long, df_largo)
+}
+
+for (archivo in archivos) {
+  df <- fread(file.path(ruta_archivos, archivo))
+  nombre_variable <- gsub("_errors.csv", "", archivo)
+  df_largo <- df %>%
+    select(mape) %>%
+    mutate(Variable = nombre_variable) %>%
+    rename(MAPE = mape)
+  combined_long <- bind_rows(combined_long, df_largo)
+}
+
+combined_long <- combined_long %>%
+  group_by(Variable) %>%
+  mutate(
+    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    upper_limit = Q3 + 1.5 * IQR,
+    lower_limit = Q1 - 1.5 * IQR
+  ) %>%
+  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
+  ungroup()
+
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+variables_baja_mediana <- head(medianas$Variable, 1)
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  stat_summary(fun = median, geom = "text", aes(label = round(after_stat(y), 2)),
+               vjust = -0.5, color = "black", size = 3.5) +
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "MAPE - Análisis de Variables Ensemble", x = "", y = "MAPE") +
+  guides(fill = "none")
+
+
+##########################################
+#REPETICION DE LO ANTERIOR PERO ORDENANDO COLUMNAS
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+datosMAPE <- datosMAPE %>% select(contains("_MAPE"), contains("_mape"))
+
+# Transformar datosMAPE a formato largo
+combined_long <- datosMAPE %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE") %>%
+  mutate(Origen = ifelse(grepl("^.*_mape$", Variable), "Base", "FFORMA"))
+
+# Leer archivos adicionales
+archivos <- c(
+  "bolt_mini_fixed_errors.csv", "bolt_tiny_fixed_errors.csv", 
+  "chronos_t5_small_fixed_errors.csv", "timesfm_fixed_errors.csv"
+)
+
+ruta_archivos <- "NuevosResultados/TimesFM/errores/"
+
+# Añadir datos de archivos
+for (archivo in archivos) {
+  df <- fread(file.path(ruta_archivos, archivo))
+  nombre_variable <- gsub("_errors.csv", "", archivo)
+  df_largo <- df %>%
+    select(mape) %>%
+    mutate(Variable = nombre_variable, MAPE = mape, Origen = "Archivos") %>%
+    select(Variable, MAPE, Origen)
+  combined_long <- bind_rows(combined_long, df_largo)
+}
+
+# Eliminar outliers
+combined_long <- combined_long %>%
+  group_by(Variable) %>%
+  mutate(
+    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    upper_limit = Q3 + 1.5 * IQR,
+    lower_limit = Q1 - 1.5 * IQR
+  ) %>%
+  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
+  ungroup()
+
+# Calcular medianas para ordenar
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+orden_variables <- combined_long %>%
+  distinct(Variable) %>%
+  mutate(
+    Orden = case_when(
+      Variable %in% grep("_mape$", names(datosMAPE), value = TRUE) & Variable != "ens_mape" ~ 1,
+      Variable %in% gsub("_errors.csv", "", archivos) ~ 2,
+      Variable == "FFORMA_min_MAPE" ~ 3,
+      Variable == "FFORMA_hist_MAPE" ~ 4,
+      Variable == "ens_mape" ~ 5,
+      grepl("^FFORMA_.*_MAPE$", Variable) & 
+        !Variable %in% c("FFORMA_min_MAPE", "FFORMA_hist_MAPE", "FFORMA_Ensemble_MAPE") ~ 6,
+      Variable == "FFORMA_Ensemble_MAPE" ~ 7,
+      TRUE ~ 99  # Por si algo más se cuela
+    )
+  ) %>%
+  arrange(Orden, Variable) %>%
+  pull(Variable)
+
+combined_long$Variable <- factor(combined_long$Variable, levels = orden_variables)
+
+# Detectar variable con mediana más baja
+variables_baja_mediana <- head(medianas$Variable, 1)
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+# Gráfico final
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  stat_summary(fun = median, geom = "text", aes(label = round(after_stat(y), 2)),
+               vjust = -0.5, color = "black", size = 3.5) +
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "MAPE - Análisis de Variables Ensemble", x = "", y = "MAPE") +
+  guides(fill = "none")
+
+
+
+
+#################
 
 # Leer los datos
 datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
