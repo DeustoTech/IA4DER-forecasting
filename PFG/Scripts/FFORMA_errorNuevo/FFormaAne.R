@@ -18,7 +18,7 @@ foreach(lib = librerias) %do% {
 
 
 # Leer
-folder <- "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA"
+folder <- "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA"
 
 # Función para buscar archivos por patrón en una carpeta (sin subcarpetas)
 buscar_archivos_por_modelo <- function(folder, modelo) {
@@ -50,12 +50,12 @@ leer_y_renombrar <- function(filepath) {
   print(paste("Archivo:", filename, "→ Tipo:", tipo, ", Modelo:", modelo))
   
   # Renombrar columnas usando posiciones
-  new_names <- c("ID", "hora",
+  new_names <- c("ID", #"hora",
                  paste0("Real_", tipo),
                  paste0("Predicted_", tipo, "_", modelo),
                  paste0("MAPE_", tipo, "_", modelo))
   
-  setnames(df, old = names(df)[1:5], new = new_names)
+  setnames(df, old = names(df)[1:4], new = new_names)
   return(df)
 }
 
@@ -70,34 +70,34 @@ combinar_archivos_en_df <- function(archivos_modelo) {
   }
   
   # Eliminar columnas duplicadas (ID y dia) al combinar
-  lista_dfs_sin_id <- lapply(lista_dfs[-1], function(df) df[, !c("ID", "hora"), with = FALSE])
+  lista_dfs_sin_id <- lapply(lista_dfs[-1], function(df) df[, !c("ID"), with = FALSE])
   df_combinado <- cbind(lista_dfs[[1]], do.call(cbind, lista_dfs_sin_id))
   return(df_combinado)
 }
 
 
 lm_df <- combinar_archivos_en_df(model_files[[1]])
-fwrite(lm_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/combined_lm.csv")
+fwrite(lm_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/combined_lm.csv")
 rf_df <- combinar_archivos_en_df(model_files[[2]])
-fwrite(rf_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/combined_rf.csv")
+fwrite(rf_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/combined_rf.csv")
 xgboost_df <- combinar_archivos_en_df(model_files[[3]])
-fwrite(xgboost_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/combined_xgboost.csv")
+fwrite(xgboost_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/combined_xgboost.csv")
 knn_df <- combinar_archivos_en_df(model_files[[4]])
-fwrite(knn_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/combined_knn.csv")
+fwrite(knn_df, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/combined_knn.csv")
 
 
 combinedPreds <- lm_df %>%
-  full_join(rf_df, by = c("ID", "hora", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) %>%
-  full_join(xgboost_df, by = c("ID","hora", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) %>%
-  full_join(knn_df, by = c("ID", "hora", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) 
+  full_join(rf_df, by = c("ID", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) %>%
+  full_join(xgboost_df, by = c("ID", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) %>%
+  full_join(knn_df, by = c("ID", "Real_ann", "Real_arima", "Real_ens", "Real_lr", "Real_mean", "Real_naive", "Real_rw", "Real_ses", "Real_simple", "Real_svm")) 
 
 
-fwrite(combinedPreds, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/combinedPreds.csv")
+fwrite(combinedPreds, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/combinedPreds.csv")
 
 #LEER ARCHIVOS PARA PBARRA
 
 feats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
-combinedPreds <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/combinedPreds.csv")
+combinedPreds <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/combinedPreds.csv")
 feats$ID <- feats$id
 feats <- feats %>% select(-id)
 feats <- feats %>% select(ID, dia, hora, real, mean_pred, rw_pred, naive_pred, simple_pred, lr_pred, ann_pred, svm_pred, arima_pred, ses_pred, ens_pred, mean_mape, rw_mape, naive_mape, simple_mape, lr_mape, ann_mape, svm_mape, arima_mape, ses_mape, ens_mape)
@@ -166,7 +166,7 @@ pb[, FFORMA_Ensemble := rowMeans(.SD, na.rm = TRUE), .SDcols = pb_cols]
   pbarra_name <- paste0("FFORMA_", "errorReal")
   pb[, (pbarra_name) := numerador / denominador]
 
-fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/FFORMA.csv")
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/FFORMA.csv")
 
 #calcular MAPE
 pb_cols <- paste0("FFORMA_", modelosP)
@@ -178,4 +178,4 @@ for (col_name in pb_cols) {
   pb[, (mape_col) := abs((Real - get(col_name)) / Real) * 100]
 }
 
-fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_HORA/FFORMA_MAPE.csv")
+fwrite(pb, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA_HORA/FFORMA_MAPE.csv")
