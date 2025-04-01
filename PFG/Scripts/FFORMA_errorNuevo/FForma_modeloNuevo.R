@@ -49,6 +49,9 @@ leer_csv_como_seriqe <- function(filepath, h = 24) {
 
 
 
+
+
+
 archivos <- list.files(input_folder, full.names = TRUE)
 ids_series <- tools::file_path_sans_ext(basename(archivos))
 ts_dataset <- furrr:future_map(archivos, leer_csv_como_serie)
