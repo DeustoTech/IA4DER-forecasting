@@ -24,8 +24,11 @@ library(purrr)
 library(future)
 
 input_folder <- "goi4_pst"
+input_folder <- "NUEVOS DATOS/OriginalData/imp_csv"
 output_folder <- "out"
+output_folder <- "NuevosResultados/FFORMA/out"
 save_folder <- "tmp"
+save_folder <- "NuevosResultados/FFORMA/tmp"
 dir.create(output_folder,showWarnings = FALSE, recursive = TRUE)
 dir.create(save_folder,  showWarnings = FALSE, recursive = TRUE)
 chunk_size <- 10
