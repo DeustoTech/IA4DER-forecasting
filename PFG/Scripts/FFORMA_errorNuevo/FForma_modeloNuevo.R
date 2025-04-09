@@ -21,22 +21,23 @@ library(fforma)
 library(readr)
 library(dplyr)
 library(purrr)
+library(furrr)
 library(future)
 
 input_folder <- "goi4_pst"
-input_folder <- "NUEVOS DATOS/OriginalData/imp_csv"
+input_folder <- "NUEVOS DATOS/OriginalData/prueba"
 output_folder <- "out"
 output_folder <- "NuevosResultados/FFORMA/out"
 save_folder <- "tmp"
 save_folder <- "NuevosResultados/FFORMA/tmp"
 dir.create(output_folder,showWarnings = FALSE, recursive = TRUE)
 dir.create(save_folder,  showWarnings = FALSE, recursive = TRUE)
-chunk_size <- 10
+chunk_size <- 5
 
 #plan(multisession)
 plan(multicore)
 
-leer_csv_como_seriqe <- function(filepath, h = 24) {
+leer_csv_como_serie <- function(filepath, h = 24) {
   df <- read_csv(filepath, col_types = cols())
   kWh <- df$kWh
   ts_data <- ts(kWh, frequency = 24) 
@@ -47,15 +48,17 @@ leer_csv_como_seriqe <- function(filepath, h = 24) {
   )
 }
 
-
-
-
-
-
 archivos <- list.files(input_folder, full.names = TRUE)
 ids_series <- tools::file_path_sans_ext(basename(archivos))
-ts_dataset <- furrr:future_map(archivos, leer_csv_como_serie)
-names(ts_dataset) <- ids_series
+
+validar_serie <- function(serie) {
+  x <- serie$x
+  return(length(x) > 24 && !all(is.na(x)) && sd(x, na.rm = TRUE) > 0)
+}
+
+ts_dataset <- future_map(archivos, leer_csv_como_serie, .options = furrr_options(seed = TRUE))
+ts_dataset <- ts_dataset[map_lgl(ts_dataset, validar_serie)]
+names(ts_dataset) <- ids_series[names(ts_dataset) %in% names(ts_dataset)]
 
 saveRDS(ts_dataset, file = "data.rds")
 
