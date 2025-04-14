@@ -16,26 +16,28 @@
 
 # devtools::install_github("pmontman/customxgboost", upgrade = "never")
 # devtools::install_github("pmontman/fforma", upgrade = "never")
+# devtools::install_local("./fforma/",force=T)
 
-library(fforma)
 library(readr)
 library(dplyr)
 library(purrr)
 library(furrr)
+library(fforma)
 library(future)
-
-input_folder <- "goi4_pst"
-input_folder <- "NUEVOS DATOS/OriginalData/prueba"
-output_folder <- "out"
-output_folder <- "NuevosResultados/FFORMA/out"
-save_folder <- "tmp"
-save_folder <- "NuevosResultados/FFORMA/tmp"
-dir.create(output_folder,showWarnings = FALSE, recursive = TRUE)
-dir.create(save_folder,  showWarnings = FALSE, recursive = TRUE)
-chunk_size <- 5
-
 #plan(multisession)
 plan(multicore)
+
+input_folder <- "goi4_pst"
+output_folder <- "out"
+save_folder <- "tmp"
+chunk_size <- 500
+
+input_folder <- "NUEVOS DATOS/OriginalData/prueba"
+output_folder <- "NuevosResultados/FFORMA/out"
+save_folder <- "NuevosResultados/FFORMA/tmp"
+
+dir.create(output_folder,showWarnings = FALSE, recursive = TRUE)
+dir.create(save_folder,  showWarnings = FALSE, recursive = TRUE)
 
 leer_csv_como_serie <- function(filepath, h = 24) {
   df <- read_csv(filepath, col_types = cols())
@@ -60,15 +62,18 @@ ts_dataset <- future_map(archivos, leer_csv_como_serie, .options = furrr_options
 ts_dataset <- ts_dataset[map_lgl(ts_dataset, validar_serie)]
 names(ts_dataset) <- ids_series[names(ts_dataset) %in% names(ts_dataset)]
 
-saveRDS(ts_dataset, file = "data.rds")
+saveRDS(ts_dataset, file = "data.rds") # ts_dataset <- readRDS(file = "data.rds")
 
 options(future.globals.maxSize = 2 * 1024^3) #para que no de error
 
 fforma_fit <- train_metalearning(
   ts_dataset,
   chunk_size = chunk_size,
+#  objective = "selection",
   save_foldername = save_folder
 )
+
+saveRDS(fforma_fit, file = "fforma_fit.rds") # fforma_fit <- readRDS(file = "fforma_fit.rds")
 
 fforma_forec <- forecast_metalearning(
   fforma_fit,
