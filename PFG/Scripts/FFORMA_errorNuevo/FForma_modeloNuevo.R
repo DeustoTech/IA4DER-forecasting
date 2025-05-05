@@ -13,7 +13,7 @@
 #   if (!(lib %in% installed)) install.packages(lib, dependencies = TRUE)
 #   library(lib, character.only = TRUE)
 # }
-
+# 
 # devtools::install_github("pmontman/customxgboost", upgrade = "never")
 # devtools::install_github("pmontman/fforma", upgrade = "never")
 # devtools::install_local("./fforma/",force=T)
@@ -32,9 +32,9 @@ output_folder <- "out"
 save_folder <- "tmp"
 chunk_size <- 500
 
-input_folder <- "NUEVOS DATOS/OriginalData/prueba"
-output_folder <- "NuevosResultados/FFORMA/out"
-save_folder <- "NuevosResultados/FFORMA/tmp"
+# input_folder <- "NUEVOS DATOS/OriginalData/prueba"
+# output_folder <- "NuevosResultados/FFORMA/out"
+# save_folder <- "NuevosResultados/FFORMA/tmp"
 
 dir.create(output_folder,showWarnings = FALSE, recursive = TRUE)
 dir.create(save_folder,  showWarnings = FALSE, recursive = TRUE)
