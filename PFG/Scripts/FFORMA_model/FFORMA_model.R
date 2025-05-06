@@ -112,7 +112,7 @@ ggplot(mape_filtered, aes(x = modelo, y = mape)) +
   labs(
     title = "Boxplot del MAPE por modelo (outliers filtrados)",
     x = "Modelo",
-    y = "MAPE"
+    # y = "MAPE"
   ) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
