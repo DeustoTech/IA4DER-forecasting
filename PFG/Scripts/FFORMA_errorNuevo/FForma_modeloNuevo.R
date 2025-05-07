@@ -17,6 +17,7 @@
 # devtools::install_github("pmontman/customxgboost", upgrade = "never")
 # devtools::install_github("pmontman/fforma", upgrade = "never")
 # devtools::install_local("./fforma/",force=T)
+# devtools::reload(pkg="fforma")
 
 library(readr)
 library(dplyr)
@@ -81,6 +82,8 @@ fforma_forec <- forecast_metalearning(
   chunk_size = chunk_size,
   save_foldername = save_folder
 )
+
+# fforma_forec <- readRDS(file = "fforma_forec.rds")
 
 walk2(fforma_forec$dataset, names(fforma_forec$dataset), function(serie, id) {
   predicciones <- tibble(
