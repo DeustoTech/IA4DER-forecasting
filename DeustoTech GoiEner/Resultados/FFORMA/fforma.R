@@ -100,6 +100,14 @@ fwrite(pre_m,file="fforma_svm_mape_error_prediction.csv")
 test[, fforma_svm_mape_base := rowSums(test[, ..BASE] * pre_m / rowSums(pre_m,na.rm=T),na.rm=T)]
 test[, fforma_min_mape_base := rowSums(test[, ..BASE] * med_base_mape_weight / sum(med_base_mape_weight,na.rm=T),na.rm=T)]
 
+
+for (modeloP in ModelosP)
+{
+  test[, (paste("fforma_",modeloP,"_mape_base",sep="")) :=
+         rowSums(test[, ..BASE] * pre_m[modeloP] / rowSums(pre_m[modeloP],na.rm=T),na.rm=T)]
+}
+
+
 for (e in c(BASE,"fforma_svm_mape_base","fforma_min_mape_base"))
 {
   i <- paste(e,"_mape",sep="")
