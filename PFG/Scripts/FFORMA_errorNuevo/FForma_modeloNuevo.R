@@ -104,3 +104,5 @@ walk2(fforma_forec$dataset, names(fforma_forec$dataset), function(serie, id) {
   }
 })
 
+
+
