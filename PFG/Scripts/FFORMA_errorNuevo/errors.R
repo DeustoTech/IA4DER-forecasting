@@ -1,7 +1,7 @@
 library(doFuture)
 plan(multicore)
 
-mape <- foreach(i=list.files("out",full.names="T"),.combine=rbind) %dofuture% {
+mape <- foreach(i=list.files("Scripts/FFORMA_errorNuevo/out",full.names="T"),.combine=rbind) %dofuture% {
   d <- t(read.csv(i,row.names=1))
 
   r <- d[,"real"]
@@ -24,3 +24,28 @@ summary(rmse)
 
 boxplot(mape,outline=F)
 boxplot(rmse,outline=F)
+
+
+
+library(tidyverse)
+library(furrr)
+
+plan(multisession, workers = parallel::detectCores() - 1)
+ruta <- "Scripts/FFORMA_errorNuevo/out"
+archivos <- list.files(ruta, pattern = "\\.csv$", full.names = TRUE)
+procesar_archivo <- function(archivo) {
+  d <- t(read.csv(archivo, row.names = 1))
+  df <- as.data.frame(d)
+  df$id <- tools::file_path_sans_ext(basename(archivo))
+  modelos <- setdiff(colnames(df), c("real", "id"))
+  for (modelo in modelos) {
+    df[[paste0("MAPE_", modelo)]] <- ifelse(
+      df$real != 0,
+      abs(df[[modelo]] - df$real) / df$real * 100,
+      NA
+    )
+  }
+  return(df)
+}
+resultados <- future_map_dfr(archivos, procesar_archivo, .progress = TRUE)
+fwrite(resultados, "Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")

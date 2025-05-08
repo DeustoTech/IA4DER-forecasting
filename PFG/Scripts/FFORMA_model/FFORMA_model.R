@@ -82,3 +82,18 @@ length(ids_comunes)
 
 setdiff(ids_datosMAPE, ids_resultados)      # IDs que están en datosMAPE pero no en resultados
 setdiff(ids_resultados, ids_datosMAPE) 
+
+
+library(tidyverse)
+ruta <- "Scripts/FFORMA_errorNuevo/out"
+
+# Obtener lista de archivos .csv
+archivos <- list.files(path = ruta, pattern = "\\.csv$", full.names = TRUE)
+
+# Leer y combinar todos los archivos, añadiendo la columna "id"
+datos_combinados <- archivos %>%
+  set_names(nm = tools::file_path_sans_ext(basename(.))) %>%  # quitar extensión y usar como nombre
+  map_dfr(~ read_csv(.x), .id = "id")
+
+# Guardar archivo combinado
+write_csv(datos_combinados, file.path(ruta, "combinado.csv"))

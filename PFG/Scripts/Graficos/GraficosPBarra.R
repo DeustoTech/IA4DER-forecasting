@@ -319,6 +319,104 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 
 
 #################
+######################## OTRA VEZ PERO CON LOS FFORMA DE CRUZ ###################
+library(purrr)
+nuevos_fforma <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
+
+mape_nuevos <- nuevos_fforma %>%
+  select(id, starts_with("MAPE_"))
+
+mape_nuevos_long <- mape_nuevos %>%
+  pivot_longer(cols = -id, names_to = "Variable", values_to = "MAPE") %>%
+  mutate(Origen = "Modelos FFORMA nuevos")
+
+mape_nuevos_long <- mape_nuevos_long %>%
+  group_by(Variable) %>%
+  mutate(
+    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    upper_limit = Q3 + 1.5 * IQR,
+    lower_limit = Q1 - 1.5 * IQR
+  ) %>%
+  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
+  ungroup()
+
+
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+datosMAPE <- datosMAPE %>% select(contains("_MAPE"), contains("_mape"))
+
+# Transformar datosMAPE a formato largo
+combined_long <- datosMAPE %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE") %>%
+  mutate(Origen = ifelse(grepl("^.*_mape$", Variable), "Base", "FFORMA"))
+
+# Leer archivos adicionales
+archivos <- c(
+  "bolt_mini_fixed_errors.csv", "bolt_tiny_fixed_errors.csv", 
+  "chronos_t5_small_fixed_errors.csv", "timesfm_fixed_errors.csv"
+)
+
+ruta_archivos <- "NuevosResultados/TimesFM/errores/"
+
+# Añadir datos de archivos
+for (archivo in archivos) {
+  df <- fread(file.path(ruta_archivos, archivo))
+  nombre_variable <- gsub("_errors.csv", "", archivo)
+  df_largo <- df %>%
+    select(mape) %>%
+    mutate(Variable = nombre_variable, MAPE = mape, Origen = "Archivos") %>%
+    select(Variable, MAPE, Origen)
+  combined_long <- bind_rows(combined_long, df_largo)
+}
+
+# Eliminar outliers
+combined_long <- combined_long %>%
+  group_by(Variable) %>%
+  mutate(
+    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    upper_limit = Q3 + 1.5 * IQR,
+    lower_limit = Q1 - 1.5 * IQR
+  ) %>%
+  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
+  ungroup()
+
+combined_long <- bind_rows(combined_long, mape_nuevos_long)
+
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+orden_variables <- combined_long %>%
+  distinct(Variable) %>%
+  left_join(medianas, by = "Variable") %>%
+  arrange(Mediana) %>%
+  pull(Variable)
+
+combined_long$Variable <- factor(combined_long$Variable, levels = orden_variables)
+
+# Redefinir color según nueva variable de menor mediana
+variables_baja_mediana <- head(medianas$Variable, 1)
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+# Gráfico final actualizado
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  stat_summary(fun = median, geom = "text", aes(label = round(after_stat(y), 2)),
+               vjust = -0.5, color = "black", size = 3.5) +
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "MAPE - Análisis de Variables Ensemble (con modelos base)", x = "", y = "MAPE") +
+  guides(fill = "none")
+
+
+
+
+
+#############
 
 # Leer los datos
 datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/pBarrasMAPE.csv")
