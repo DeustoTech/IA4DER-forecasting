@@ -415,6 +415,55 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
 
 
 
+##### hacer ultimos graficos con paquete nuevo ######
+library(scmamp)
+
+df_long_pre <- combined_long %>%
+  group_by(Variable) %>%
+  mutate(id = row_number()) %>%
+  ungroup()
+
+# Pivotear a ancho
+df_long <- df_long_pre %>%
+  select(id, Variable, MAPE) %>%
+  pivot_wider(names_from = Variable, values_from = MAPE)
+
+# Elimina columnas con NA si es necesario
+df_long_clean <- df_long %>% drop_na()
+
+library(PMCMRplus)
+
+friedman_test <- friedman.test(as.matrix(df_long_clean[,-1]))
+print(friedman_test)
+
+nemenyi <- frdAllPairsNemenyiTest(as.matrix(df_long_clean[,-1]))
+print(nemenyi)
+
+# Realiza test de Friedman
+friedman_test <- friedman.test(as.matrix(df_long_clean[,-1]))
+
+df_long_correct <- combined_long %>%
+  group_by(Variable) %>%
+  mutate(id = row_number()) %>%
+  ungroup() %>%
+  select(id, Variable, MAPE) %>%
+  drop_na()
+
+
+df_long_correct$id <- factor(df_long_correct$id)
+df_long_correct$Variable <- factor(df_long_correct$Variable)
+
+# Corre el test post hoc correctamente
+library(PMCMRplus)
+nemenyi <- frdAllPairsNemenyiTest(MAPE ~ Variable | id, data = df_long_correct)
+
+# Ver los resultados
+print(nemenyi)
+
+
+# Post hoc Nemenyi
+nemenyi <- frdAllPairsNemenyiTest(as.matrix(df_long_clean[,-1]))
+print(nemenyi)
 
 #############
 
