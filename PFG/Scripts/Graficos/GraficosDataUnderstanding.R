@@ -5,7 +5,7 @@ library(readr)
 library(data.table)
 
 carpeta <- "NUEVOS DATOS/OriginalData/imp_csv/"
-archivos <- list.files(path = carpeta, pattern = "\\.csv$", full.names = TRUE)[200]
+archivos <- list.files(path = carpeta, pattern = "\\.csv$", full.names = TRUE)[1] #se han usado la 150 y la 200
 datos_list <- lapply(archivos, function(file) {
   df <- fread(file)
   df[, ID := tools::file_path_sans_ext(basename(file))]
@@ -90,4 +90,10 @@ ggplot(estadisticas, aes(x = hora_semana_factor)) +
     panel.grid.minor = element_line(color = "grey95"),
     axis.text.x = element_text(angle = 45, hjust = 1, size = 8)
   )
+
+
+# para hacer captura a la tabla y poder ponerla en la memoria
+carpeta <- "NUEVOS DATOS/OriginalData/imp_csv/"
+archivos <- list.files(path = carpeta, pattern = "\\.csv$", full.names = TRUE)[1]
+df_muestra <- fread(archivos[1])
 
