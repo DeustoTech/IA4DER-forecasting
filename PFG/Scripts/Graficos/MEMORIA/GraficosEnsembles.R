@@ -111,3 +111,23 @@ dev.off()
 
 
 #boxplot del ensemble
+df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+
+Q1 <- quantile(df$ens_mape, 0.25, na.rm = TRUE)
+Q3 <- quantile(df$ens_mape, 0.75, na.rm = TRUE)
+IQR_val <- Q3 - Q1
+
+# Filtrar valores dentro del rango permitido
+df_filtrado <- df %>%
+  filter(ens_mape >= (Q1 - 1.5 * IQR_val) & ens_mape <= (Q3 + 1.5 * IQR_val)) %>% select(ens_mape)
+
+mediana_val <- median(df_filtrado$ens_mape, na.rm = TRUE)
+
+
+ggplot(df_filtrado, aes(x = "", y = ens_mape)) +
+  geom_boxplot(fill = "skyblue") +
+  geom_text(aes(label = round(mediana_val, 2), y = mediana_val), vjust = -0.5, size = 7) +
+  labs(title = "MAPE error of simple ensemble method",
+       y = "ens_mape",
+       x = "") +
+  theme_minimal()
