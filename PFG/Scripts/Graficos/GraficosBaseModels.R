@@ -35,8 +35,10 @@ datos_media <- df %>%
 
 datos_grafico <- datos_media %>%
   pivot_longer(cols = c(ends_with("_pred")), 
-               names_to = "Modelo", 
-               values_to = "Prediccion")
+               names_to = "Model", 
+               values_to = "Prediction")
+
+dias_semana <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 pdf("NuevosResultados/ModelosBase/modelos_base_prediccion_media.pdf", width = 10, height = 6)
 
@@ -44,12 +46,12 @@ for (d in unique(datos_grafico$dia)) {
   
   datos_dia <- datos_grafico %>% filter(dia == d)
   
-  p <- ggplot(datos_dia, aes(x = hora, y = Prediccion, color = Modelo, group = Modelo)) +
+  p <- ggplot(datos_dia, aes(x = hora, y = Prediction, color = Model, group = Model)) +
     geom_line() +
     geom_line(aes(y = Real, group = 1), color = "black", linetype = "dashed") +  # Línea de datos reales
-    labs(title = paste("Predicciones (media) vs Real - Día", d),
-         x = "Hora",
-         y = "Consumo Promedio (media) (kWh)") +
+    labs(title = paste("Predictions (mean) vs Real - ", dias_semana[d]),
+         x = "Hour",
+         y = "Consumption in kWh (mean)") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Mejor visibilidad del eje X
   
@@ -80,8 +82,10 @@ datos_mediana <- df %>%
 
 datos_grafico <- datos_mediana %>%
   pivot_longer(cols = c(ends_with("_pred")), 
-               names_to = "Modelo", 
-               values_to = "Prediccion")
+               names_to = "Model", 
+               values_to = "Prediction")
+
+dias_semana <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
 pdf("NuevosResultados/ModelosBase/modelos_base_prediccion_mediana.pdf", width = 10, height = 6)
 
@@ -89,12 +93,12 @@ for (d in unique(datos_grafico$dia)) {
   
   datos_dia <- datos_grafico %>% filter(dia == d)
   
-  p <- ggplot(datos_dia, aes(x = hora, y = Prediccion, color = Modelo, group = Modelo)) +
+  p <- ggplot(datos_dia, aes(x = hora, y = Prediction, color = Model, group = Model)) +
     geom_line() +
     geom_line(aes(y = Real, group = 1), color = "black", linetype = "dashed") +  # Línea de datos reales
-    labs(title = paste("Predicciones (mediana) vs Real - Día", d),
-         x = "Hora",
-         y = "Consumo Promedio (mediana) (kWh)") +
+    labs(title = paste("Predictions (median) vs Real - ", dias_semana[d]),
+         x = "Hour",
+         y = "Consumption in kWh (median) (kWh)") +
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Mejor visibilidad del eje X
   
@@ -104,7 +108,7 @@ for (d in unique(datos_grafico$dia)) {
 dev.off()
 
 
-#grafico de barras
+#grafico de barras MAPE
 df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
 # Seleccionar solo las columnas _mape
@@ -147,6 +151,50 @@ ggplot(df_filtrado, aes(x = Modelo, y = MAPE, fill = Modelo)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+
+#grafico de barras RMSE
+df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+
+# Seleccionar solo las columnas _mape
+datos_rmse <- df %>%
+  select(ends_with("_rmse"))
+
+datos_rmse <- datos_rmse %>% select(- ens_rmse)
+
+datos_long <- datos_rmse %>%
+  pivot_longer(cols = ends_with("_rmse"), names_to = "Modelo", values_to = "RMSE")
+
+df_filtrado <- datos_long %>%
+  group_by(Modelo) %>%
+  mutate(Q1 = quantile(RMSE, 0.25, na.rm = TRUE),
+         Q3 = quantile(RMSE, 0.75, na.rm = TRUE),
+         IQR = Q3 - Q1,
+         Lower = Q1 - 1.5 * IQR,
+         Upper = Q3 + 1.5 * IQR) %>%
+  filter(RMSE >= Lower & RMSE <= Upper) %>%
+  ungroup()
+
+colores <- c(
+  "mean_rmse" = "green3",
+  "rw_rmse" = "blue",
+  "naive_rmse" = "cyan3",
+  "simple_rmse" = "magenta",
+  "lr_rmse" = "orange",
+  "ann_rmse" = "red",
+  "svm_rmse" = "hotpink",
+  "arima_rmse" = "goldenrod",
+  "ses_rmse" = "turquoise4"
+)
+
+# Crear el boxplot
+ggplot(df_filtrado, aes(x = Modelo, y = RMSE, fill = Modelo)) +
+  geom_boxplot() +
+  scale_fill_manual(values = colores) +
+  labs(title = "RMSE error distribution",
+       y = "RMSE error", x = "Model", fill =  "Model") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 #hacer tabla summary
