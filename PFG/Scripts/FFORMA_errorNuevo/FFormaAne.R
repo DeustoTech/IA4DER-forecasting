@@ -94,7 +94,7 @@ combinedPreds <- lm_df %>%
 
 fwrite(combinedPreds, "NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/combinedPreds.csv")
 
-#LEER ARCHIVOS PARA PBARRA
+#LEER ARCHIVOS PARA FFORMA
 
 feats <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 combinedPreds <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/combinedPreds.csv")

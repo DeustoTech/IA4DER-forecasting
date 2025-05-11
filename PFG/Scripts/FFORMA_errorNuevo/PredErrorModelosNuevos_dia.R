@@ -69,7 +69,7 @@ df <- df %>% select ( - hora)
 
 non_numerical_columns <- setdiff(names(df), c("id", "dia",numerical_columns))
 
-df <- df[, c(.SD[, lapply(.SD, median, na.rm = TRUE), .SDcols = numerical_columns],  # Media en numéricas
+df <- df[, c(.SD[, lapply(.SD, median, na.rm = TRUE), .SDcols = numerical_columns],  # Mediana en numéricas
                              .SD[, lapply(.SD, first), .SDcols = non_numerical_columns]),           # Primer valor en no numéricas
                          by = c("id", "dia")]
 
