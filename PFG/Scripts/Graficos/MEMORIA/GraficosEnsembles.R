@@ -109,7 +109,6 @@ for (d in unique(datos_grafico$dia)) {
 dev.off()
 
 
-
 #boxplot del ensemble
 df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 
@@ -131,3 +130,109 @@ ggplot(df_filtrado, aes(x = "", y = ens_mape)) +
        y = "ens_mape",
        x = "") +
   theme_minimal()
+
+
+
+
+#### BOXPLOT DE LOS FFORMA ###
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+
+# Seleccionar las columnas relevantes
+datosMAPE <- datosMAPE %>% select(matches("^FFORMA_.*_MAPE$"))
+
+
+# Combinar y transformar los datos a formato largo
+combined_long <- bind_rows(
+  datosMAPE %>%
+    select(contains("_MAPE")) %>%
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "MAPE")
+)
+
+# Calcular Q1, Q3, IQR y filtrar outliers
+combined_long <- combined_long %>%
+  group_by(Variable) %>%
+  mutate(
+    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    upper_limit = Q3 + 1.5 * IQR,
+    lower_limit = Q1 - 1.5 * IQR
+  ) %>%
+  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
+  ungroup()
+
+# Calcular las medianas
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+# Seleccionar la variable con la mediana más baja
+variables_baja_mediana <- head(medianas$Variable, 1)
+
+# Asignar colores en función de la variable con la mediana más baja
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+# Generar el gráfico
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  stat_summary(fun = median, geom = "text", aes(label = round(after_stat(y), 2)), 
+               vjust = -0.5, color = "black", size = 3.5) +  # Etiquetas con la mediana
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "FFORMA models comparison", x = "", y = "MAPE") +
+  guides(fill = "none") 
+
+
+
+######## graficos fforma nuevos (git de pablo) #########
+nuevos_fforma <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
+
+mape_nuevos <- nuevos_fforma %>%
+  select(id, starts_with("MAPE_"))
+
+mape_nuevos_long <- mape_nuevos %>%
+  pivot_longer(cols = -id, names_to = "Variable", values_to = "MAPE") %>%
+  mutate(Origen = "Modelos FFORMA nuevos")
+
+combined_long <- mape_nuevos_long %>%
+  group_by(Variable) %>%
+  mutate(
+    Q1 = quantile(MAPE, 0.25, na.rm = TRUE),
+    Q3 = quantile(MAPE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    upper_limit = Q3 + 1.5 * IQR,
+    lower_limit = Q1 - 1.5 * IQR
+  ) %>%
+  filter(MAPE <= upper_limit & MAPE >= lower_limit) %>%
+  ungroup()
+
+
+medianas <- combined_long %>%
+  group_by(Variable) %>%
+  summarize(Mediana = median(MAPE, na.rm = TRUE)) %>%
+  arrange(Mediana)
+
+orden_variables <- combined_long %>%
+  distinct(Variable) %>%
+  left_join(medianas, by = "Variable") %>%
+  arrange(Mediana) %>%
+  pull(Variable)
+
+combined_long$Variable <- factor(combined_long$Variable, levels = orden_variables)
+
+# Redefinir color según nueva variable de menor mediana
+variables_baja_mediana <- head(medianas$Variable, 1)
+combined_long$Color <- ifelse(combined_long$Variable %in% variables_baja_mediana, "Baja Mediana", "Otro")
+
+# Gráfico final actualizado
+ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
+  geom_boxplot() +
+  stat_summary(fun = median, geom = "text", aes(label = round(after_stat(y), 2)),
+               vjust = -0.5, color = "black", size = 3.5) +
+  scale_fill_manual(values = c("Baja Mediana" = "#5387E3", "Otro" = "grey")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "FFORMA models comparison", x = "", y = "MAPE") +
+  guides(fill = "none")
+
+
