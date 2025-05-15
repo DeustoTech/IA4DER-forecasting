@@ -63,7 +63,6 @@ fwrite(df, "Scripts/Conclusiones/series0.csv")
 
 
 
-
 dir.create("Scripts/Conclusiones/graficos_series0", showWarnings = FALSE)
 
 # Gráfico 1: VALORES observados (base + ruido) por grupo
