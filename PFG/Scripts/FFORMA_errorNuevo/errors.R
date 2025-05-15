@@ -1,4 +1,6 @@
 library(doFuture)
+library(PMCMRplus)
+library(mlr)
 plan(multicore)
 
 mape <- foreach(i=list.files("Scripts/FFORMA_errorNuevo/out",full.names="T"),.combine=rbind) %dofuture% {
@@ -25,6 +27,8 @@ summary(rmse)
 boxplot(mape,outline=F)
 boxplot(rmse,outline=F)
 
+fm <- frdAllPairsMillerTest(mape[complete.cases(mape),])
+fr <- frdAllPairsMillerTest(rmse)
 
 
 library(tidyverse)
@@ -49,3 +53,4 @@ procesar_archivo <- function(archivo) {
 }
 resultados <- future_map_dfr(archivos, procesar_archivo, .progress = TRUE)
 fwrite(resultados, "Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
+
