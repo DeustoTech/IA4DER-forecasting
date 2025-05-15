@@ -58,6 +58,7 @@ for (i in 1:n_series) {
 df <- bind_rows(series_list)
 set.seed(999) 
 df$random <- sample(1:10, size = nrow(df), replace = TRUE)
+df$tipo <- 0
 fwrite(df, "Scripts/Conclusiones/series0.csv")
 
 
