@@ -14,10 +14,10 @@
 #   library(lib, character.only = TRUE)
 # }
 # 
-# devtools::install_github("pmontman/customxgboost", upgrade = "never")
-# devtools::install_github("pmontman/fforma", upgrade = "never")
-# devtools::install_local("./fforma/",force=T)
-# devtools::reload(pkg="fforma")
+devtools::install_github("pmontman/customxgboost", upgrade = "never")
+devtools::install_github("pmontman/fforma", upgrade = "never")
+devtools::install_local("./fforma/",force=T)
+devtools::reload(pkg="fforma")
 
 library(readr)
 library(dplyr)
