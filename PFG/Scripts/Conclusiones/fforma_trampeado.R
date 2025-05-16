@@ -29,7 +29,7 @@ df %>%
 input_folder <- "Scripts/Conclusiones/series0_divididas"
 output_folder <- "Scripts/Conclusiones/fforma_series0_out"
 save_folder <- "Scripts/Conclusiones/fforma_series0_tmp"
-chunk_size <- 500
+chunk_size <- 100
 
 dir.create(output_folder,showWarnings = FALSE, recursive = TRUE)
 dir.create(save_folder,  showWarnings = FALSE, recursive = TRUE)
@@ -61,6 +61,8 @@ names(ts_dataset) <- ids_series
 saveRDS(ts_dataset, file = "Scripts/Conclusiones/data.rds") # ts_dataset <- readRDS(file = "data.rds")
 
 options(future.globals.maxSize = 2 * 1024^3) #para que no de error
+
+ts_dataset <- readRDS("Scripts/Conclusiones/data.rds")
 
 fforma_fit <- train_metalearning(
   ts_dataset,
