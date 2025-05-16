@@ -11,8 +11,8 @@ plan(multicore)
 
 
 
-df <- fread("Scripts/Conclusiones/series0.csv")
-input_folder <- "Scripts/Conclusiones/series0_divididas"
+df <- fread("Scripts/Conclusiones/series1.csv")
+input_folder <- "Scripts/Conclusiones/series1_divididas"
 dir.create(input_folder, showWarnings = FALSE, recursive = TRUE)
 
 # Para cada serie_id, guardar un archivo CSV con una sola columna "kWh"
@@ -26,9 +26,9 @@ df %>%
   })
 
 
-input_folder <- "Scripts/Conclusiones/series0_divididas"
-output_folder <- "Scripts/Conclusiones/fforma_series0_out"
-save_folder <- "Scripts/Conclusiones/fforma_series0_tmp"
+input_folder <- "Scripts/Conclusiones/series1_divididas"
+output_folder <- "Scripts/Conclusiones/fforma_series1_out"
+save_folder <- "Scripts/Conclusiones/fforma_series1_tmp"
 chunk_size <- 100
 
 dir.create(output_folder,showWarnings = FALSE, recursive = TRUE)
@@ -58,11 +58,14 @@ ts_dataset <- future_map(archivos, leer_csv_como_serie, .options = furrr_options
 ts_dataset <- ts_dataset[map_lgl(ts_dataset, validar_serie)]
 names(ts_dataset) <- ids_series
 
-saveRDS(ts_dataset, file = "Scripts/Conclusiones/data.rds") # ts_dataset <- readRDS(file = "data.rds")
+saveRDS(ts_dataset, file = "Scripts/Conclusiones/data1.rds") # ts_dataset <- readRDS(file = "data.rds")
 
 options(future.globals.maxSize = 2 * 1024^3) #para que no de error
 
-ts_dataset <- readRDS("Scripts/Conclusiones/data.rds")
+
+#cargar el necesario
+ts_dataset <- readRDS("Scripts/Conclusiones/data0.rds")
+ts_dataset<- readRDS("Scripts/Conclusiones/data1.rds")
 
 fforma_fit <- train_metalearning(
   ts_dataset,
