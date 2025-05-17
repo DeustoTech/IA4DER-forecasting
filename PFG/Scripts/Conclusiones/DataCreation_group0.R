@@ -6,7 +6,7 @@ library(data.table)
 set.seed(123)
 n_series <- 100
 n_values <- 150
-factor_ruido <- 3  # Amplifica la varianza del ruido
+factor_ruido <- 0.1  # Amplifica la varianza del ruido
 
 # Tiempo
 t <- 1:n_values
