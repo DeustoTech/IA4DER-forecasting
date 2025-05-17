@@ -11,7 +11,7 @@ series_list <- list()
 for (i in 1:n_series) {
   alpha <- 0  
   r <- runif(1, 0, 0.1)  
-  ruido <- rnorm(n_values, mean = 0, sd = 0.05)  # Ruido gaussiano
+  ruido <- rnorm(n_values, mean = 0, sd = 0.02)  # Ruido gaussiano
   
   y <- alpha + r * t + ruido
   
@@ -38,4 +38,3 @@ set.seed(123)
 df_lineal$random <- sample(1:10, size = nrow(df_lineal), replace = TRUE)
 df_lineal$tipo <- 1
 fwrite(df_lineal, "Scripts/Conclusiones/series1.csv")
-summ

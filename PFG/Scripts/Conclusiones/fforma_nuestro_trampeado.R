@@ -241,7 +241,7 @@ ggplot(mape_filtrado, aes(x = modelo, y = mape)) +
 
 
 #prediccion error
-df <- fread("Scripts/Conclusiones/modelos_rw_lr_globales.csv")
+df <- fread("Scripts/Conclusiones/modelos_rw_lr_globals.csv")
 
 df_model <- df[, .(tipo, random, mape_rw, mape_lr)]
 df_model <- na.omit(df_model)

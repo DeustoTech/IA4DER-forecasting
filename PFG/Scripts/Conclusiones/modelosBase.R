@@ -442,76 +442,191 @@ ggplot(mape_filtrado, aes(x = modelo, y = mape)) +
 
 #OTRA VEZ PERO 186 SERIES ENTERAS PARA PREDECIR Y 14 ENTERAS DE TEST
 
+
+# Leer y preparar datos
 series0 <- fread("Scripts/Conclusiones/series0.csv")
 series1 <- fread("Scripts/Conclusiones/series1.csv")
+
+series0 <- as.data.table(series0)
+series1 <- as.data.table(series1)
 series0[, grupo := NULL]
 series1[, serie_id := serie_id + 100]
 series <- rbind(series0, series1)
 
-train_ids <- c(1:92, 101:192)
+# Definir IDs
+train_ids <- c(1:93, 101:110)
 test_ids  <- c(93:100, 193:200)
 
 MODELS <- c("rw", "lr")
-FREQ <- 1 
+resultados_completos <- list()
 
-lagged_rows <- list()
+# Dataset de entrenamiento completo
+train_data <- series[serie_id %in% train_ids]
 
-for (sid in train_ids) {
-  serie_data <- series[serie_id == sid][order(tiempo)]
-  vals <- serie_data$valor
-  if (length(vals) >= 2) {
-    lagged <- embed(vals, 2)
-    lagged_rows[[length(lagged_rows)+1]] <- data.frame(real = lagged[,1], past = lagged[,2])
-  }
-}
-TRAINSET <- do.call(rbind, lagged_rows)
+# Filtrar solo series con al menos 2 observaciones
+valid_train_ids <- train_data[, .N, by = serie_id][N >= 2, serie_id]
 
+# Aplicar embed por serie válida
+lagged_all <- train_data[serie_id %in% valid_train_ids, .(
+  embed_result = list(embed(valor, 2))
+), by = serie_id]
 
-modelo_lr <- lm(real ~ past, data = TRAINSET)
+# Expandir lista en data.frame
+lagged_all_df <- do.call(rbind, lapply(lagged_all$embed_result, as.data.frame))
 
-resultados <- list()
+# Ahora crear TRAINSET
+TRAINSET <- data.frame(
+  real = lagged_all_df$V1,
+  past = lagged_all_df$V2
+)
 
+# Entrenar modelo lineal
+LM <- tryCatch({
+  lm(real ~ past, data = TRAINSET)
+}, error = function(e) NULL)
+
+# Evaluar sobre las series de test
 for (sid in test_ids) {
-  serie_data <- series[serie_id == sid][order(tiempo)]
-  r <- ts(serie_data$valor, frequency = FREQ)
+  serie_data <- series %>% filter(serie_id == sid) %>% arrange(tiempo)
+  r <- ts(serie_data$valor, frequency = 1)
   
-  # Modelo RW: persistencia última observación conocida
+  # Modelo rw
   rw_pred <- rep(tail(r, 1), length(r))
   
-  # Modelo LR: usar valores rezagados como predictores
-  if (length(r) >= 2) {
-    past <- c(NA, head(r, -1))  # rezago 1
-    pred_input <- data.frame(past = past)
-    lr_pred <- rep(NA, length(r))
-    
-    # Predecir sólo en posiciones con valores válidos
-    valid_rows <- which(!is.na(pred_input$past))
-    if (length(valid_rows) > 0) {
-      lr_pred[valid_rows] <- predict(modelo_lr, newdata = pred_input[valid_rows, , drop = FALSE])
-    }
+  # Modelo lr
+  if (!is.null(LM) && length(r) > 1) {
+    PREDICT <- data.frame(past = head(r, -1))
+    lr_pred <- tryCatch({
+      c(NA, forecast(LM, newdata = PREDICT)$mean)
+    }, error = function(e) rep(NA, length(r)))
   } else {
     lr_pred <- rep(NA, length(r))
   }
   
-  pred_df <- data.frame(
-    serie_id = sid,
-    tipo = unique(serie_data$tipo),
-    random = serie_data$random,
-    tiempo = serie_data$tiempo,
-    valor = serie_data$valor,
+  f_completo <- data.frame(
+    serie_data,
+    real = serie_data$valor,
     rw = rw_pred,
     lr = lr_pred
   )
   
-  # Calcular MAPE
-  for (m in MODELS) {
-    pred_df[[paste0("mape_", m)]] <- abs((pred_df$valor - pred_df[[m]]) / pred_df$valor) * 100
-  }
-  
-  resultados[[length(resultados) + 1]] <- pred_df
+  resultados_completos[[length(resultados_completos) + 1]] <- f_completo
 }
 
-# Unir y guardar resultados
-final_results <- rbindlist(resultados)
+# Unir y calcular MAPE
+final_results <- do.call(rbind, resultados_completos)
 
-write.csv(final_results, "Scripts/Conclusiones/modelos_rw_lr_globales.csv", row.names = FALSE)
+for (m in MODELS) {
+  final_results[[m]] <- as.numeric(final_results[[m]])
+  final_results[[paste0("mape_", m)]] <- abs((final_results$real - final_results[[m]]) / final_results$real) * 100
+}
+
+# Guardar CSV
+write.csv(final_results, "Scripts/Conclusiones/modelos_rw_lr_globals.csv", row.names = FALSE)
+
+
+
+######## CON NUESTRAS SERIES
+
+seriesN <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+seriesN <- seriesN %>% select(id, real, rw_pred, rw_mape)
+
+mape_promedios <- seriesN[, .(mape_medio = median(rw_mape, na.rm = TRUE)), by = id]
+mejores_ids <- mape_promedios[order(mape_medio)][1:100, id]
+mejores_series <- seriesN[id %in% mejores_ids]
+series <- mejores_series[, head(.SD, 150), by = id]
+
+id_map <- data.table(
+  id = unique(series$id),
+  nuevo_id = 1:100
+)
+series0 <- merge(series, id_map, by = "id")
+series0[, id := nuevo_id][, nuevo_id := NULL]
+setorder(series0, id)
+
+series0$tipo <- 0
+set.seed(123)
+series0[, random := sample(1:10, .N, replace = TRUE)]
+
+
+series1 <- fread("Scripts/Conclusiones/series1.csv")
+
+series0 <- as.data.table(series0)
+series1 <- as.data.table(series1)
+series1[, serie_id := serie_id + 100]
+series0$valor <- series0$real
+series0$tiempo <- series1$tiempo
+series0$serie_id <- series0$id
+series0 <- series0 %>% select(-real, - rw_pred, - rw_mape, - id)
+series <- rbind(series0, series1)
+
+# Definir IDs
+train_ids <- c(1:93, 101:110)
+test_ids  <- c(93:100, 193:200)
+
+MODELS <- c("rw", "lr")
+resultados_completos <- list()
+
+# Dataset de entrenamiento completo
+train_data <- series[serie_id %in% train_ids]
+
+# Filtrar solo series con al menos 2 observaciones
+valid_train_ids <- train_data[, .N, by = serie_id][N >= 2, serie_id]
+
+# Aplicar embed por serie válida
+lagged_all <- train_data[serie_id %in% valid_train_ids, .(
+  embed_result = list(embed(valor, 2))
+), by = serie_id]
+
+# Expandir lista en data.frame
+lagged_all_df <- do.call(rbind, lapply(lagged_all$embed_result, as.data.frame))
+
+# Ahora crear TRAINSET
+TRAINSET <- data.frame(
+  real = lagged_all_df$V1,
+  past = lagged_all_df$V2
+)
+
+# Entrenar modelo lineal
+LM <- tryCatch({
+  lm(real ~ past, data = TRAINSET)
+}, error = function(e) NULL)
+
+# Evaluar sobre las series de test
+for (sid in test_ids) {
+  serie_data <- series %>% filter(serie_id == sid) %>% arrange(tiempo)
+  r <- ts(serie_data$valor, frequency = 1)
+  
+  # Modelo rw
+  rw_pred <- rep(tail(r, 1), length(r))
+  
+  # Modelo lr
+  if (!is.null(LM) && length(r) > 1) {
+    PREDICT <- data.frame(past = head(r, -1))
+    lr_pred <- tryCatch({
+      c(NA, forecast(LM, newdata = PREDICT)$mean)
+    }, error = function(e) rep(NA, length(r)))
+  } else {
+    lr_pred <- rep(NA, length(r))
+  }
+  
+  f_completo <- data.frame(
+    serie_data,
+    real = serie_data$valor,
+    rw = rw_pred,
+    lr = lr_pred
+  )
+  
+  resultados_completos[[length(resultados_completos) + 1]] <- f_completo
+}
+
+# Unir y calcular MAPE
+final_results <- do.call(rbind, resultados_completos)
+
+for (m in MODELS) {
+  final_results[[m]] <- as.numeric(final_results[[m]])
+  final_results[[paste0("mape_", m)]] <- abs((final_results$real - final_results[[m]]) / final_results$real) * 100
+}
+
+# Guardar CSV
+write.csv(final_results, "Scripts/Conclusiones/modelos_rw_lr_globals.csv", row.names = FALSE)
