@@ -231,3 +231,40 @@ summary_table <- mape_filtrado %>%
 
 # Mostrar como tabla
 print(summary_table)
+
+
+
+df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+df <- df %>% select(- ends_with("_rmse"))
+
+df_mape <- df %>%
+  select(id, dia, mean_mape, rw_mape, naive_mape, simple_mape, lr_mape, ann_mape, svm_mape,
+         arima_mape, ses_mape) %>%  filter(if_all(ends_with("mape"), is.finite)) %>%
+  pivot_longer(-id, names_to = "modelo", values_to = "mape")
+
+rankings <- df_mape %>%
+  group_by(id) %>%
+  mutate(rank = rank(mape, ties.method = "average")) %>%
+  ungroup()
+
+# Ranking promedio por modelo
+avg_ranks <- rankings %>%
+  group_by(modelo) %>%
+  summarise(avg_rank = mean(rank)) %>%
+  arrange(avg_rank)
+
+install.packages("pairwiseComparisons")  # si no lo tienes
+library(pairwiseComparisons)
+
+# Comparaciones múltiples usando Friedman + Nemenyi
+comp <- pairwise_comparisons(
+  data = rankings,
+  dependent = "mape",
+  subject = "id",
+  between = "modelo",
+  p_adjust_method = "holm",  # "holm" o "bonferroni" si quieres más conservador
+  type = "nonparametric",
+  paired = TRUE
+)
+
+sig_pairs <- comp %>% filter(p.value.adjusted > 0.05)
