@@ -1,99 +1,49 @@
-library(dplyr)
-library(ggplot2)
 library(data.table)
+library(vtable)
+library(zoo)
+library(forecast)
+library(neuralnet)
+library(e1071)
+library(doFuture)
+library(matrixStats)
+library(PMCMRplus)
+library(rcompanion)
+library(multcompView)
+library(boot)
+library(stringr)
+library(arrow)
+library(future.apply)
+library(nnet)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
 
-# Parámetros
-set.seed(123)
-n_series <- 100
-n_values <- 150
-factor_ruido <- 0.02  # Amplifica la varianza del ruido
+seriesN <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+series1 <- fread("Scripts/Conclusiones/Series1.csv")
 
-# Tiempo
-t <- 1:n_values
+seriesN <- seriesN %>% select(id, real, rw_pred, rw_mape)
 
-# Base aleatoria uniforme entre 0 y 1
-base_series <- matrix(runif(n_series * n_values, 0, 1), nrow = n_values)
+mape_promedios <- seriesN[, .(mape_medio = median(rw_mape, na.rm = TRUE)), by = id]
+mejores_ids <- mape_promedios[order(mape_medio)][1:100, id]
+mejores_series <- seriesN[id %in% mejores_ids]
+series <- mejores_series[, head(.SD, 150), by = id]
 
-#varianza teórica
-var_grupos <- list(
-  #1. onda
-  grupo1 = 0.05 + 0.05 * sin(2 * pi * t / 25),
-  
-  #2. ruido decreciente 
-  grupo2 = rev(seq(0.01, 0.1, length.out = n_values)),
-  
-  #3. ruido creciente 
-  grupo3 = seq(0.01, 0.1, length.out = n_values),
-  
-  #4. campana
-  grupo4 = {
-    bell <- dnorm(seq(-3, 3, length.out = n_values))
-    bell / max(bell) * 0.1
-  }
+id_map <- data.table(
+  id = unique(series$id),
+  nuevo_id = 1:100
 )
+series0 <- merge(series, id_map, by = "id")
+series0[, id := nuevo_id][, nuevo_id := NULL]
+setorder(series0, id)
 
+series0$tipo <- 0
+set.seed(123)
+series0[, random := sample(1:10, .N, replace = TRUE)]
 
-series_list <- list()
+series0$serie_id <- series0$id
+series0$tiempo <- series1$tiempo
+series0$valor <- series0$real
 
-# Generar las 100 series
-for (i in 1:n_series) {
-  grupo <- ceiling(i / 25)
-  var <- var_grupos[[grupo]]
-  
-  ruido <- rnorm(n_values, mean = 0, sd = sqrt(var) * factor_ruido)
-  base <- base_series[, i]
-  serie <- base + ruido
-  
-  
-  df_serie <- data.frame(
-    serie_id = i,
-    grupo = grupo,
-    tiempo = t,
-    valor = serie
-  )
-  
-  series_list[[i]] <- df_serie
-}
+series0 <- series0 %>% select(serie_id, tiempo, valor, random, tipo)
 
-df <- bind_rows(series_list)
-set.seed(999) 
-df$random <- sample(1:10, size = nrow(df), replace = TRUE)
-df$tipo <- 0
-fwrite(df, "Scripts/Conclusiones/series0.csv")
-
-
-
-dir.create("Scripts/Conclusiones/graficos_series0", showWarnings = FALSE)
-
-# Gráfico 1: VALORES observados (base + ruido) por grupo
-for (g in 1:4) {
-  datos <- df %>% filter(grupo == g)
-  
-  p <- ggplot(datos, aes(x = tiempo, y = valor, group = serie_id)) +
-    geom_line(alpha = 0.5, color = "darkgreen") +
-    labs(title = paste("Grupo", g, "- Series completas (base + ruido)"),
-         x = "Tiempo", y = "Valor observado") +
-    theme_minimal(base_size = 14)
-  
-  ggsave(
-    filename = paste0("Scripts/Conclusiones/graficos_series0/series_grupo_", g, ".png"),
-    plot = p, width = 8, height = 5
-  )
-}
-
-# Gráfico 2: SOLO EL RUIDO por grupo
-for (g in 1:4) {
-  datos <- df %>% filter(grupo == g)
-  
-  p <- ggplot(datos, aes(x = tiempo, y = ruido, group = serie_id)) +
-    geom_line(alpha = 0.5, color = "red") +
-    labs(title = paste("Grupo", g, "- Solo el ruido"),
-         x = "Tiempo", y = "Ruido añadido") +
-    theme_minimal(base_size = 14)
-  
-  ggsave(
-    filename = paste0("Scripts/Conclusiones/graficos_series0/ruido_grupo_", g, ".png"),
-    plot = p, width = 8, height = 5
-  )
-}
-
+fwrite(series0, "Scripts/Conclusiones/series0.csv")
