@@ -24,7 +24,7 @@ series1 <- fread("Scripts/Conclusiones/Series1.csv")
 seriesN <- seriesN %>% select(id, real, rw_pred, rw_mape)
 
 mape_promedios <- seriesN[, .(mape_medio = median(rw_mape, na.rm = TRUE)), by = id]
-mejores_ids <- mape_promedios[order(mape_medio)][1:100, id]
+mejores_ids <- mape_promedios[order(mape_medio)][1:100, id] #opcion1: 201:300 // opcion2: 1:100
 mejores_series <- seriesN[id %in% mejores_ids]
 series <- mejores_series[, head(.SD, 150), by = id]
 

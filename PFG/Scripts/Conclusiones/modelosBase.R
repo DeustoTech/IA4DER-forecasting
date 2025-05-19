@@ -207,12 +207,13 @@ write.csv(final_results, "Scripts/Conclusiones/modelos_rw_lr_tipo1.csv", row.nam
 ########## JUNTAR SERIES0 Y SERIES1 ##############
 series0 <- fread("Scripts/Conclusiones/series0.csv")
 series1 <- fread("Scripts/Conclusiones/series1.csv")
+series1$serie_id <- series1$serie_id + 100
 
 series <- rbind(series0, series1)
 
 # Definir IDs
-train_ids <- c(1:93, 101:110)
-test_ids  <- c(93:100, 193:200)
+train_ids <- c(1:93, 101:193)
+test_ids  <- c(94:100, 194:200)
 
 MODELS <- c("rw", "lr")
 resultados_completos <- list()
@@ -279,10 +280,39 @@ for (m in MODELS) {
 }
 
 # Guardar CSV
-write.csv(final_results, "Scripts/Conclusiones/modelos_rw_lr_globals.csv", row.names = FALSE)
+write.csv(final_results, "Scripts/Conclusiones/modelos_rw_lr_tipos0y1.csv", row.names = FALSE)
 
 
+mape_largo <- final_results %>%
+  select(starts_with("mape_")) %>%
+  mutate(id = row_number()) %>%
+  pivot_longer(-id, names_to = "modelo", values_to = "mape") %>%
+  mutate(modelo = gsub("mape_", "", modelo))
 
+mape_filtrado <- mape_largo %>%
+  group_by(modelo) %>%
+  mutate(
+    Q1 = quantile(mape, 0.25, na.rm = TRUE),
+    Q3 = quantile(mape, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1
+  ) %>%
+  filter(mape >= Q1 - 1.5 * IQR, mape <= Q3 + 1.5 * IQR) %>%
+  ungroup()
+
+medianas <- mape_filtrado %>%
+  group_by(modelo) %>%
+  summarise(mediana = median(mape, na.rm = TRUE))
+
+ggplot(mape_filtrado, aes(x = modelo, y = mape)) +
+  geom_boxplot(fill = "skyblue") +
+  geom_text(data = medianas,
+            aes(x = modelo, y = mediana + 1, label = round(mediana, 2)),
+            vjust = 0,
+            size = 3.5,
+            fontface = "bold") +
+  labs(title = "MAPE error of base models - both groups",
+       x = "Model", y = "MAPE (%)") +
+  theme_minimal()
 
 
 
