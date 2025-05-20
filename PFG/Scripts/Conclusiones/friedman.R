@@ -271,6 +271,8 @@ text(
 
 ##### PARA TODOS LOS MODELOS 
 # cargar modelos base con ensemble simple
+library(RColorBrewer)
+
 d_base <- data.table::fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 d_base <- d_base %>% select(ends_with("mape"))
 d_base <- d_base[is.finite(rowSums(d_base)),]
@@ -330,9 +332,24 @@ colnames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
 
 l <- multcompView::multcompLetters(p)
 
-text(
-  x=c(1:length(colnames(d))),
-  y=b$stats[nrow(b$stats),] + 7,
-  as.character(print(l))
-)
+letras <- as.character(l$Letters)
+posiciones_x <- 1:length(colnames(d))
+posiciones_y <- b$stats[nrow(b$stats),] + 7
+
+# Paleta de colores (puedes personalizarla o ampliarla si tienes más letras únicas)
+colores_letras <- rep(brewer.pal(9, "Set1"), length.out = length(unique(letras)))
+nombres_letras <- unique(letras)
+colores_map <- setNames(colores_letras, nombres_letras)
+
+# Añadir letras con color y negrita
+for (i in seq_along(letras)) {
+  text(
+    x = posiciones_x[i],
+    y = posiciones_y[i],
+    labels = letras[i],
+    col = colores_map[letras[i]],
+    font = 2  # Negrita
+  )
+}
+
 

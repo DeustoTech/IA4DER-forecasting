@@ -268,3 +268,31 @@ comp <- pairwise_comparisons(
 )
 
 sig_pairs <- comp %>% filter(p.value.adjusted > 0.05)
+
+
+
+######### CON NUEVO FORMATO ##########
+d <- data.table::fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+
+d <- d %>% select(ends_with("mape"))
+d <- d[,-c("ens_mape")]
+
+graficar_boxplot <- function(data) {
+  matrix_data <- as.matrix(data)
+  matrix_data <- matrix_data[complete.cases(matrix_data) & rowSums(is.finite(matrix_data)) == ncol(data), ]
+  medianas <- apply(matrix_data, 2, median, na.rm = TRUE)
+  orden <- order(medianas)
+  matrix_data_ordenado <- matrix_data[, orden]
+  nombres_ordenados <- colnames(data)[orden]
+  medianas_ordenadas <- medianas[orden]
+  par(mar = c(10.5, 4, 4, 2))
+  b <- boxplot(matrix_data_ordenado, outline = FALSE, ylab = "MAPE", las = 2, names = nombres_ordenados)
+  text(
+    x = 1:length(medianas_ordenadas),
+    y = medianas_ordenadas + 10,
+    labels = round(medianas_ordenadas, 1),
+    cex = 1.3
+  )
+}
+
+graficar_boxplot(d)
