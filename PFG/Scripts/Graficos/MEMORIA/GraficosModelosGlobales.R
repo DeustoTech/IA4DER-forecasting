@@ -76,3 +76,41 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   guides(fill = "none")
 
 
+######## OTRA VEZ CON NUEVO FORMATO
+archivos <- c(
+  "bolt_mini_fixed_errors.csv", "bolt_tiny_fixed_errors.csv", 
+  "chronos_t5_small_fixed_errors.csv", "timesfm_fixed_errors.csv"
+)
+ruta_archivos <- "NuevosResultados/TimesFM/errores/"
+lista_mapes <- list()
+for (archivo in archivos) {
+  df <- fread(file.path(ruta_archivos, archivo))
+  nombre_variable <- gsub("_fixed_errors.csv", "", archivo)
+  lista_mapes[[nombre_variable]] <- df$mape  # Guardar vector en lista
+}
+max_len <- max(sapply(lista_mapes, length))
+lista_con_NA <- lapply(lista_mapes, function(x) {
+  length(x) <- max_len  # Rellena con NA automáticamente
+  x
+})
+mape_globales <- as.data.frame(lista_con_NA)
+graficar_boxplot <- function(data) {
+  matrix_data <- as.matrix(data)
+  matrix_data <- matrix_data[complete.cases(matrix_data) & rowSums(is.finite(matrix_data)) == ncol(data), ]
+  medianas <- apply(matrix_data, 2, median, na.rm = TRUE)
+  orden <- order(medianas)
+  matrix_data_ordenado <- matrix_data[, orden]
+  nombres_ordenados <- colnames(data)[orden]
+  medianas_ordenadas <- medianas[orden]
+  par(mar = c(10.5, 4, 4, 2))
+  b <- boxplot(matrix_data_ordenado, outline = FALSE, ylab = "MAPE", las = 2, names = nombres_ordenados)
+  text(
+    x = 1:length(medianas_ordenadas),
+    y = medianas_ordenadas + 7,
+    labels = round(medianas_ordenadas, 1),
+    cex = 1.5
+  )
+}
+graficar_boxplot(mape_globales)
+
+

@@ -236,3 +236,60 @@ ggplot(combined_long, aes(x = Variable, y = MAPE, fill = Color)) +
   guides(fill = "none")
 
 
+
+
+######## GRAFICOS FFORMA ########
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+datosMAPE <- datosMAPE %>% select(matches("^FFORMA_.*_MAPE$"))
+
+graficar_boxplot <- function(data) {
+  matrix_data <- as.matrix(data)
+  matrix_data <- matrix_data[complete.cases(matrix_data) & rowSums(is.finite(matrix_data)) == length(data), ]
+  #par(mar = c(10, 4, 4, 2))
+  b <- boxplot(matrix_data, outline = FALSE,  ylab = "MAPE")
+  medianas <- apply(matrix_data, 2, median, na.rm = TRUE)
+  text(
+    x = 1:length(medianas),
+    y = medianas + 7,  # Posición justo encima del upper whisker
+    labels = round(medianas, 1),  # Redondear si lo deseas
+    cex = 1.5
+  )
+}
+
+graficar_boxplot(datosMAPE)
+
+
+########## GRAFICOS FFORMA PABLO ##########
+nuevos_fforma <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
+
+mape_nuevos <- nuevos_fforma %>%
+  select(starts_with("MAPE_"))
+
+graficar_boxplot <- function(data) {
+  matrix_data <- as.matrix(data)
+  matrix_data <- matrix_data[complete.cases(matrix_data) & rowSums(is.finite(matrix_data)) == ncol(data), ]
+  
+  # Calcular medianas y ordenarlas
+  medianas <- apply(matrix_data, 2, median, na.rm = TRUE)
+  orden <- order(medianas)
+  
+  # Reordenar datos y nombres de columnas
+  matrix_data_ordenado <- matrix_data[, orden]
+  nombres_ordenados <- colnames(data)[orden]
+  medianas_ordenadas <- medianas[orden]
+  
+  # Ajustar márgenes y graficar
+  par(mar = c(10.5, 4, 4, 2))
+  b <- boxplot(matrix_data_ordenado, outline = FALSE, ylab = "MAPE", las = 2, names = nombres_ordenados)
+  
+  # Añadir valores de la mediana encima de cada caja
+  text(
+    x = 1:length(medianas_ordenadas),
+    y = medianas_ordenadas + 7,
+    labels = round(medianas_ordenadas, 1),
+    cex = 1.5
+  )
+}
+
+graficar_boxplot(mape_nuevos)
+
