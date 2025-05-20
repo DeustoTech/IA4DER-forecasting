@@ -266,3 +266,73 @@ text(
   labels = as.character(l$Letters),
   cex = 1.5
 )
+
+
+
+##### PARA TODOS LOS MODELOS 
+# cargar modelos base con ensemble simple
+d_base <- data.table::fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+d_base <- d_base %>% select(ends_with("mape"))
+d_base <- d_base[is.finite(rowSums(d_base)),]
+
+#cargar fforma mios
+d_fforma <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+d_fforma <- d_fforma %>% select(matches("^FFORMA_.*_MAPE$"))
+
+#cargar fforma de pablo
+d_nuevos <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
+d_nuevos <- d_nuevos %>% select(starts_with("MAPE_"))
+
+#cargar modelos globales
+archivos <- c(
+  "bolt_mini_fixed_errors.csv", "bolt_tiny_fixed_errors.csv", 
+  "chronos_t5_small_fixed_errors.csv", "timesfm_fixed_errors.csv"
+)
+ruta_archivos <- "NuevosResultados/TimesFM/errores/"
+lista_mapes <- list()
+for (archivo in archivos) {
+  df <- fread(file.path(ruta_archivos, archivo))
+  nombre_variable <- gsub("_fixed_errors.csv", "", archivo)
+  lista_mapes[[nombre_variable]] <- df$mape  # Guardar vector en lista
+}
+max_len <- max(sapply(lista_mapes, length))
+lista_con_NA <- lapply(lista_mapes, function(x) {
+  length(x) <- max_len  # Rellena con NA automáticamente
+  x
+})
+d_globales <- as.data.frame(lista_con_NA)
+
+datos_todos <- cbind(d_base, d_fforma, d_nuevos, d_globales)
+
+d <- datos_todos[is.finite(rowSums(datos_todos)),]
+
+n <- names(d)
+
+d <- as.matrix(d)
+rownames(d) <- 1:nrow(d)
+colnames(d) <- n
+
+d <- d[,order(robustbase::colMedians(d))]
+par(mar = c(12, 4, 4, 2))
+b <- boxplot(d, outline = FALSE, las = 2)
+
+friedman_result <- friedman.test(d)
+print(friedman_result)
+
+f <- PMCMRplus::frdAllPairsNemenyiTest(d)
+
+p <- rbind(1,f$p.value)
+p <- cbind(p, 1)
+diag(p) <- 1
+p <- as.matrix(Matrix::forceSymmetric(p, "L"))
+rownames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+colnames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+
+l <- multcompView::multcompLetters(p)
+
+text(
+  x=c(1:length(colnames(d))),
+  y=b$stats[nrow(b$stats),] + 7,
+  as.character(print(l))
+)
+
