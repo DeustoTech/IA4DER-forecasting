@@ -296,3 +296,24 @@ graficar_boxplot <- function(data) {
 }
 
 graficar_boxplot(d)
+
+
+matrix_data <- as.matrix(d)
+matrix_data <- matrix_data[complete.cases(matrix_data) & rowSums(is.finite(matrix_data)) == ncol(d), ]
+resumen <- apply(matrix_data, 2, function(col) {
+  c(
+    Min= min(col, na.rm = TRUE),
+    Q1= unname(quantile(col, 0.25, na.rm = TRUE)),
+    Median= median(col, na.rm = TRUE),
+    Mean= mean(col, na.rm = TRUE),
+    Q3= unname(quantile(col, 0.75, na.rm = TRUE)),
+    Max= max(col, na.rm = TRUE)
+  )
+})
+
+resumen_df <- as.data.frame(t(resumen))
+resumen_df$Model <- rownames(resumen_df)
+resumen_df <- resumen_df[, c("Model", "Min", "Q1", "Median", "Mean", "Q3", "Max")]
+
+# Mostrar tabla
+print(resumen_df)

@@ -58,7 +58,7 @@ denominador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("w_", 
 pbarra_name <- "FFORMA"
 pb[, (pbarra_name) := numerador / denominador]
 pb[, ("mape_FFORMA") := abs((real - FFORMA) / real) * 100]
-
+fwrite(pb, "Scripts/Conclusiones/modelos_rw_lr_ff_tipo0.csv")
 
 mape_largo <- pb %>%
   select(starts_with("mape_")) %>%
@@ -131,7 +131,7 @@ denominador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("w_", 
 pbarra_name <- "FFORMA"
 pb[, (pbarra_name) := numerador / denominador]
 pb[, ("mape_FFORMA") := abs((real - FFORMA) / real) * 100]
-
+fwrite(pb, "Scripts/Conclusiones/modelos_rw_lr_ff_tipo1.csv")
 
 mape_largo <- pb %>%
   select(starts_with("mape_")) %>%
@@ -205,7 +205,7 @@ denominador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("w_", 
 pbarra_name <- "FFORMA"
 pb[, (pbarra_name) := numerador / denominador]
 pb[, ("mape_FFORMA") := abs((valor - FFORMA) / valor) * 100]
-
+fwrite(pb, "Scripts/Conclusiones/modelos_rw_lr_ffr_tipos0y1.csv")
 
 mape_largo <- pb %>%
   select(starts_with("mape_")) %>%
@@ -278,7 +278,7 @@ denominador <- aux[, Reduce(`+`, lapply(modelosC, function(mc) get(paste0("w_", 
 pbarra_name <- "FFORMA"
 pb[, (pbarra_name) := numerador / denominador]
 pb[, ("mape_FFORMA") := abs((valor - FFORMA) / valor) * 100]
-
+fwrite(pb, "Scripts/Conclusiones/modelos_rw_lr_ffrt_tipos0y1.csv")
 
 mape_largo <- pb %>%
   select(starts_with("mape_")) %>%
