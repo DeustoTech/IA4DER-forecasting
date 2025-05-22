@@ -111,25 +111,24 @@ dev.off()
 
 #boxplot del ensemble
 df <- fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
+df <- df %>% select(ens_mape)
 
-Q1 <- quantile(df$ens_mape, 0.25, na.rm = TRUE)
-Q3 <- quantile(df$ens_mape, 0.75, na.rm = TRUE)
-IQR_val <- Q3 - Q1
+graficar_boxplot <- function(data) {
+  data_filtrada <- data[is.finite(data[[1]]), , drop = FALSE]
+  mediana <- median(data_filtrada[[1]], na.rm = TRUE)
+  par(mar = c(6, 4, 4, 2))
+  b <- boxplot(data_filtrada, outline = FALSE, ylab = "MAPE", xaxt = "n")
+  axis(1, at = 1, labels = "ens_mape")
+  
+  text(
+    x = 1,
+    y = mediana + 7,
+    labels = round(mediana, 1),
+    cex = 1.5
+  )
+}
 
-# Filtrar valores dentro del rango permitido
-df_filtrado <- df %>%
-  filter(ens_mape >= (Q1 - 1.5 * IQR_val) & ens_mape <= (Q3 + 1.5 * IQR_val)) %>% select(ens_mape)
-
-mediana_val <- median(df_filtrado$ens_mape, na.rm = TRUE)
-
-
-ggplot(df_filtrado, aes(x = "", y = ens_mape)) +
-  geom_boxplot(fill = "skyblue") +
-  geom_text(aes(label = round(mediana_val, 2), y = mediana_val), vjust = -0.5, size = 7) +
-  labs(title = "MAPE error of simple ensemble method",
-       y = "ens_mape",
-       x = "") +
-  theme_minimal()
+graficar_boxplot(df)
 
 
 ######## GRAFICOS FFORMA ########
@@ -156,9 +155,6 @@ graficar_boxplot(datosMAPE)
 ########## GRAFICOS FFORMA PABLO ##########
 nuevos_fforma <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
 
-mape_nuevos <- nuevos_fforma %>%
-  select(starts_with("MAPE_"))
-
 graficar_boxplot <- function(data) {
   matrix_data <- as.matrix(data)
   matrix_data <- matrix_data[complete.cases(matrix_data) & rowSums(is.finite(matrix_data)) == ncol(data), ]
@@ -173,7 +169,7 @@ graficar_boxplot <- function(data) {
   medianas_ordenadas <- medianas[orden]
   
   # Ajustar márgenes y graficar
-  par(mar = c(10.5, 4, 4, 2))
+  par(mar = c(12, 4, 4, 2))
   b <- boxplot(matrix_data_ordenado, outline = FALSE, ylab = "MAPE", las = 2, names = nombres_ordenados)
   
   # Añadir valores de la mediana encima de cada caja
@@ -185,5 +181,25 @@ graficar_boxplot <- function(data) {
   )
 }
 
-graficar_boxplot(mape_nuevos)
 
+#modelos base
+base <- nuevos_fforma %>% select(ends_with("_forec") & starts_with("MAPE_"))
+graficar_boxplot(base)
+
+#modelos fforma
+ff <- nuevos_fforma %>% select(ends_with("_ff") & starts_with("MAPE_"))
+graficar_boxplot(ff)
+
+
+########## GRAFICO FFORMA MIO Y PABLO
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+d_base <- datosMAPE %>% select(matches("^FFORMA_.*_MAPE$"))
+
+nuevos_fforma <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
+ff <- nuevos_fforma %>% select(ends_with("_ff") & starts_with("MAPE_"))
+
+datos_todos <- cbind(d_base, ff)
+d <- datos_todos[is.finite(rowSums(datos_todos)),]
+
+
+graficar_boxplot(d)

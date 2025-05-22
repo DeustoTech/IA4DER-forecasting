@@ -202,6 +202,113 @@ text(
   as.character(print(l))
 )
 
+#solo para modelos base
+d <- datosMAPE %>% select(ends_with("_forec") & starts_with("MAPE_"))
+d <- d[is.finite(rowSums(d)),]
+
+n <- gsub("^MAPE_", "", names(d))
+
+d <- as.matrix(d)
+rownames(d) <- 1:nrow(d)
+colnames(d) <- n
+
+d <- d[,order(robustbase::colMedians(d))]
+par(mar = c(10.5, 4, 4, 2))
+b <- boxplot(d, outline = FALSE, las = 2)
+
+friedman_result <- friedman.test(d)
+print(friedman_result)
+
+f <- PMCMRplus::frdAllPairsNemenyiTest(d)
+
+p <- rbind(1,f$p.value)
+p <- cbind(p, 1)
+diag(p) <- 1
+p <- as.matrix(Matrix::forceSymmetric(p, "L"))
+rownames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+colnames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+
+l <- multcompView::multcompLetters(p)
+
+text(
+  x=c(1:length(colnames(d))),
+  y=b$stats[nrow(b$stats),] + 7,
+  as.character(print(l))
+)
+
+#solo para modelos ensemble
+d <- datosMAPE %>% select(ends_with("_ff") & starts_with("MAPE_"))
+d <- d[is.finite(rowSums(d)),]
+
+n <- gsub("^MAPE_", "", names(d))
+
+d <- as.matrix(d)
+rownames(d) <- 1:nrow(d)
+colnames(d) <- n
+
+d <- d[,order(robustbase::colMedians(d))]
+par(mar = c(10.5, 4, 4, 2))
+b <- boxplot(d, outline = FALSE, las = 2)
+
+friedman_result <- friedman.test(d)
+print(friedman_result)
+
+f <- PMCMRplus::frdAllPairsNemenyiTest(d)
+
+p <- rbind(1,f$p.value)
+p <- cbind(p, 1)
+diag(p) <- 1
+p <- as.matrix(Matrix::forceSymmetric(p, "L"))
+rownames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+colnames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+
+l <- multcompView::multcompLetters(p)
+
+text(
+  x=c(1:length(colnames(d))),
+  y=b$stats[nrow(b$stats),] + 7,
+  as.character(print(l))
+)
+
+#para modelos fforma mios y de pablo
+datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
+d_base <- datosMAPE %>% select(matches("^FFORMA_.*_MAPE$"))
+
+nuevos_fforma <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
+ff <- nuevos_fforma %>% select(ends_with("_ff") & starts_with("MAPE_"))
+
+datos_todos <- cbind(d_base, ff)
+d <- datos_todos[is.finite(rowSums(datos_todos)),]
+n <- names(d)
+
+d <- as.matrix(d)
+rownames(d) <- 1:nrow(d)
+colnames(d) <- n
+
+d <- d[,order(robustbase::colMedians(d))]
+par(mar = c(12, 4, 4, 2))
+b <- boxplot(d, outline = FALSE, las = 2)
+
+friedman_result <- friedman.test(d)
+print(friedman_result)
+
+f <- PMCMRplus::frdAllPairsNemenyiTest(d)
+
+p <- rbind(1,f$p.value)
+p <- cbind(p, 1)
+diag(p) <- 1
+p <- as.matrix(Matrix::forceSymmetric(p, "L"))
+rownames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+colnames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+
+l <- multcompView::multcompLetters(p)
+
+text(
+  x=c(1:length(colnames(d))),
+  y=b$stats[nrow(b$stats),] + 7,
+  as.character(print(l))
+)
+
 
 ######### MODELOS GLOBALES 
 archivos <- c(
