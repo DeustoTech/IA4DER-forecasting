@@ -193,7 +193,7 @@ graficar_boxplot(ff)
 
 ########## GRAFICO FFORMA MIO Y PABLO
 datosMAPE <- fread("NuevosResultados/PrediccionErrorNuevo/PrediccionMAPE/REDUCIDO_DIA/FFORMA_MAPE.csv")
-d_base <- datosMAPE %>% select(matches("^FFORMA_.*_MAPE$"))
+d_base <- datosMAPE %>% select(matches("^FFORMA_.*_MAPE$"), ens_mape)
 
 nuevos_fforma <- fread("Scripts/FFORMA_errorNuevo/modelosNuevosFFORMA_MAPE.csv")
 ff <- nuevos_fforma %>% select(ends_with("_ff") & starts_with("MAPE_"))
@@ -201,5 +201,50 @@ ff <- nuevos_fforma %>% select(ends_with("_ff") & starts_with("MAPE_"))
 datos_todos <- cbind(d_base, ff)
 d <- datos_todos[is.finite(rowSums(datos_todos)),]
 
+setDT(d)
+setnames(d,
+         old = names(d),
+         new = gsub("^MAPE_(.*)_ff$", "\\1_o",
+                    gsub("(?i)_mape$", "_m", names(d), perl = TRUE)))
 
-graficar_boxplot(d)
+n <- names(d)
+colores <- ifelse(grepl("_m$", n), "lightgreen", ifelse(grepl("_o$", n), "#FFDAB9", "gray"))
+d <- as.matrix(d)
+rownames(d) <- 1:nrow(d)
+colnames(d) <- n
+orden <- order(robustbase::colMedians(d))
+d <- d[, orden]
+colores <- colores[orden] 
+
+par(mar = c(10.5, 4, 4, 2))
+b <- boxplot(d, outline = FALSE, las = 2, col = colores, ylab = "MAPE")
+
+friedman_result <- friedman.test(d)
+print(friedman_result)
+
+f <- PMCMRplus::frdAllPairsNemenyiTest(d)
+
+p <- rbind(1,f$p.value)
+p <- cbind(p, 1)
+diag(p) <- 1
+p <- as.matrix(Matrix::forceSymmetric(p, "L"))
+rownames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+colnames(p)[dim(f$p.value)+1] <- rownames(f$p.value)[dim(f$p.value)[1]]
+
+l <- multcompView::multcompLetters(p)
+
+text(
+  x=c(1:length(colnames(d))),
+  y=b$stats[nrow(b$stats),] + 7,
+  as.character(print(l))
+)
+
+medianas <- apply(d, 2, median, na.rm = TRUE)
+text(
+  x = 1:length(medianas),
+  y = medianas + 10,
+  labels = round(medianas, 1),
+  cex = 1.3
+)
+
+

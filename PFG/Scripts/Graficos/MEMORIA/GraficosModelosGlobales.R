@@ -114,3 +114,73 @@ graficar_boxplot <- function(data) {
 graficar_boxplot(mape_globales)
 
 
+archivos <- c(
+  "bolt_mini_fixed_errors.csv", "bolt_tiny_fixed_errors.csv", 
+  "chronos_t5_small_fixed_errors.csv", "timesfm_fixed_errors.csv"
+)
+ruta_archivos <- "NuevosResultados/TimesFM/errores/"
+lista_mapes <- list()
+for (archivo in archivos) {
+  df <- fread(file.path(ruta_archivos, archivo))
+  nombre_variable <- gsub("_fixed_errors.csv", "", archivo)
+  lista_mapes[[nombre_variable]] <- df$mape  # Guardar vector en lista
+}
+max_len <- max(sapply(lista_mapes, length))
+lista_con_NA <- lapply(lista_mapes, function(x) {
+  length(x) <- max_len  # Rellena con NA automáticamente
+  x
+})
+mape_globales <- as.data.frame(lista_con_NA)
+
+d <- mape_globales
+d <- d[is.finite(rowSums(d)), ]
+
+# Poner nombres más cortos (si hace falta)
+n <- colnames(d)
+
+# Convertir a matriz
+d <- as.matrix(d)
+rownames(d) <- 1:nrow(d)
+colnames(d) <- n
+
+# Ordenar por mediana robusta
+d <- d[, order(robustbase::colMedians(d))]
+
+# Boxplot ordenado
+par(mar = c(10.5, 4, 4, 2))  # espacio para etiquetas en el eje x
+b <- boxplot(d, outline = FALSE, las = 2, ylab = "MAPE", col = "#f9a9e8")
+
+# Test de Friedman
+friedman_result <- friedman.test(d)
+print(friedman_result)
+
+# Test post-hoc de Nemenyi
+f <- PMCMRplus::frdAllPairsNemenyiTest(d)
+
+# Construcción de la matriz de p-valores
+p <- rbind(1, f$p.value)
+p <- cbind(p, 1)
+diag(p) <- 1
+p <- as.matrix(Matrix::forceSymmetric(p, "L"))
+
+rownames(p)[ncol(p)] <- colnames(d)[ncol(d)]
+colnames(p)[ncol(p)] <- colnames(d)[ncol(d)]
+
+# Letras de significancia
+l <- multcompView::multcompLetters(p)
+
+# Añadir letras encima de cada caja
+text(
+  x = 1:length(colnames(d)),
+  y = b$stats[nrow(b$stats), ] + 7,
+  labels = as.character(l$Letters),
+  cex = 1.2
+)
+
+medianas <- apply(d, 2, median, na.rm = TRUE)
+text(
+  x = 1:length(medianas),
+  y = medianas + 10,
+  labels = round(medianas, 1),
+  cex = 0.9
+)

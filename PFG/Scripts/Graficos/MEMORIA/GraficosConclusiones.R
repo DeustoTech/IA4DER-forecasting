@@ -80,15 +80,20 @@ graficar_boxplot <- function(data) {
   nombres_ordenados <- colnames(data)[orden]
   medianas_ordenadas <- medianas[orden]
   
+  colores <- ifelse(nombres_ordenados == "mape_FFORMA", "lightblue",
+                    ifelse(nombres_ordenados == "mape_rw",     "lightpink",
+                           ifelse(nombres_ordenados == "mape_lr",     "lightgreen",
+                                  "gray")))
   par(mar = c(10.5, 4, 4, 2))
   b <- boxplot(matrix_data_ordenado, 
                outline = FALSE, 
                ylab = "MAPE", 
-               xaxt = "n")  # no dibuja eje x por ahora
+               xaxt = "n",
+               col = colores)  
   
   # Dibujar eje x con nombres más grandes
   axis(side = 1, at = 1:length(nombres_ordenados), 
-       labels = nombres_ordenados, cex.axis = 1.3)
+       labels = gsub("(?i)^mape_", "", nombres_ordenados, perl = TRUE), cex.axis = 1.3)
   
   text(
     x = 1:length(medianas_ordenadas),
@@ -152,7 +157,22 @@ rownames(d) <- 1:nrow(d)
 colnames(d) <- n
 
 d <- d[,order(robustbase::colMedians(d))]
-b <- boxplot(d,outline=F, )
+labels <- colnames(d)
+colores <- ifelse(labels == "FFORMA", "lightblue",
+                  ifelse(labels == "lr",     "lightgreen",
+                         ifelse(labels == "rw",     "lightpink",
+                                "gray")))
+b <- boxplot(d,outline=F, col = colores, ylab = "MAPE",  xaxt = "n")
+labels <- colnames(d)
+axis(1, at = 1:length(labels), labels = FALSE)
+text(
+  x = 1:length(labels),
+  y = par("usr")[3] - 0.06 * diff(par("usr")[3:4]), 
+  labels = labels,
+  xpd = TRUE,
+  adj = 0.5,
+  cex = 1.5
+)
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -170,9 +190,17 @@ l <- multcompView::multcompLetters(p)
 
 text(
   x=c(1:length(colnames(d))),
-  y=b$stats[nrow(b$stats),] + 5,
+  y=b$stats[nrow(b$stats),] + 15,
   as.character(print(l)),
   cex = 1.5
+)
+
+medianas <- apply(d, 2, median, na.rm = TRUE)
+text(
+  x = 1:length(medianas),
+  y = 150,
+  labels = round(medianas, 1),
+  cex = 1.3
 )
 
 # TIPO 1 CON lr, rw, y ff
@@ -187,7 +215,22 @@ rownames(d) <- 1:nrow(d)
 colnames(d) <- n
 
 d <- d[,order(robustbase::colMedians(d))]
-b <- boxplot(d,outline=F, )
+labels <- colnames(d)
+colores <- ifelse(labels == "FFORMA", "lightblue",
+                  ifelse(labels == "lr",     "lightgreen",
+                         ifelse(labels == "rw",     "lightpink",
+                                "gray")))
+b <- boxplot(d,outline=F, col = colores, ylab = "MAPE",  xaxt = "n")
+labels <- colnames(d)
+axis(1, at = 1:length(labels), labels = FALSE)
+text(
+  x = 1:length(labels),
+  y = par("usr")[3] - 0.06 * diff(par("usr")[3:4]), 
+  labels = labels,
+  xpd = TRUE,
+  adj = 0.5,
+  cex = 1.5
+)
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -205,10 +248,19 @@ l <- multcompView::multcompLetters(p)
 
 text(
   x=c(1:length(colnames(d))),
-  y=b$stats[nrow(b$stats),] + 12,
+  y=b$stats[nrow(b$stats),] + 15,
   as.character(print(l)),
   cex = 1.5
 )
+
+medianas <- apply(d, 2, median, na.rm = TRUE)
+text(
+  x = 1:length(medianas),
+  y = 450,
+  labels = round(medianas, 1),
+  cex = 1.3
+)
+
 
 
 
@@ -263,7 +315,12 @@ rownames(d) <- 1:nrow(d)
 colnames(d) <- n
 
 d <- d[,order(robustbase::colMedians(d))]
-b <- boxplot(d,outline=F, )
+labels <- colnames(d)
+colores <- ifelse(labels == "FFORMA", "lightblue",
+                  ifelse(labels == "lr",     "lightgreen",
+                         ifelse(labels == "rw",     "lightpink",
+                                "gray")))
+b <- boxplot(d,outline=F, col = colores, ylab = "MAPE" )
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -281,11 +338,17 @@ l <- multcompView::multcompLetters(p)
 
 text(
   x=c(1:length(colnames(d))),
-  y=b$stats[nrow(b$stats),] + 5,
+  y=b$stats[nrow(b$stats),] + 7,
   as.character(print(l)),
   cex = 1.5
 )
-
+medianas <- apply(d, 2, median, na.rm = TRUE)
+text(
+  x = 1:length(medianas),
+  y = medianas + 15,
+  labels = round(medianas, 1),
+  cex = 1.3
+)
 
 
 # TIPOS 1 Y 2 CON lr, rw, y ff con random y tipo
@@ -301,7 +364,12 @@ rownames(d) <- 1:nrow(d)
 colnames(d) <- n
 
 d <- d[,order(robustbase::colMedians(d))]
-b <- boxplot(d,outline=F, )
+labels <- colnames(d)
+colores <- ifelse(labels == "FFORMA", "lightblue",
+                  ifelse(labels == "lr",     "lightgreen",
+                         ifelse(labels == "rw",     "lightpink",
+                                "gray")))
+b <- boxplot(d,outline=F, col = colores, ylab = "MAPE" )
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -319,8 +387,14 @@ l <- multcompView::multcompLetters(p)
 
 text(
   x=c(1:length(colnames(d))),
-  y=b$stats[nrow(b$stats),] + 5,
+  y=b$stats[nrow(b$stats),] + 7,
   as.character(print(l)),
   cex = 1.5
 )
-
+medianas <- apply(d, 2, median, na.rm = TRUE)
+text(
+  x = 1:length(medianas),
+  y = 50,
+  labels = round(medianas, 1),
+  cex = 1.3
+)
