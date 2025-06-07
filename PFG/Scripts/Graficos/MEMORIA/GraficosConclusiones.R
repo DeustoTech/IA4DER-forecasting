@@ -156,7 +156,8 @@ d <- as.matrix(d)
 rownames(d) <- 1:nrow(d)
 colnames(d) <- n
 
-d <- d[,order(robustbase::colMedians(d))]
+orden_deseado <- c("rw", "lr", "FFORMA")
+d <- d[, orden_deseado]
 labels <- colnames(d)
 colores <- ifelse(labels == "FFORMA", "lightblue",
                   ifelse(labels == "lr",     "lightgreen",
@@ -214,7 +215,8 @@ d <- as.matrix(d)
 rownames(d) <- 1:nrow(d)
 colnames(d) <- n
 
-d <- d[,order(robustbase::colMedians(d))]
+orden_deseado <- c("rw", "lr", "FFORMA")
+d <- d[, orden_deseado]
 labels <- colnames(d)
 colores <- ifelse(labels == "FFORMA", "lightblue",
                   ifelse(labels == "lr",     "lightgreen",
