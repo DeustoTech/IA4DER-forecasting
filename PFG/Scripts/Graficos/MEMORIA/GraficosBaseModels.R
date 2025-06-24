@@ -126,19 +126,20 @@ setnames(da,
 
 n <- names(da)
 colores <- ifelse(grepl("_m$", n), "lightblue", ifelse(grepl("_o$", n), "orange", "gray"))
+
 da <- as.matrix(da)
 rownames(da) <- 1:nrow(da)
 colnames(da) <- n
 
-d <- da[,order(robustbase::colMedians(da))]
+orden_medianas <- order(robustbase::colMedians(da))
+d <- da[, orden_medianas]
+nombres_limpios <- gsub("(_m|_o)$", "", colnames(da)[orden_medianas])
+colores_ordenados <- colores[orden_medianas]
 
+# Graficar
 par(mar = c(10.5, 4, 4, 2))
-b <- boxplot(d, outline = FALSE, las = 2, col = colores)
-legend("topleft", 
-       legend = c("Local models from this work", "Local models from original FFORMA package"), 
-       fill = c("lightblue", "orange"), 
-       border = "black", 
-       bty = "n")
+b <- boxplot(d, outline = FALSE, las = 2, col = colores_ordenados,
+             names = nombres_limpios, cex.axis = 1.3, ylab = "MAPE")
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -157,7 +158,8 @@ l <- multcompView::multcompLetters(p)
 text(
   x=c(1:length(colnames(d))),
   y=b$stats[nrow(b$stats),] + 7,
-  as.character(print(l))
+  labels = as.character(l$Letters),
+  cex = 1.3
 )
 
 medianas <- apply(d, 2, median, na.rm = TRUE)
@@ -167,3 +169,4 @@ text(
   labels = round(medianas, 1),
   cex = 1.3
 )
+

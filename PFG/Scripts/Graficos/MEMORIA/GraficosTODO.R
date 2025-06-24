@@ -139,8 +139,10 @@ colnames(d) <- n
 orden <- order(robustbase::colMedians(d))
 d <- d[, orden]
 colores <- colores[orden] 
+
+nombres_limpios <- gsub("(_m|_ob|_of)$", "", colnames(d))
 par(mar = c(12, 4, 4, 2))
-b <- boxplot(d, outline = FALSE, las = 2, ylab ="MAPE", col = colores)
+b <- boxplot(d, outline = FALSE, las = 2, ylab ="MAPE", col = colores, names = nombres_limpios, cex.axis = 1.3)
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -161,6 +163,7 @@ posiciones_x <- 1:length(colnames(d))
 posiciones_y <- b$stats[nrow(b$stats),] + 7
 
 # Paleta de colores (puedes personalizarla o ampliarla si tienes más letras únicas)
+library(RColorBrewer)
 colores_letras <- rep(brewer.pal(9, "Set1"), length.out = length(unique(letras)))
 nombres_letras <- unique(letras)
 colores_map <- setNames(colores_letras, nombres_letras)
@@ -172,6 +175,7 @@ for (i in seq_along(letras)) {
     y = posiciones_y[i],
     labels = letras[i],
     col = colores_map[letras[i]],
+    cex = 1,
     font = 2  # Negrita
   )
 }
@@ -181,5 +185,5 @@ text(
   x = 1:length(medianas),
   y = medianas + 10,
   labels = round(medianas, 1),
-  cex = 0.8
+  cex = 1
 )

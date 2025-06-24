@@ -148,7 +148,7 @@ d <- d[, order(robustbase::colMedians(d))]
 
 # Boxplot ordenado
 par(mar = c(10.5, 4, 4, 2))  # espacio para etiquetas en el eje x
-b <- boxplot(d, outline = FALSE, las = 2, ylab = "MAPE", col = "#f9a9e8")
+b <- boxplot(d, outline = FALSE, las = 2, ylab = "MAPE", col = "#f9a9e8", cex.axis = 1.3)
 
 # Test de Friedman
 friedman_result <- friedman.test(d)
@@ -174,7 +174,7 @@ text(
   x = 1:length(colnames(d)),
   y = b$stats[nrow(b$stats), ] + 7,
   labels = as.character(l$Letters),
-  cex = 1.2
+  cex = 1.3
 )
 
 medianas <- apply(d, 2, median, na.rm = TRUE)
@@ -182,5 +182,6 @@ text(
   x = 1:length(medianas),
   y = medianas + 10,
   labels = round(medianas, 1),
-  cex = 0.9
+  cex = 1.3
 )
+

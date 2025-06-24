@@ -216,8 +216,10 @@ orden <- order(robustbase::colMedians(d))
 d <- d[, orden]
 colores <- colores[orden] 
 
+nombres_limpios <- gsub("(_m|_o)$", "", colnames(d))
+
 par(mar = c(10.5, 4, 4, 2))
-b <- boxplot(d, outline = FALSE, las = 2, col = colores, ylab = "MAPE")
+b <- boxplot(d, outline = FALSE, las = 2, col = colores, ylab = "MAPE", names = nombres_limpios, cex.axis = 1.2)
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -236,7 +238,8 @@ l <- multcompView::multcompLetters(p)
 text(
   x=c(1:length(colnames(d))),
   y=b$stats[nrow(b$stats),] + 7,
-  as.character(print(l))
+  labels = as.character(l$Letters),
+  cex = 1.3
 )
 
 medianas <- apply(d, 2, median, na.rm = TRUE)
