@@ -134,6 +134,11 @@ d <- da[,order(robustbase::colMedians(da))]
 
 par(mar = c(10.5, 4, 4, 2))
 b <- boxplot(d, outline = FALSE, las = 2, col = colores)
+legend("topleft", 
+       legend = c("Local models from this work", "Local models from original FFORMA package"), 
+       fill = c("lightblue", "orange"), 
+       border = "black", 
+       bty = "n")
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
