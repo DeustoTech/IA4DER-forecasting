@@ -93,13 +93,13 @@ graficar_boxplot <- function(data) {
   
   # Dibujar eje x con nombres más grandes
   axis(side = 1, at = 1:length(nombres_ordenados), 
-       labels = gsub("(?i)^mape_", "", nombres_ordenados, perl = TRUE), cex.axis = 1.3)
+       labels = gsub("(?i)^mape_", "", nombres_ordenados, perl = TRUE), cex.axis = 2)
   
   text(
     x = 1:length(medianas_ordenadas),
     y = medianas_ordenadas + 28,
     labels = round(medianas_ordenadas, 1),
-    cex = 1.5
+    cex = 1.8
   )
 }
 
@@ -172,7 +172,7 @@ text(
   labels = labels,
   xpd = TRUE,
   adj = 0.5,
-  cex = 1.5
+  cex = 2
 )
 
 friedman_result <- friedman.test(d)
@@ -191,17 +191,17 @@ l <- multcompView::multcompLetters(p)
 
 text(
   x=c(1:length(colnames(d))),
-  y=b$stats[nrow(b$stats),] + 15,
+  y=b$stats[nrow(b$stats),] + 4,
   as.character(print(l)),
-  cex = 1.5
+  cex = 1.8
 )
 
 medianas <- apply(d, 2, median, na.rm = TRUE)
 text(
   x = 1:length(medianas),
-  y = 150,
+  y = 80,
   labels = round(medianas, 1),
-  cex = 1.3
+  cex = 1.7
 )
 
 # TIPO 1 CON lr, rw, y ff
@@ -231,7 +231,7 @@ text(
   labels = labels,
   xpd = TRUE,
   adj = 0.5,
-  cex = 1.5
+  cex = 2
 )
 
 friedman_result <- friedman.test(d)
@@ -252,15 +252,15 @@ text(
   x=c(1:length(colnames(d))),
   y=b$stats[nrow(b$stats),] + 15,
   as.character(print(l)),
-  cex = 1.5
+  cex = 1.8
 )
 
 medianas <- apply(d, 2, median, na.rm = TRUE)
 text(
   x = 1:length(medianas),
-  y = 450,
+  y = 200,
   labels = round(medianas, 1),
-  cex = 1.3
+  cex = 1.7
 )
 
 
@@ -322,7 +322,7 @@ colores <- ifelse(labels == "FFORMA", "lightblue",
                   ifelse(labels == "lr",     "lightgreen",
                          ifelse(labels == "rw",     "lightpink",
                                 "gray")))
-b <- boxplot(d,outline=F, col = colores, ylab = "MAPE" )
+b <- boxplot(d,outline=F, col = colores, ylab = "MAPE" , cex.axis = 1.5)
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -342,14 +342,14 @@ text(
   x=c(1:length(colnames(d))),
   y=b$stats[nrow(b$stats),] + 7,
   as.character(print(l)),
-  cex = 1.5
+  cex = 1.8
 )
 medianas <- apply(d, 2, median, na.rm = TRUE)
 text(
   x = 1:length(medianas),
   y = medianas + 15,
   labels = round(medianas, 1),
-  cex = 1.3
+  cex = 1.7
 )
 
 
@@ -371,7 +371,7 @@ colores <- ifelse(labels == "FFORMA", "lightblue",
                   ifelse(labels == "lr",     "lightgreen",
                          ifelse(labels == "rw",     "lightpink",
                                 "gray")))
-b <- boxplot(d,outline=F, col = colores, ylab = "MAPE" )
+b <- boxplot(d,outline=F, col = colores, ylab = "MAPE", cex.axis = 1.5 )
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
@@ -391,12 +391,12 @@ text(
   x=c(1:length(colnames(d))),
   y=b$stats[nrow(b$stats),] + 7,
   as.character(print(l)),
-  cex = 1.5
+  cex = 1.8
 )
 medianas <- apply(d, 2, median, na.rm = TRUE)
 text(
   x = 1:length(medianas),
   y = 50,
   labels = round(medianas, 1),
-  cex = 1.3
+  cex = 1.7
 )
