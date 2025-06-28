@@ -108,7 +108,6 @@ for (d in unique(datos_grafico$dia)) {
 dev.off()
 
 
-
 d <- data.table::fread("NUEVOS DATOS/DATOS ERROR NUEVO/preds_MAPE_RMSE.csv")
 d <- d %>% select(ends_with("mape"))
 d <- d[,-c("ens_mape")]
@@ -127,6 +126,8 @@ setnames(da,
 n <- names(da)
 colores <- ifelse(grepl("_m$", n), "lightblue", ifelse(grepl("_o$", n), "orange", "gray"))
 
+modelos_naive <- c("naive", "simple", "rw", "snaive", "rw_drift", "mean", "naive")
+
 da <- as.matrix(da)
 rownames(da) <- 1:nrow(da)
 colnames(da) <- n
@@ -136,10 +137,32 @@ d <- da[, orden_medianas]
 nombres_limpios <- gsub("(_m|_o)$", "", colnames(da)[orden_medianas])
 colores_ordenados <- colores[orden_medianas]
 
-# Graficar
+# Lista de modelos baseline
+modelos_baseline <- c("naive", "snaive", "rw", "simple", "rw_drift", "mean")
+
+# Graficar sin nombres (dejas espacio para dibujarlos tú)
 par(mar = c(10.5, 4, 4, 2))
 b <- boxplot(d, outline = FALSE, las = 2, col = colores_ordenados,
-             names = nombres_limpios, cex.axis = 1.3, ylab = "MAPE")
+             names = rep("", length(nombres_limpios)), cex.axis = 1.3, ylab = "MAPE [%]")
+
+# Etiquetas personalizadas
+etiquetas <- nombres_limpios
+modelos_baseline <- c("naive", "snaive", "rw", "simple", "rw_drift", "mean")
+
+# Dibujar eje x con etiquetas personalizadas
+axis(1, at = 1:length(etiquetas), labels = FALSE)
+
+# Texto con color y estilo condicional
+for (i in seq_along(etiquetas)) {
+  modelo <- etiquetas[i]
+  is_baseline <- modelo %in% modelos_baseline
+  col <- if (is_baseline) "red" else "black"
+  font <- if (is_baseline) 2 else 1  # 2 = bold, 1 = normal
+  text(x = i, y = par("usr")[3] - 0.02 * diff(par("usr")[3:4]),
+       labels = modelo, srt = 90, adj = 1, xpd = TRUE, cex = 1.3,
+       col = col, font = font)
+}
+
 
 friedman_result <- friedman.test(d)
 print(friedman_result)
